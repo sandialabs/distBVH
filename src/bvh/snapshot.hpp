@@ -35,9 +35,11 @@
 
 #include "math/vec.hpp"
 #include "util/attributes.hpp"
+#include "util/kokkos.hpp"
 #include "traits.hpp"
 #include "kdop.hpp"
 #include "types.hpp"
+#include "hash.hpp"
 
 namespace bvh
 {
@@ -48,13 +50,13 @@ namespace bvh
     {
       using kdop_type = typename element_traits< Entity >::kdop_type;
       using arithmetic_type = typename kdop_type::arithmetic_type;
-      
+
       auto &&centroid = element_traits< Entity >::get_centroid( _ent );
-      
+
       return m::vec3< arithmetic_type >( centroid[0], centroid[1], centroid[2] );
     }
   }
-  
+
   /**
    * A class for a minimal representation of a contact entity in a bounding volume
    * hierarchy. It contains a reference back to the originating entity, a bounding
@@ -71,18 +73,30 @@ namespace bvh
     using kdop_type = bphase_kdop;
     using centroid_type = m::vec3< float_type >;
 
-    BVH_INLINE entity_snapshot( index_type _gid, kdop_type _bounds, centroid_type _centroid, index_type _local_index )
+    KOKKOS_INLINE_FUNCTION
+    entity_snapshot( index_type _gid, kdop_type _bounds, centroid_type _centroid, index_type _local_index )
         : m_global_id( _gid ), m_kdop( _bounds ), m_centroid( _centroid ), m_local_index( _local_index )
     {}
 
-    BVH_INLINE entity_snapshot() = default;
-    BVH_INLINE ~entity_snapshot() = default;
+    KOKKOS_INLINE_FUNCTION entity_snapshot() = default;
+    KOKKOS_INLINE_FUNCTION ~entity_snapshot() = default;
 
-    BVH_INLINE index_type global_id() const noexcept { return m_global_id; }
-    BVH_INLINE kdop_type kdop() const noexcept { return m_kdop; }
-    BVH_INLINE centroid_type centroid() const noexcept { return m_centroid; }
+    KOKKOS_INLINE_FUNCTION
+    entity_snapshot( const entity_snapshot & ) = default;
 
-    BVH_INLINE index_type local_index() const noexcept { return m_local_index; }
+    KOKKOS_INLINE_FUNCTION
+    entity_snapshot( entity_snapshot && ) = default;
+
+    KOKKOS_INLINE_FUNCTION
+    entity_snapshot &operator=( const entity_snapshot & ) = default;
+    KOKKOS_INLINE_FUNCTION
+    entity_snapshot &operator=( entity_snapshot && ) = default;
+
+    KOKKOS_INLINE_FUNCTION index_type global_id() const noexcept { return m_global_id; }
+    KOKKOS_INLINE_FUNCTION kdop_type kdop() const noexcept { return m_kdop; }
+    KOKKOS_INLINE_FUNCTION centroid_type centroid() const noexcept { return m_centroid; }
+
+    KOKKOS_INLINE_FUNCTION index_type local_index() const noexcept { return m_local_index; }
 
   private:
 
@@ -90,15 +104,15 @@ namespace bvh
     kdop_type m_kdop;
     centroid_type m_centroid;
     index_type m_local_index;
-    
-    friend BVH_INLINE bool operator==( const entity_snapshot &_lhs, const entity_snapshot &_rhs )
+
+    friend KOKKOS_INLINE_FUNCTION bool operator==( const entity_snapshot &_lhs, const entity_snapshot &_rhs )
     {
       return ( _lhs.m_global_id == _rhs.m_global_id )
              && ( _lhs.m_kdop == _rhs.m_kdop )
              && ( _lhs.m_centroid == _rhs.m_centroid );
     }
-    
-    friend BVH_INLINE bool operator!=( const entity_snapshot &_lhs, const entity_snapshot &_rhs )
+
+    friend KOKKOS_INLINE_FUNCTION bool operator!=( const entity_snapshot &_lhs, const entity_snapshot &_rhs )
     {
       return !( _lhs == _rhs );
     }
@@ -109,7 +123,7 @@ namespace bvh
       _s | _snapshot.m_global_id | _snapshot.m_kdop | _snapshot.m_centroid;
     }
   };
-  
+
   /**
    * Utility function for creating a snapshot from a contact entity. Overload
    * the following functions for a custom entity:
@@ -123,7 +137,7 @@ namespace bvh
    * @return            The snapshot of the contact entity
    */
   template< typename Entity >
-  auto
+  KOKKOS_INLINE_FUNCTION auto
   make_snapshot( const Entity &_entity, std::size_t _local_index = static_cast< std::size_t >( -1 ) )
   {
     using traits_type = element_traits< Entity >;
@@ -133,6 +147,17 @@ namespace bvh
                             _local_index
     };
   }
+
+  KOKKOS_FUNCTION
+  void
+  compute_bounds( view< const entity_snapshot * > _elements,
+                  single_view< bphase_kdop > _bounds );
+
+  KOKKOS_FUNCTION
+  void
+  morton( view< const entity_snapshot * > _elements,
+          single_view< const bphase_kdop > _bounds,
+          view< morton32_t * > _out_codes );
 }
 
 #endif // INC_BVH_SNAPSHOT_HPP

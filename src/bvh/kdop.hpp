@@ -40,6 +40,7 @@
 #include "range.hpp"
 #include "util/array.hpp"
 #include "util/attributes.hpp"
+#include "util/kokkos.hpp"
 #include "iterators/transform_iterator.hpp"
 
 namespace bvh
@@ -53,9 +54,9 @@ namespace bvh
   template< typename T >
   struct extent
   {
-    T min = T{ 0 }; ///< The lower bound of an extent.
-    T max = T{ 0 }; ///< The upper bound of an extent.
-    
+    T min = std::numeric_limits< T >::max(); ///< The lower bound of an extent.
+    T max = std::numeric_limits< T >::lowest(); ///< The upper bound of an extent.
+
     /**
      *  The length of an extent.
      *
@@ -99,7 +100,7 @@ namespace bvh
       return !( _lhs == _rhs );
     }
   };
-  
+
   /**
    *  Determine whether two extents overlap.
    *
@@ -131,10 +132,10 @@ namespace bvh
     extent< T > ret;
     ret.min = std::min( _lhs.min, _rhs.min );
     ret.max = std::max( _lhs.max, _rhs.max );
-    
+
     return ret;
   }
-  
+
   /**
    *  Base class for k-DOPs.
    *
@@ -151,10 +152,10 @@ namespace bvh
     static constexpr int k = K;
     static constexpr int num_axis = k / 2;
     using arithmetic_type = T;
-  
+
     BVH_INLINE kdop_base() = default;
     BVH_INLINE ~kdop_base() = default;
-  
+
     /**
      *  Create a k-DOP by merging a range of k-DOPs.
      *
@@ -167,29 +168,29 @@ namespace bvh
     {
       if ( std::distance( _begin, _end ) == 0 )
         return;
-      
+
       for ( int axis = 0; axis < K / 2; ++axis )
       {
         auto iter = _begin;
-        
+
         T min = ( *iter ).extents[axis].min;
         T max = ( *iter ).extents[axis].max;
-        
+
         ++iter;
-        
+
         // Iterate through the list of k-DOPs
         for ( ; iter != _end; ++iter )
         {
           min = m::min( iter->extents[axis].min, min );
           max = m::max( iter->extents[axis].max, max );
         }
-        
+
         // global extents for the axis are min and max of the element extents
         extents[axis].min = min;
         extents[axis].max = max;
       }
     }
-    
+
     /**
      *  Create a k-DOP by merging a range of k-DOPs.
      *
@@ -250,10 +251,10 @@ namespace bvh
           ret.extents[i].max = std::max( ret.extents[i].max, proj + _epsilon );
         }
       }
-      
+
       return ret;
     }
-    
+
     /**
      *  Create a k-DOP bounding a sphere.
      *
@@ -265,19 +266,19 @@ namespace bvh
     static Derived from_sphere( const Vec &_center, T _radius )
     {
       Derived ret;
-      
+
       const auto &normal_list = Derived::normals();
       for ( int i = 0; i < K / 2; ++i )
       {
         T center = project( _center, normal_list[i] );
-        
+
         ret.extents[i].min = center - _radius;
         ret.extents[i].max = center + _radius;
       }
-      
+
       return ret;
     }
-    
+
     /**
      *  Create a \f$k\f$-DOP bounding a sphere.
      *
@@ -289,7 +290,7 @@ namespace bvh
     {
       return from_sphere( m::vec3< T >( _x, _y, _z ), _radius );
     }
-    
+
     /**
      * Grow the kdop by the specified amount. Useful for dealing with degenerate
      * kdops.
@@ -302,6 +303,16 @@ namespace bvh
       {
         extents[i].min -= _amount;
         extents[i].max += _amount;
+      }
+    }
+
+    KOKKOS_INLINE_FUNCTION
+    void union_with( const Derived &_other )
+    {
+      for ( int i = 0; i < K / 2; ++i )
+      {
+        extents[i].min = m::min( extents[i].min, _other.extents[i].min );
+        extents[i].max = m::max( extents[i].max, _other.extents[i].max );
       }
     }
 
@@ -326,7 +337,7 @@ namespace bvh
 
       return ret;
     }
-    
+
     /**
      *  Get the longest axis of the \f$k\f$-DOP. The longest axis is the axis of the extent with the largest span.
      *
@@ -338,7 +349,7 @@ namespace bvh
                                 []( const extent< T > &_lhs, const extent< T > &_rhs ) {
                                   return _lhs.length() < _rhs.length();
                                 });
-      
+
       return static_cast< int >( std::distance( extents.begin(), iter ) );
     }
 
@@ -350,16 +361,30 @@ namespace bvh
     BVH_INLINE m::vec3< T > centroid() const noexcept
     {
       m::vec3< T > ret;
-      const auto &normal_list = Derived::normals(); 
+      const auto &normal_list = Derived::normals();
       for ( int i = 0; i < K / 2; ++i )
       {
         ret += extents[i].max * normal_list[i];
         ret += extents[i].min * normal_list[i + K / 2];
       }
-      
+
       ret /= T{ K };
-      
+
       return ret;
+    }
+
+    KOKKOS_INLINE_FUNCTION
+    std::enable_if_t< ( K >= 6 ), m::vec3< T > >
+    cardinal_min() const noexcept
+    {
+      return m::vec3< T >{ extents[0].min, extents[1].min, extents[2].min };
+    }
+
+    KOKKOS_INLINE_FUNCTION
+    std::enable_if_t< ( K >= 6 ), m::vec3< T > >
+    cardinal_max() const noexcept
+    {
+      return m::vec3< T >{ extents[0].max, extents[1].max, extents[2].max };
     }
 
     /**
@@ -379,7 +404,7 @@ namespace bvh
         extents[i].max = std::max( extents[i].max, projected + _epsilon );
       }
     }
-    
+
     /**
      *  Project a vector along an axis.
      *
@@ -406,7 +431,7 @@ namespace bvh
       os << K << "-dop: ";
       for ( auto &&e : _kdop.extents )
         os << "[" << e.min << ", " << e.max << "] ";
-      
+
       return os;
     }
 
@@ -425,7 +450,7 @@ namespace bvh
         if ( _lhs.extents[i] != _rhs.extents[i] )
           return false;
       }
-      
+
       return true;
     }
 
@@ -441,10 +466,10 @@ namespace bvh
     {
       return !( _lhs == _rhs );
     }
-    
+
     array< extent< T >, K / 2 > extents;
   };
-  
+
   /**
    *  Determine whether two \f$k\f$-DOPs of the same type overlap. This function should generally be called using
    *  automatic type deduction.
@@ -462,7 +487,7 @@ namespace bvh
       if ( !overlap( _lhs.extents[i], _rhs.extents[i] ) )
         return false;
     }
-    
+
     return true;
   }
 
@@ -482,10 +507,10 @@ namespace bvh
     {
       ret.extents[i] = merge( _lhs.extents[i], _rhs.extents[i] );
     }
-    
+
     return ret;
   }
-  
+
   /**
    *  A 6-DOP. The 6-DOP is equivalent to an axis-oriented bounding box (AABB). It has 3 slabs representing the volume of the
    *  k-DOP, one for each cardinal axis. See \ref kdops for more details on how the class is used.
@@ -510,7 +535,7 @@ namespace bvh
    * \f$6\f$-DOP with double precision extents.
    */
   using dop_6d = dop_6< double >;
-  
+
   /**
    *  An 18-DOP. The 6-DOP defines a volume enclosed by 9 slabs along 9 axes. These axes include the cardinal directions on the
    *  in addition to diagonals 45 degrees between each of the axes and their negatives, making 18 normals in total. See
@@ -523,11 +548,11 @@ namespace bvh
   {
     using typename kdop_base< T, 18, dop_18 >::arithmetic_type;
     using kdop_base< T, 18, dop_18 >::kdop_base;
-    
+
     static constexpr T over_root_2 = static_cast<T>(0.7071067811865475);
     static const array< m::vec3< T >, 18> normals;
   };
-  
+
   template< typename T >
   const array< m::vec3< T >, 18 > dop_18< T >::normals = {{
                                                                  m::vec3< T >( 1., 0., 0. ),
@@ -557,7 +582,7 @@ namespace bvh
    * \f$18\f$-DOP with double precision extents.
    */
   using dop_18d = dop_18< double >;
-  
+
   /**
    *  A 26-DOP. The 26-DOP has 13 axes in 3D space in addition to the negatives of those
    *  axes. These include the 6 cartesian axes, the 12 axes corresponding to the
@@ -571,7 +596,7 @@ namespace bvh
   {
     using typename kdop_base< T, 26, dop_26 >::arithmetic_type;
     using kdop_base< T, 26, dop_26 >::kdop_base;
-    
+
     static constexpr T one_over_root_2 = static_cast<T>(0.7071067811865475);
     static constexpr T one_over_root_3 = static_cast<T>(0.5773502691896258);
 

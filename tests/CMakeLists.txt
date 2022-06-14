@@ -42,10 +42,13 @@ if (NOT BVH_DISABLE_TESTS)
                           SerializerTest.cpp
                           #PatchTest.cpp
                           #PrimitiveTest.cpp
+                          hash_test.cpp
                           SplitTest.cpp
                           UtilTest.cpp
                           math_vec_tests.cpp
       collision_object_test.cpp
+      cluster_test.cpp
+      snapshot_test.cpp
                  )
 
   if (Kokkos_FOUND)
