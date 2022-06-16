@@ -53,18 +53,21 @@ static_assert( bvh::is_kdop_type< bvh::dop_26< float > >::value, "" );
 TEST_CASE("26-dops are default constructable", "[kdop]")
 {
   kd_type kd;
-  REQUIRE( 0.0 == kd.extents[kd.longest_axis()].length() );
+  // Degenerate dop
+  REQUIRE( 0.0 > kd.extents[kd.longest_axis()].length() );
 }
 
 
 TEST_CASE("26-dops longest axis yields the correct result", "[kdop]")
 {
   kd_type kd;
+  kd.extents[0].min = 0.0;
   kd.extents[0].max = 5.0;
   REQUIRE( 0 == kd.longest_axis() );
 
   kd = kd_type();
   kd.extents[0].min = -1.0;
+  kd.extents[0].max = 0.0;
   REQUIRE( 0 == kd.longest_axis() );
 }
 

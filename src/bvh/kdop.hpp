@@ -64,7 +64,7 @@ namespace bvh
      */
     constexpr BVH_INLINE T length() const noexcept
     {
-      return std::abs( max - min );
+      return max - min;
     }
 
     /**
