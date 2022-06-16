@@ -38,6 +38,127 @@
 #include <random>
 #include <chrono>
 
+TEST_CASE("morton hashing")
+{
+  // Note we can only encode the lower 10 bits in each component
+  // since the final hash is only 32 bits. The upper 22 bits are lost
+  SECTION("32 bit")
+  {
+    SECTION("all bits set")
+    {
+      std::uint32_t x = 0x000003ff;
+      std::uint32_t y = 0x000003ff;
+      std::uint32_t z = 0x000003ff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      REQUIRE( hash == 0x3fffffff );
+    }
+
+    SECTION("only x")
+    {
+      std::uint32_t x = 0x000003ff;
+      std::uint32_t y = 0x00000000;
+      std::uint32_t z = 0x00000000;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      // Pattern is zyxzyxzyx so here we expect (m is mask)
+      // mm00 1001 0010 0100 1001 0010 0100 1001
+      REQUIRE( hash == 0x09249249 );
+    }
+
+    SECTION("only y")
+    {
+      std::uint32_t x = 0x00000000;
+      std::uint32_t y = 0x000003ff;
+      std::uint32_t z = 0x00000000;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      // Pattern is zyxzyxzyx so here we expect (m is mask)
+      // mm01 0010 0100 1001 0010 0100 1001 0010
+      REQUIRE( hash == 0x12492492 );
+    }
+
+    SECTION("only z")
+    {
+      std::uint32_t x = 0x00000000;
+      std::uint32_t y = 0x00000000;
+      std::uint32_t z = 0x000003ff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      // Pattern is zyxzyxzyx so here we expect (m is mask)
+      // mm10 0100 1001 0010 0100 1001 0010 0100
+      REQUIRE( hash == 0x24924924 );
+    }
+  }
+
+  // Note we can only encode the lower 21 bits in each component
+  // since the final hash is only 64 bits. The upper 43 bits are lost
+  SECTION("64 bit")
+  {
+    SECTION("all bits set")
+    {
+      std::uint64_t x = 0x1fffff;
+      std::uint64_t y = 0x1fffff;
+      std::uint64_t z = 0x1fffff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      REQUIRE( hash == 0x7fffffffffffffff );
+    }
+
+    SECTION("only x")
+    {
+      std::uint64_t x = 0x1fffff;
+      std::uint64_t y = 0x0;
+      std::uint64_t z = 0x0;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      // Pattern is zyxzyxzyx so here we expect
+      // 0010 0100 1001 (0x249) repeating
+      REQUIRE( hash == 0x1249249249249249 );
+    }
+
+    SECTION("only y")
+    {
+      std::uint64_t x = 0x0;
+      std::uint64_t y = 0x1fffff;
+      std::uint64_t z = 0x0;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      // Pattern is zyxzyxzyx so here we expect
+      // 0100 1001 0010 (0x492) repeating
+      REQUIRE( hash == 0x2492492492492492 );
+    }
+
+    SECTION("only z")
+    {
+      std::uint64_t x = 0x0;
+      std::uint64_t y = 0x0;
+      std::uint64_t z = 0x1fffff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      // Pattern is zyxzyxzyx so here we expect
+      // 1001 0010 0100 (0x924) repeating
+      REQUIRE( hash == 0x4924924924924924 );
+    }
+  }
+}
+
 TEST_CASE("benchmark morton", "[!benchmark]")
 {
 #ifdef __BMI2__
