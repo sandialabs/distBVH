@@ -137,10 +137,11 @@ namespace bvh
       return v * pi / T( 180 );
     }
 
+    template< typename T >
     BVH_INLINE bool
-    sign( double _v )
+    sign( T _v )
     {
-      return ( *reinterpret_cast< std::uint64_t * >( &_v ) & ( 0x1ULL << ( 63 ) ) ) != 0;
+      return std::signbit( _v );
     }
 
     template< typename T >

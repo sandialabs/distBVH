@@ -38,7 +38,7 @@
 #include <random>
 #include <chrono>
 
-TEST_CASE("morton hashing")
+TEST_CASE("morton hashing", "[hash]")
 {
   // Note we can only encode the lower 10 bits in each component
   // since the final hash is only 32 bits. The upper 22 bits are lost
@@ -159,7 +159,24 @@ TEST_CASE("morton hashing")
   }
 }
 
-TEST_CASE("benchmark morton", "[!benchmark]")
+TEST_CASE("quantization", "[hash]")
+{
+  bvh::m::vec3d min{ -1.0, 0.0, 3.0 };
+  bvh::m::vec3d max{ -0.5, 2.0, 4.0 };
+
+  SECTION("32 bit")
+  {
+    using vec_type = bvh::m::vec3< std::uint32_t >;
+    SECTION("bounds")
+    {
+      auto almost_max = max - bvh::m::vec3d::set1( 0.00001 );
+      REQUIRE( bvh::quantize32( min, min, max ) == vec_type{ 0, 0, 0 } );
+      REQUIRE( bvh::quantize32( almost_max, min, max ) == vec_type{ 0x3ff, 0x3ff, 0x3ff } );
+    }
+  }
+}
+
+TEST_CASE("benchmark morton", "[hash][!benchmark]")
 {
 #ifdef __BMI2__
   REQUIRE( bvh::detail::morton64( 5, 7, 9 ) == bvh::detail::morton64_intrin( 5, 7, 9 ) );

@@ -357,6 +357,34 @@ generate_random_kdops( std::default_random_engine &_eng,
   return Kokkos::create_mirror_view_and_copy( bvh::default_execution_space{}, ret );
 }
 
+inline bvh::view< bvh::bphase_kdop * >
+generate_kdop_grid( std::size_t _count,
+                    const bvh::m::vec3d &_min,
+                    const bvh::m::vec3d &_max,
+                    double _radius )
+{
+  bvh::host_view< bvh::bphase_kdop * > ret( "kdop_grid", _count * _count * _count );
+
+  bvh::m::vec3d pos = _min;
+  bvh::m::vec3d incr = ( _max - _min ) / static_cast< double >( _count );
+  for ( std::size_t z = 0; z < _count; ++z )
+  {
+    for ( std::size_t y = 0; y < _count; ++y )
+    {
+      for ( std::size_t x = 0; x < _count; ++x )
+      {
+        const auto idx = z * _count * _count + y * _count + x;
+        ret( idx ) = bvh::bphase_kdop::from_sphere( pos, _radius );
+        pos.x() += incr.x();
+      }
+      pos.y() += incr.y();
+    }
+    pos.z() += incr.z();
+  }
+
+  return Kokkos::create_mirror_view_and_copy( bvh::default_execution_space{}, ret );
+}
+
 inline bvh::view< bvh::entity_snapshot * >
 snapshots_from_kdops( bvh::view< const bvh::bphase_kdop * > _kdops )
 {
