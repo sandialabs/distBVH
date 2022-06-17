@@ -345,6 +345,40 @@ namespace bvh
           return true;
         }
       };
+
+      template< unsigned N >
+      struct truthiness_op< std::uint32_t, N >
+      {
+        using result_type = bool;
+
+        static auto BVH_INLINE
+        execute( const vec< std::uint32_t, N > &_vec )
+        {
+          for ( unsigned i = 0; i < N; ++i )
+          {
+            if ( !_vec[i] ) return false;
+          }
+
+          return true;
+        }
+      };
+
+      template< unsigned N >
+      struct truthiness_op< std::uint64_t, N >
+      {
+        using result_type = bool;
+
+        static auto BVH_INLINE
+        execute( const vec< std::uint64_t, N > &_vec )
+        {
+          for ( unsigned i = 0; i < N; ++i )
+          {
+            if ( !_vec[i] ) return false;
+          }
+
+          return true;
+        }
+      };
     } // namespace ops
   } // namespace m
 } // namespace bvh
