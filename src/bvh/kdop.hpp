@@ -360,15 +360,48 @@ namespace bvh
      */
     BVH_INLINE m::vec3< T > centroid() const noexcept
     {
+      // Quick'n dirty approximation for the centroid
+      // For each k/2 slab, find hyperplane equidistant to the extents of the slab.
+      // For every combination of three planes, find the intersection. Take the average
+      // of all intersection points to find the centroid.
+      std::array< T, num_axis > center_planes;
       m::vec3< T > ret;
       const auto &normal_list = Derived::normals();
-      for ( int i = 0; i < K / 2; ++i )
+      for ( int i = 0; i < num_axis; ++i )
       {
-        ret += extents[i].max * normal_list[i];
-        ret += extents[i].min * normal_list[i + K / 2];
+        center_planes[i] = ( extents[i].min + extents[i].max ) * T{ 0.5 };
       }
 
-      ret /= T{ K };
+      int count = 0;
+      for ( int i = 0; i < num_axis - 2; ++i )
+      {
+        const auto &n1 = normal_list[i];
+
+        for ( int j = i + 1; j < num_axis - 1; ++j )
+        {
+          const auto &n2 = normal_list[j];
+
+          for ( int l = j + 1; l < num_axis; ++l )
+          {
+            const auto &n3 = normal_list[l];
+
+            const auto n1xn2 = m::cross( n1, n2 );
+            const auto n2xn3 = m::cross( n2, n3 );
+            const auto n3xn1 = m::cross( n3, n1 );
+
+            const auto det = dot( n1, n2xn3 );
+            // Planes don't intersect
+            if ( det == 0.0 )
+              continue;
+
+            const auto isect = ( center_planes[i] * n2xn3 + center_planes[j] * n3xn1 + center_planes[l] * n1xn2 ) / det;
+            ret += isect;
+            ++count;
+          }
+        }
+      }
+
+      ret /= T( count );
 
       return ret;
     }
