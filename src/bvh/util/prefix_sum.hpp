@@ -33,32 +33,25 @@
 #ifndef INC_BVH_UTIL_PREFIX_SUM_HPP
 #define INC_BVH_UTIL_PREFIX_SUM_HPP
 
-#ifdef BVH_ENABLE_KOKKOS
 #include "kokkos.hpp"
-#endif  // BVH_ENABLE_KOKKOS
 
 namespace bvh
 {
-#ifdef BVH_ENABLE_KOKKOS
-  namespace kokkos
+  // Exclusive parallel prefix sum
+  template< typename T >
+  void
+  prefix_sum( view< T * > _view )
   {
-    // Exclusive parallel prefix sum
-    template< typename T >
-    void
-    prefix_sum( view< T * > _view )
-    {
-      const auto n = static_cast< unsigned int >( _view.extent( 0 ) );
-      Kokkos::parallel_scan( n, [_view] KOKKOS_FUNCTION ( const int &i, T &_x, const bool &_final ){
-        auto val = _view( i );
-  
-        if ( _final )
-          _view( i ) = _x;
-        
-        _x += val;
-      } );
-    }
+    const auto n = static_cast< unsigned int >( _view.extent( 0 ) );
+    Kokkos::parallel_scan( n, [_view] KOKKOS_FUNCTION ( const int &i, T &_x, const bool &_final ){
+      auto val = _view( i );
+
+      if ( _final )
+        _view( i ) = _x;
+
+      _x += val;
+    } );
   }
-#endif  // BVH_ENABLE_KOKKOS
 }
 
 #endif  // INC_BVH_UTIL_PREFIX_SUM_HPP

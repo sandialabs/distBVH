@@ -57,33 +57,33 @@ namespace bvh
         using value_type = arithmetic_type[];
         using size_type = typename view_type::size_type;
         static constexpr size_type value_count = 3;
-        
+
         explicit centroid_sum( const view_type &_view )
           : in_view( _view )
         {}
-  
+
         KOKKOS_INLINE_FUNCTION void operator()( const unsigned long i, value_type sum ) const
         {
           for ( int j = 0; j < 3; ++j )
             sum[j] += in_view( i, j );
         }
-  
+
         KOKKOS_INLINE_FUNCTION void join( volatile value_type _dst, const volatile value_type _src ) const
         {
           for ( int i = 0; i < 3; ++i )
             _dst[i] += _src[i];
         }
-  
+
         KOKKOS_INLINE_FUNCTION void init( value_type _sum )
         {
           for ( int i = 0; i < 3; ++i )
             _sum[i] = arithmetic_type{ 0 };
         }
-        
+
         view_type in_view;
-        
+
       };
-  
+
       template< typename Element >
       struct centroid_sum2
       {
@@ -92,46 +92,46 @@ namespace bvh
         using value_type = arithmetic_type[];
         using size_type = typename view_type::size_type;
         static constexpr size_type value_count = 3;
-        
+
         explicit centroid_sum2( const view_type &_view )
           : in_view( _view )
         {}
-  
+
         KOKKOS_INLINE_FUNCTION void operator()( const unsigned long i, value_type sum ) const
         {
           for ( int j = 0; j < 3; ++j )
             sum[j] += in_view( i, j ) * in_view( i, j );
         }
-  
+
         KOKKOS_INLINE_FUNCTION void join( volatile value_type _dst, const volatile value_type _src ) const
         {
           for ( int i = 0; i < 3; ++i )
             _dst[i] += _src[i];
         }
-  
+
         KOKKOS_INLINE_FUNCTION void init( value_type _sum )
         {
           for ( int i = 0; i < 3; ++i )
             _sum[i] = arithmetic_type{ 0 };
         }
-    
+
         view_type in_view;
-    
+
       };
     }
-    
+
     template< typename View >
     int max_variant_axis( const View &_a, const View &_b )
     {
       using entity_type = typename View::value_type;
       view< float_type *[3] > c( "Centroids", _a.size() + _b.size() );
-      
+
       // Get the centroids
       Kokkos::parallel_for( _a.size(), [_a, c] KOKKOS_FUNCTION ( int i ){
         for ( int j = 0; j < 3; ++j )
           c( i, j ) = _a( i ).centroid()[j];
       } );
-  
+
       Kokkos::parallel_for( _b.size(), [_a, _b, c] KOKKOS_FUNCTION ( int i ){
         for ( int j = 0; j < 3; ++j )
           c( i + _a.size(), j ) = _b( i ).centroid()[j];
@@ -140,14 +140,14 @@ namespace bvh
 
       float_type s[3];
       float_type s2[3];
-      
+
       auto sum1f = detail::centroid_sum< entity_type >( c );
       auto sum2f = detail::centroid_sum2< entity_type >( c );
-      
+
       // Get the sum and the squared sum for computing the variance
       Kokkos::parallel_reduce( _a.size() + _b.size(), sum1f, s );
       Kokkos::parallel_reduce( _a.size() + _b.size(), sum2f, s2 );
-      
+
       // Compute the variance of the centroid
       // Smaller variance can indicate clustering, we want to avoid that as much as
       // possible or the running time of sort and sweep is O(n^2)
@@ -156,15 +156,15 @@ namespace bvh
       {
         var[i] = s2[i] - s[i] * s[i] / ( _a.size() + _b.size() );
       }
- 
+
       int axis = 0;
       if ( var[1] > var[0] ) axis = 1;
       if ( var[2] > var[axis] ) axis = 2;
-      
+
       return axis;
     }
 
-    
+
     template< typename View, typename F >
     void
     sort_and_sweep_local( const patch<> &_pa, const View &_a,
@@ -172,13 +172,13 @@ namespace bvh
                     F &&_fun )
     {
       using element_type = typename View::value_type;
-       
+
       view< std::uint32_t * > extents_b_min( "ExtentsBMin", _b.size() );
       view< std::size_t * > indices_b( "IndicesB", _b.size() );
 
       float_type global_min = std::min(  _pa.kdop().extents[_axis].min, _pb.kdop().extents[_axis].min );
       float_type global_max = std::max(  _pa.kdop().extents[_axis].max, _pb.kdop().extents[_axis].max );
-  
+
       float_type conversion_fac = static_cast< float_type >( std::numeric_limits< uint32_t >::max() ) / ( global_max - global_min );
 
       // Reset indices
@@ -194,16 +194,17 @@ namespace bvh
       } );
 
       // Sort extents
-      radix_sort( extents_b_min, indices_b );
-       
+      radix_sorter< std::uint32_t, std::size_t > sorter{ extents_b_min.extent( 0 ) };
+      sorter( extents_b_min, indices_b );
+
       // Sweep along a on the axis
       //view< unsigned long * > num_collisions( "NumCollisions", _a.size() );
       //view< unsigned long ** > collisions( "Collisions", _a.size(), _b.size() );
-      
+
       Kokkos::parallel_for( _a.size(), [_a, _b, extents_b_min, indices_b, global_min, conversion_fac, _axis, &_fun] KOKKOS_FUNCTION ( int i )
       {
         const auto &ak = element_traits< element_type >::get_kdop( _a( i ) );
-        
+
         for ( unsigned long j = 0; j < _b.size(); ++j )
         {
           std::uint32_t amin = ( ak.extents[_axis].min - global_min ) * conversion_fac;
@@ -212,11 +213,11 @@ namespace bvh
           const auto &bk = element_traits< element_type >::get_kdop( _b( indices_b( j ) ) );
           auto bmin = extents_b_min( j );
           auto bmax = ( bk.extents[_axis].max - global_min ) * conversion_fac;
-  
+
           // Before the range of A, no collision yet
           if ( bmax < amin )
             continue;
-  
+
           // After the range of A, there will be no more collisions
           if ( bmin > amax )
             return;
@@ -230,7 +231,7 @@ namespace bvh
           }
             //collisions( i, count++ ) = indices_b( j );
         }
-        
+
         //num_collisions( i ) = count;
       } );
 
@@ -240,7 +241,7 @@ namespace bvh
       for ( std::size_t i = 0; i < _a.size(); ++i )
       {
         auto &&a = _a[i];
-        
+
         for ( unsigned long j = 0; j < num_collisions( i ); ++j )
         {
           auto &&b = _b[collisions( i, j )];

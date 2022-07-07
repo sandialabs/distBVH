@@ -31,25 +31,26 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 if (NOT BVH_DISABLE_TESTS)
-
-  add_executable(BVHTests TestMain.cpp
-                          KDopTest.cpp
-                          TreeTest.cpp
-                          CollisionTest.cpp
-                          IteratorTest.cpp
-                          #BroadphaseTest.cpp
-                          #NarrowphaseTest.cpp
-                          SerializerTest.cpp
-                          #PatchTest.cpp
-                          #PrimitiveTest.cpp
-                          hash_test.cpp
-                          SplitTest.cpp
-                          UtilTest.cpp
-                          math_vec_tests.cpp
+  add_executable(BVHTests
+      TestMain.cpp
+      KDopTest.cpp
+      TreeTest.cpp
+      CollisionTest.cpp
+      IteratorTest.cpp
+      #BroadphaseTest.cpp
+      #NarrowphaseTest.cpp
+      SerializerTest.cpp
+      #PatchTest.cpp
+      #PrimitiveTest.cpp
+      hash_test.cpp
+      sort_test.cpp
+      SplitTest.cpp
+      UtilTest.cpp
+      math_vec_tests.cpp
       collision_object_test.cpp
       cluster_test.cpp
       snapshot_test.cpp
-                 )
+    )
 
   if (Kokkos_FOUND)
     #target_sources(BVHTests PRIVATE KokkosTest.cpp)

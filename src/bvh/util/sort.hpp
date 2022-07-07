@@ -34,11 +34,7 @@
 #define INC_BVH_UTIL_SORT_HPP
 
 #include <cstdint>
-
-#ifdef BVH_ENABLE_KOKKOS
-#include <Kokkos_Core.hpp>
-#include <Kokkos_Sort.hpp>
-#endif  // BVH_ENABLE_KOKKOS
+#include <cstdlib>
 
 #include "prefix_sum.hpp"
 #include "kokkos.hpp"
@@ -48,82 +44,94 @@
 namespace bvh
 {
   // https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda
-#ifdef BVH_ENABLE_KOKKOS
-  namespace kokkos
+  namespace detail
   {
-    namespace detail
-    {
-      inline void
-      radix_sort_indices_iter( view< uint32_t * > _hashes, view< unsigned long * > _indices,
-        uint32_t _shift )
-      {
-        const auto n = _hashes.extent( 0 );
-  
-        view< uint32_t * > f( "FalseIndices", n );
-        view< uint32_t * > split( "Split", n );
-  
-        Kokkos::parallel_for( n, [_hashes, f, split, _shift] KOKKOS_FUNCTION ( int i ){
-          uint32_t h = _hashes( i ) >> _shift;
-          split( i ) = h & 0x1;
-          f( i ) = ~h & 0x1;
-        } );
-        
-        prefix_sum( f );
-        Kokkos::parallel_for( n, [f, n, _indices, split] KOKKOS_FUNCTION ( int i ){
-          const auto total = f( n - 1 ) + static_cast< uint32_t >( ~split( n - 1 ) & 0x1 );
-          
-          auto t = i - f( i ) + total;
-          
-          _indices( i ) = split( i ) ? t : f( i );
-        } );
-      }
-    }
-    
-    template< typename T >
-    void
-    radix_sort( view< uint32_t * > _hashes, view< T > _objects )
+    inline void
+    radix_sort_indices_iter( view< uint32_t * > _hashes, view< unsigned long * > _indices,
+      uint32_t _shift )
     {
       const auto n = _hashes.extent( 0 );
-  
-      view< unsigned long * > m( "Indices", n );
-      
-      view< uint32_t * > a( "a", n );
-      view< uint32_t * > b( "b", n );
-      view< T > a_objects( "a_objects", n );
-      view< T > b_objects( "b_objects", n );
-      
-      auto *front = &a;
-      auto *back = &b;
-      Kokkos::deep_copy( *front, _hashes );
-      
-      auto *front_objects = &a_objects;
-      auto *back_objects = &b_objects;
-      Kokkos::deep_copy( *front_objects, _objects );
-  
-      for ( std::uint32_t i = 0; i < 32; ++i )
-      {
-        detail::radix_sort_indices_iter( *front, m, i );
-        
-        // Init captures not allowed in cuda
-        auto &fbuff = *front;
-        auto &bbuff = *back;
-        auto &fobjs = *front_objects;
-        auto &bobjs = *back_objects;
 
-        Kokkos::parallel_for( n, [m, fbuff, bbuff, fobjs, bobjs] KOKKOS_FUNCTION ( int i ) {
-          bbuff( m( i ) ) = fbuff( i );
-          bobjs( m( i ) ) = fobjs( i );
-        } );
-        
-        std::swap( front, back );
-        std::swap( front_objects, back_objects );
-      }
-      
-      Kokkos::deep_copy( _hashes, *front );
-      Kokkos::deep_copy( _objects, *front_objects );
+      view< uint32_t * > f( "FalseIndices", n );
+      view< uint32_t * > split( "Split", n );
+
+      Kokkos::parallel_for( n, [_hashes, f, split, _shift] KOKKOS_FUNCTION ( int i ){
+        uint32_t h = _hashes( i ) >> _shift;
+        split( i ) = h & 0x1;
+        f( i ) = ~h & 0x1;
+      } );
+
+      prefix_sum( f );
+      Kokkos::parallel_for( n, [f, n, _indices, split] KOKKOS_FUNCTION ( int i ){
+        const auto total = f( n - 1 ) + static_cast< uint32_t >( ~split( n - 1 ) & 0x1 );
+
+        auto t = i - f( i ) + total;
+
+        _indices( i ) = split( i ) ? t : f( i );
+      } );
     }
   }
-#endif  // BVH_ENABLE_KOKKOS
+
+  template< typename T, typename IndexType = ::std::uint32_t >
+  class radix_sorter
+  {
+  public:
+
+    static constexpr std::uint32_t num_bits = sizeof( T ) * 8;
+
+    explicit radix_sorter( std::size_t _n )
+      : m_scratch( "radix_sort_scratch", _n ),
+        m_index_scratch( "radix_sort_index_scratch", _n ),
+        m_scan( "radix_sort_scan", _n ),
+        m_bits( "radix_sort_bits", _n )
+    {
+
+    }
+
+    void operator()( view< T * > _hashes, view< IndexType * > _indices )
+    {
+      assert( _hashes.extent( 0 ) == _indices.extent( 0 )
+        && _hashes.extent( 0 ) == m_scratch.extent( 0 ) );
+
+      for ( std::uint32_t i = 0; i < num_bits; ++i )
+      {
+        step( _hashes, _indices, i );
+
+        std::swap( m_scratch, _hashes );
+        std::swap( m_index_scratch, _indices );
+        // Number of bits is always even, and we know on odd numbered
+        // iterations we are reading from m_scratch and writing to _hashes
+        // So when this loop ends, _hashes will contain the results
+      }
+    }
+
+  private:
+
+    void step( view< T * > _hashes, view< IndexType * > _indices, std::uint32_t _shift )
+    {
+      const auto n = _hashes.extent( 0 );
+      Kokkos::parallel_for( n, [this, _hashes, _shift] KOKKOS_FUNCTION ( int i ){
+        auto h = _hashes( i ) >> _shift;
+        m_bits( i ) = ~h & 0x1;
+        m_scan( i ) = m_bits( i );
+      } );
+
+      prefix_sum( m_scan );
+      Kokkos::parallel_for( n, [this, _hashes, _indices, n] KOKKOS_FUNCTION ( int i ){
+        const auto total = m_scan( n - 1 ) + m_bits( n - 1 );
+
+        auto t = i - m_scan( i ) + total;
+        auto new_idx = m_bits( i ) ? m_scan( i ) : t;
+        m_index_scratch( new_idx ) = _indices( i );
+        m_scratch( new_idx ) = _hashes( i );
+      } );
+    }
+
+    view< T * > m_scratch;
+    view< IndexType * > m_index_scratch;
+    view< T * > m_scan;
+    view< T * > m_bits;
+  };
 }
 
 #endif  // INC_BVH_UTIL_SORT_HPP

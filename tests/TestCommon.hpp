@@ -308,9 +308,6 @@ buildElementPatchGridParallel( std::size_t _rank, std::size_t _nranks,
   return ret;
 }
 
-
-#ifdef BVH_ENABLE_KOKKOS
-
 #include <bvh/util/kokkos.hpp>
 
 template< typename T, typename... Args >
@@ -397,7 +394,5 @@ snapshots_from_kdops( bvh::view< const bvh::bphase_kdop * > _kdops )
 
   return ret;
 }
-
-#endif // BVH_ENABLE_KOKKOS
 
 #endif  // INC_TEST_COMMON_HPP
