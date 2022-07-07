@@ -90,7 +90,7 @@ namespace bvh
     {
       Kokkos::parallel_for( _elements.extent( 0 ), KOKKOS_LAMBDA( int _i ){
         const auto p = _elements( _i ).centroid();
-        m::vec3< T > discretized = quantize< T >( p, _bounds( 0 ).cardinal_min(), _bounds( 0 ).cardinal_max() );
+        m::vec3< T > discretized = quantize< T >( p, _bounds().cardinal_min(), _bounds().cardinal_max() );
 
         _out_codes( _i ) = morton( discretized.x(), discretized.y(), discretized.z() );
       } );

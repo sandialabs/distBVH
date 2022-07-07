@@ -18,12 +18,12 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
     bvh::single_view< bvh::bphase_kdop > bounds( "bounds" );
     bvh::compute_bounds( snapshots, bounds );
     auto host_bounds = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, bounds );
-    REQUIRE( host_bounds( 0 ).cardinal_min().x() >= bound_min.x() );
-    REQUIRE( host_bounds( 0 ).cardinal_min().y() >= bound_min.y() );
-    REQUIRE( host_bounds( 0 ).cardinal_min().z() >= bound_min.z() );
-    REQUIRE( host_bounds( 0 ).cardinal_max().x() <= bound_max.x() );
-    REQUIRE( host_bounds( 0 ).cardinal_max().y() <= bound_max.y() );
-    REQUIRE( host_bounds( 0 ).cardinal_max().z() <= bound_max.z() );
+    REQUIRE( host_bounds().cardinal_min().x() >= bound_min.x() );
+    REQUIRE( host_bounds().cardinal_min().y() >= bound_min.y() );
+    REQUIRE( host_bounds().cardinal_min().z() >= bound_min.z() );
+    REQUIRE( host_bounds().cardinal_max().x() <= bound_max.x() );
+    REQUIRE( host_bounds().cardinal_max().y() <= bound_max.y() );
+    REQUIRE( host_bounds().cardinal_max().z() <= bound_max.z() );
   }
 
   SECTION("morton hashing")
@@ -42,7 +42,7 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
       { -100.0,  100.0,  100.0 },
       {  100.0,  100.0,  100.0 }
     };
-    hbounds( 0 ) = bvh::bphase_kdop::from_vertices( box.begin(), box.end() );
+    hbounds() = bvh::bphase_kdop::from_vertices( box.begin(), box.end() );
     Kokkos::deep_copy( bounds, hbounds );
 
     bvh::view< bvh::morton32_t * > hashes( "hashes", snapshots.extent( 0 ) );

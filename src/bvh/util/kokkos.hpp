@@ -59,10 +59,13 @@ namespace bvh
   using view = Kokkos::View< T, primary_execution_space::array_layout, primary_execution_space >;
 
   template< typename T >
-  using single_view = view< T[1] >;
+  using single_view = view< T >;
 
   template< typename T >
   using host_view = Kokkos::View< T, primary_execution_space::array_layout, host_execution_space >;
+
+  template< typename T >
+  using single_host_view = host_view< T >;
 }
 
 #endif  // BVH_ENABLE_KOKKOS
