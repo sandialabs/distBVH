@@ -44,6 +44,7 @@
 #include "tree_build.hpp"
 #include "types.hpp"
 #include "util/span.hpp"
+#include "split/cluster.hpp"
 
 namespace bvh
 {
@@ -123,6 +124,15 @@ namespace bvh
 
     /// \brief Set up data for the broadphase (including the tree)
     void init_broadphase() const;
+/*
+    template< typename View >
+    std::enable_if_t< Kokkos::is_view< View >::value >
+    set_entity_data( View _data_view )
+    {
+      update_snapshots( _data_view );
+      cluster_permutations( m_snapshots, m_last_permutations );
+    }
+    */
 
     template< typename F >
     void for_each_tree( F &&_fun )
@@ -152,6 +162,19 @@ namespace bvh
   private:
 
     friend class collision_world;
+
+/*
+    template< typename View >
+    std::enable_if_t< Kokkos::is_view< View >::value >
+    update_snapshots( View _data_view )
+    {
+      // No-op if the view is the same size, which is typically the case
+      Kokkos::resize( Kokkos::WithoutInitializing, m_snapshots, _data.extent( 0 ) );
+      Kokkos::parallel_for( _data.extent( 0 ), KOKKOS_LAMBDA( int _idx ){
+        m_snapshots( i ) = make_snapshot( _data( i ) );
+      } );
+    }
+    */
 
     collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition );
 
@@ -183,6 +206,7 @@ namespace bvh
     std::unique_ptr< impl > m_impl;
 
     element_permutations m_last_permutations;
+    // view< bvh::entity_snapshot * > m_snapshots;
     std::vector< bvh::entity_snapshot > m_snapshots;
     ::vt::trace::UserEventIDType bvh_splitting_geom_axis_ = ::vt::trace::no_user_event_id;
     ::vt::trace::UserEventIDType bvh_splitting_ml_ = ::vt::trace::no_user_event_id;

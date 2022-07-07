@@ -344,10 +344,10 @@ generate_random_kdops( std::default_random_engine &_eng,
 {
   bvh::host_view< bvh::bphase_kdop * > ret( "random_kdops", _count );
 
-  std::uniform_real_distribution xdist( _min.x() + _max_size, _max.x() - _max_size );
-  std::uniform_real_distribution ydist( _min.y() + _max_size, _max.y() - _max_size );
-  std::uniform_real_distribution zdist( _min.z() + _max_size, _max.z() - _max_size );
-  std::uniform_real_distribution rdist( std::numeric_limits< double >::epsilon(), _max_size );
+  std::uniform_real_distribution<> xdist( _min.x() + _max_size, _max.x() - _max_size );
+  std::uniform_real_distribution<> ydist( _min.y() + _max_size, _max.y() - _max_size );
+  std::uniform_real_distribution<> zdist( _min.z() + _max_size, _max.z() - _max_size );
+  std::uniform_real_distribution<> rdist( std::numeric_limits< double >::epsilon(), _max_size );
 
   for ( std::size_t i = 0; i < _count; ++i )
   {
@@ -378,8 +378,10 @@ generate_kdop_grid( std::size_t _count,
         pos.x() += incr.x();
       }
       pos.y() += incr.y();
+      pos.x() = _min.x();
     }
     pos.z() += incr.z();
+    pos.y() = _min.y();
   }
 
   return Kokkos::create_mirror_view_and_copy( bvh::default_execution_space{}, ret );

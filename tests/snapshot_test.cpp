@@ -28,10 +28,22 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
 
   SECTION("morton hashing")
   {
-    auto kdops = generate_kdop_grid( 8, bound_min, bound_max, 1.0 );
+    auto kdops = generate_kdop_grid( 8, bound_min, bound_max, 0.0 );
     auto snapshots = snapshots_from_kdops( kdops );
+    bvh::single_host_view< bvh::bphase_kdop > hbounds( "host_bounds" );
     bvh::single_view< bvh::bphase_kdop > bounds( "bounds" );
-    bvh::compute_bounds( snapshots, bounds );
+    bvh::dynarray< bvh::m::vec3d > box{
+      { -100.0, -100.0, -100.0 },
+      {  100.0, -100.0, -100.0 },
+      { -100.0,  100.0, -100.0 },
+      {  100.0,  100.0, -100.0 },
+      { -100.0, -100.0,  100.0 },
+      {  100.0, -100.0,  100.0 },
+      { -100.0,  100.0,  100.0 },
+      {  100.0,  100.0,  100.0 }
+    };
+    hbounds( 0 ) = bvh::bphase_kdop::from_vertices( box.begin(), box.end() );
+    Kokkos::deep_copy( bounds, hbounds );
 
     bvh::view< bvh::morton32_t * > hashes( "hashes", snapshots.extent( 0 ) );
     bvh::morton( snapshots, bounds, hashes );
@@ -39,8 +51,8 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
     auto host_hashes = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, hashes );
 
     // We are dividing into 8 portions along each axis so each dimension will be
-    // quantized to max value (0x3ff) >> 3 so 0x7f
-    std::uint32_t incr = 0x7f;
+    // quantized to max value (0x400) >> 3 so 0x80
+    std::uint32_t incr = 0x80;
     auto q = bvh::m::vec3< std::uint32_t >{};
 
     for ( std::size_t z = 0; z < 8; ++z )
@@ -57,8 +69,10 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
           q.x() += incr;
         }
         q.y() += incr;
+        q.x() = 0;
       }
       q.z() += incr;
+      q.y() = 0;
     }
   }
 }
