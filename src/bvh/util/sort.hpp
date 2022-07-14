@@ -79,6 +79,7 @@ namespace bvh
 
     static constexpr std::uint32_t num_bits = sizeof( T ) * 8;
 
+    radix_sorter() = default;
     explicit radix_sorter( std::size_t _n )
       : m_scratch( "radix_sort_scratch", _n ),
         m_index_scratch( "radix_sort_index_scratch", _n ),

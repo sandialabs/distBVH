@@ -341,14 +341,14 @@ namespace bvh
     _permutations->splits.clear();
     _permutations->splits.reserve( ( 1ULL << static_cast< unsigned >( _depth ) ) + 1 );
 
-    _permutations->splits.push_back( 0 );
+    //_permutations->splits.push_back( 0 );
 
     if ( _depth > 0 )
       detail::split_permutations_recursive_impl< SplittingMethod, AxisSelector >( _elements, _depth - 1,
                                                                                   _permutations->indices.begin(),
                                                                                make_range( _permutations->indices.begin(), _permutations->indices.end() ), _permutations->splits );
 
-    _permutations->splits.push_back( _elements.size() );
+    //_permutations->splits.push_back( _elements.size() );
   }
 }
 

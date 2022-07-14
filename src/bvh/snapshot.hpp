@@ -39,7 +39,7 @@
 #include "traits.hpp"
 #include "kdop.hpp"
 #include "types.hpp"
-#include "hash.hpp"
+#include "contact_entity.hpp"
 
 namespace bvh
 {
@@ -147,17 +147,6 @@ namespace bvh
                             _local_index
     };
   }
-
-  KOKKOS_FUNCTION
-  void
-  compute_bounds( view< const entity_snapshot * > _elements,
-                  single_view< bphase_kdop > _bounds );
-
-  KOKKOS_FUNCTION
-  void
-  morton( view< const entity_snapshot * > _elements,
-          single_view< const bphase_kdop > _bounds,
-          view< morton32_t * > _out_codes );
 }
 
 #endif // INC_BVH_SNAPSHOT_HPP

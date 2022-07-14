@@ -36,6 +36,7 @@
 #ifdef BVH_ENABLE_KOKKOS
 #include <ostream>
 #include <Kokkos_Core.hpp>
+#include <Kokkos_StdAlgorithms.hpp>
 #include <limits>
 #include <algorithm>
 #include <type_traits>

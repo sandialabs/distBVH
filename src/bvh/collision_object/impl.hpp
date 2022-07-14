@@ -89,8 +89,8 @@ namespace bvh
       using narrowphase_patch_msg = collision_object_impl::narrowphase_patch_msg;
 
       const auto idx = _local_idx;
-      const auto sbeg = m_latest_permutations.splits[idx];
-      const auto send = m_latest_permutations.splits[idx + 1];
+      const auto sbeg = ( _i == 0 ) ? 0 : m_splits_h( _i - 1 );
+      const auto send = ( _i == splits_len ) ? m_split_indices_h.extent( 0 ) : m_splits_h( _i );
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_entity_unit_size;
       const int rank = _rank;
@@ -103,7 +103,8 @@ namespace bvh
       for (std::size_t j = sbeg; j < send; ++j)
       {
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (m_latest_permutations.indices[j] * m_entity_unit_size), m_entity_unit_size);
+        debug_assert( m_split_indices_h( j ) < m_snapshots.extent( 0 ), "user index is out of bounds" );
+        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (m_split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
         offset += m_entity_unit_size;
       }
 

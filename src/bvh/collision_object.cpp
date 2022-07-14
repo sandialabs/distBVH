@@ -72,7 +72,12 @@ namespace bvh
   } // namespace details
 
   collision_object::collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition )
-    : m_impl{ std::make_unique< impl >( _world, _idx ) }
+    : m_impl{ std::make_unique< impl >( _world, _idx ) },
+      m_snapshots( fmt::format( "contact entity {} snapshot", _idx ), 0 ),
+      m_split_indices( fmt::format( "contact entity {} split indices", _idx ), 0 ),
+      m_splits( fmt::format( "contact entity {} splits", _idx ), 0 ),
+      m_split_indices_h( fmt::format( "contact entity host {} split indices", _idx ), 0 ),
+      m_splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 )
   {
     bvh_splitting_geom_axis_ = ::vt::theTrace()->registerUserEventColl("bvh_splitting_geom_axis_");
     bvh_splitting_ml_ = ::vt::theTrace()->registerUserEventColl("bvh_splitting_ml_");
@@ -101,33 +106,32 @@ namespace bvh
 
   collision_object::~collision_object() = default;
 
-  void collision_object::set_entity_data_impl( span< const entity_snapshot > _ordered_data,
-                                               const void *_data, std::size_t _element_size,
-                                               const element_permutations &_splits )
+  void collision_object::set_entity_data_impl( const void *_user, std::size_t _element_size)
   {
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
 
-    const auto splits_len = _splits.splits.size() - 1;
+    const auto splits_len = m_splits_h.extent( 0 );
+
+    m_impl->local_patches.clear();
+    m_impl->local_patches.resize( od_factor );
+
+    always_assert( splits_len + 1 == od_factor, "error during splitting process, splits do not match od factor\n" );
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
+    auto range_policy = Kokkos::RangePolicy< host_execution_space >( 0, od_factor );
 
     m_impl->m_entity_ptr = static_cast< const unsigned char * >( _data );
     m_impl->m_entity_unit_size = _element_size;
     m_impl->m_latest_permutations.splits = _splits.splits;
     m_impl->m_latest_permutations.indices = _splits.indices;
 
-    m_impl->local_patches.clear();
-    m_impl->local_patches.reserve( od_factor );
 
     for ( std::size_t i = 0; i < splits_len; ++i ) {
       std::size_t nelements = _splits.splits[i + 1] - _splits.splits[i];
-      m_impl->local_patches.emplace_back(i + rank * od_factor, span< const entity_snapshot >( _ordered_data.data() + _splits.splits[i], nelements ) );
+      m_impl->local_patches.emplace_back(i + rank * od_factor, span< const entity_snapshot >( m_snapshots.data() + m_splits_h( i ), nelements ) );
     }
-
-    always_assert( m_impl->local_patches.size() == od_factor,
-    "\n !!! Error during splitting process -- Splits do not match od factor !!!\n\n" );
   }
 
   void collision_object::init_broadphase() const
@@ -254,6 +258,11 @@ namespace bvh
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
     const auto splits_len = m_impl->m_latest_permutations.splits.size() - 1;
+
+    auto range_policy = Kokkos::RangePolicy< host_execution_space >( 0, od_factor );
+    Kokkos::parallel_for( range_policy, KOKKOS_LAMBDA( int _i ) {
+      auto range_policy = Kokkos::RangePolicy< host_execution_space >( 0, od_factor );
+    } );
 
     for ( std::size_t i = 0; i < splits_len; ++i )
     {

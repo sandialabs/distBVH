@@ -1,0 +1,111 @@
+AccessModifierOffset: -1
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: None
+AlignConsecutiveAssignments: None
+AlignConsecutiveBitFields: Consecutive
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: None
+AlignEscapedNewlines: Right
+AlignOperands: Align
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: TopLevelDefinitions
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: MultiLine
+AttributeMacros: ['KOKKOS_FUNCTION', 'KOKKOS_INLINE_FUNCTION']
+BinPackArguments: true
+BinPackParameters: true
+BitFieldColonSpacing: Both
+BraceWrapping:
+  AfterCaseLabel: false
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+BreakBeforeBinaryOperators: All
+BreakBeforeBraces: Custom
+BreakBeforeConceptDeclarations: true
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakStringLiterals: true
+ColumnLimit: 120
+CompactNamespaces: false
+ConstructorInitializerIndentWidth: 2
+ContinuationIndentWidth: 2
+Cpp11BracedListStyle: true
+DeriveLineEnding: false
+DerivePointerAlignment: false
+DisableFormat: false
+EmptyLineAfterAccessModifier: Always
+EmptyLineBeforeAccessModifier: LogicalBlock
+FixNamespaceComments: true
+IncludeBlocks: Preserve
+IndentAccessModifiers: false
+IndentCaseBlocks: true
+IndentCaseLabels: true
+IndentExternBlock: NoIndent
+IndentGotoLabels: false
+IndentPPDirectives: None
+IndentWidth: 2
+IndentWrappedFunctionNames: true
+InsertTrailingCommas: None
+KeepEmptyLinesAtTheStartOfBlocks: false
+LambdaBodyIndentation: OuterScope
+Language: Cpp
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: All
+PackConstructorInitializers: CurrentLine
+PointerAlignment: Right
+QualifierAlignment: Leave
+ReferenceAlignment: Right
+ReflowComments: true
+SeparateDefinitionBlocks: Always
+SortIncludes: Never
+SortUsingDeclarations: false
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: false
+SpaceAroundPointerQualifiers: Default
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatementsExceptControlMacros
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: Always
+SpacesInCStyleCastParentheses: true
+SpacesInConditionalStatement: true
+SpacesInContainerLiterals: true
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: -1
+SpacesInParentheses: true
+SpacesInSquareBrackets: false
+Standard: c++14
+TabWidth: 2
+UseTab: Never
