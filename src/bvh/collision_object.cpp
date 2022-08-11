@@ -120,7 +120,7 @@ namespace bvh
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
-    auto range_policy = Kokkos::RangePolicy< host_execution_space >( 0, od_factor );
+    auto range_policy = Kokkos::RangePolicy< Kokkos::Serial >( 0, od_factor );
 
     m_impl->m_entity_ptr = static_cast< const unsigned char * >( _data );
     m_impl->m_entity_unit_size = _element_size;
