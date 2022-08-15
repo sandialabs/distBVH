@@ -117,7 +117,10 @@ namespace bvh
         m_scan( i ) = m_bits( i );
       } );
 
+      Kokkos::fence();
+
       prefix_sum( m_scan );
+      Kokkos::fence();
       Kokkos::parallel_for( n, [this, _hashes, _indices, n] KOKKOS_FUNCTION ( int i ){
         const auto total = m_scan( n - 1 ) + m_bits( n - 1 );
 
@@ -126,6 +129,7 @@ namespace bvh
         m_index_scratch( new_idx ) = _indices( i );
         m_scratch( new_idx ) = _hashes( i );
       } );
+      Kokkos::fence();
     }
 
     view< T * > m_scratch;

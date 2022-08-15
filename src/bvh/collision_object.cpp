@@ -106,17 +106,17 @@ namespace bvh
 
   collision_object::~collision_object() = default;
 
-  void collision_object::set_entity_data_impl( const void *_user, std::size_t _element_size)
+  void collision_object::set_entity_data_impl( const void *_user, std::size_t _element_size, std::size_t _num_splits )
   {
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
 
-    const auto splits_len = m_splits_h.extent( 0 );
+    const auto splits_len = _num_splits;
 
     m_impl->local_patches.clear();
     m_impl->local_patches.resize( od_factor );
 
-    always_assert( splits_len + 1 == od_factor, "error during splitting process, splits do not match od factor\n" );
+    always_assert( splits_len + 1 == od_factor, "error during splitting process, splits {} do not match od factor {}\n", splits_len + 1, od_factor );
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );

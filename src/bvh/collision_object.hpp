@@ -87,7 +87,7 @@ namespace bvh
       Kokkos::deep_copy( m_splits_h, splits_view );
       Kokkos::deep_copy( m_split_indices_h, indices_view );
 
-      set_entity_data_impl( _data.data(), sizeof( T ) );
+      set_entity_data_impl( _data.data(), sizeof( T ), splits.splits.size() );
       std::move( _trace ).end();
     }
 
@@ -142,6 +142,12 @@ namespace bvh
 
     template< typename T >
     void
+    set_entity_data( view< T * > _data_view )
+    {
+      set_entity_data( view< const T * >( std::move( _data_view ) ) );
+    }
+    template< typename T >
+    void
     set_entity_data( view< const T * > _data_view )
     {
       static const auto n = _data_view.extent( 0 );
@@ -168,7 +174,7 @@ namespace bvh
       Kokkos::deep_copy( m_splits_h, m_splits );
       Kokkos::deep_copy( m_split_indices_h, m_split_indices );
 
-      set_entity_data_impl( hview.data(), sizeof( T ) );
+      set_entity_data_impl( hview.data(), sizeof( T ), num_splits );
     }
 
     template< typename F >
@@ -217,7 +223,8 @@ namespace bvh
     ///
     /// \param[in] _user
     /// \param[in] _element_size
-    void set_entity_data_impl( const void *_user, std::size_t _element_size );
+    /// \param[in] _num_splits the actual number of splits
+    void set_entity_data_impl( const void *_user, std::size_t _element_size, std::size_t _num_splits );
 
     void set_all_narrow_patches();
     void set_active_narrow_patches();

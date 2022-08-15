@@ -60,42 +60,75 @@ TEST_CASE( "collision_object init", "[vt]")
 
   auto &obj = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
-    auto rank = ::vt::theContext()->getNode();
+  auto rank = ::vt::theContext()->getNode();
+  auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
+  auto sing_vec = std::vector< Element >{};
+  sing_vec.reserve( 12 );
+  for ( std::size_t i = 0; i < 12; ++i ) {
+    sing_vec.emplace_back( i );
+    sing_vec.back().setVertices( bvh::m::vec3d::zeros(),
+                                 bvh::m::vec3d::zeros(),
+                                 bvh::m::vec3d::zeros(),
+                                 bvh::m::vec3d::zeros(),
+                                 bvh::m::vec3d::zeros(),
+                                 bvh::m::vec3d::zeros(),
+                                 bvh::m::vec3d::zeros(),
+                                 bvh::m::vec3d::zeros() );
+  }
 
-    // We should be able to set the data correctly
-    SECTION( "set_data" )
-    {
+  // We should be able to set the data correctly
+  SECTION( "set_data split" )
+  {
+    ::vt::runInEpochCollective( [&]() {
+        vt::runInEpochCollective( [&]() {
+          obj.set_entity_data( bvh::make_const_span( vec ));
+          obj.init_broadphase();
+
+          obj.for_each_tree( &test_trees );
+        } );
+
+        // Data should be updateable
+        vt::runInEpochCollective( [&]() {
+
+          obj.set_entity_data( bvh::make_const_span( sing_vec ));
+          obj.init_broadphase();
+
+          obj.for_each_tree( &test_sing_trees );
+        } );
+
+      obj.end_phase();
+    } );
+  }
+
+  // We should be able to set the data correctly
+  SECTION( "set_data cluster" )
+  {
+    auto tmp_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( vec.data(), vec.size() );
+    bvh::view< Element * > elements( "elements", vec.size() );
+    Kokkos::deep_copy( elements, tmp_view );
+
+    auto tmp_sing_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( sing_vec.data(), sing_vec.size() );
+    bvh::view< Element * > sing_elements( "elements", sing_vec.size() );
+    Kokkos::deep_copy( sing_elements, tmp_sing_view );
+
+    ::vt::runInEpochCollective( [&]() {
       vt::runInEpochCollective( [&]() {
-        auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
-
-        obj.set_entity_data( bvh::make_const_span( vec ));
+        obj.set_entity_data( elements );
         obj.init_broadphase();
 
         obj.for_each_tree( &test_trees );
       } );
-    }
 
       // Data should be updateable
-    SECTION( "update_data" )
-    {
       vt::runInEpochCollective( [&]() {
-        auto sing_vec = std::vector< Element >{};
-        sing_vec.reserve( 12 );
-        for ( std::size_t i = 0; i < 12; ++i ) {
-          sing_vec.emplace_back( i );
-          sing_vec.back().setVertices( { bvh::m::vec3d::zeros() } );
-        }
-
-        obj.set_entity_data( bvh::make_const_span( sing_vec ));
+        obj.set_entity_data( sing_elements );
         obj.init_broadphase();
 
         obj.for_each_tree( &test_sing_trees );
       } );
-    }
-
-    obj.end_phase();
-  } );
+      obj.end_phase();
+    } );
+  }
 }
 
 TEST_CASE( "collision_object broadphase", "[vt]")
@@ -403,9 +436,9 @@ TEST_CASE( "set entity data benchmark", "[vt]")
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
-  auto vec = buildElementGrid( 128, 128, 128, rank );
+  auto vec = buildElementGrid( 64, 64, 64, rank );
 
-  BENCHMARK("bench")
+  BENCHMARK("splitting")
   {
     ::vt::runInEpochCollective( [&]() {
       world.start_iteration();
@@ -416,5 +449,21 @@ TEST_CASE( "set entity data benchmark", "[vt]")
       world.finish_iteration();
     } );
   };
+
+  auto tmp_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( vec.data(), vec.size() );
+  bvh::view< Element * > elements( "elements", vec.size() );
+  Kokkos::deep_copy( elements, tmp_view );
+
+  BENCHMARK("clustering")
+  {
+    ::vt::runInEpochCollective( [&]() {
+      world.start_iteration();
+
+      obj.set_entity_data( elements );
+
+      world.finish_iteration();
+    } );
+  };
 }
+
 

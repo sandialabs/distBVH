@@ -35,6 +35,7 @@
 
 #include <catch2/catch.hpp>
 
+#include <array>
 #include <bvh/math/vec.hpp>
 #include <bvh/kdop.hpp>
 #include <bvh/patch.hpp>
@@ -48,38 +49,31 @@ class Element
 public:
 
   using kdop_type = bvh::bphase_kdop;
+  static constexpr std::size_t vertex_count = 8;
 
   Element( std::size_t _index = static_cast< std::size_t >( -1 ) ) : m_index( _index ) {};
+
+  Element( const Element &_other ) = default;
+  Element( Element &&_other ) noexcept = default;
+  Element &operator=( const Element &_other ) = default;
+  Element &operator=( Element &&_other ) noexcept = default;
 
   bvh::m::vec3d centroid() const
   {
     return std::accumulate( m_vertices.begin(), m_vertices.end(), bvh::m::vec3d::zeros() ) / static_cast< double >( m_vertices.size() );
   };
 
-  void setVertices( std::initializer_list< bvh::m::vec3d > _verts )
+  template< typename... Args >
+  std::enable_if_t< ( sizeof...( Args ) == vertex_count ) >
+  setVertices( Args &&... _args )
   {
-    setVertices( _verts.begin(), _verts.end() );
-  }
-
-  template< typename Iterator >
-  void setVertices( Iterator _begin, Iterator _end )
-  {
-    m_vertices.reserve( static_cast< std::size_t >( std::distance( _begin, _end ) ) );
-    std::copy( _begin, _end, std::back_inserter( m_vertices ) );
+    m_vertices = std::array< bvh::m::vec3d, vertex_count >{ std::forward< Args >( _args )... };
     m_bounds = kdop_type::from_vertices( m_vertices.begin(), m_vertices.end() );
-  }
-
-  template< typename Iterator >
-  void setVerticesAndBounds( Iterator _begin, Iterator _end, const kdop_type &_bounds )
-  {
-    m_vertices.reserve( static_cast< std::size_t >( std::distance( _begin, _end ) ) );
-    std::copy( _begin, _end, std::back_inserter( m_vertices ) );
-    m_bounds = _bounds;
   }
 
   void setIndex( std::size_t _index ) { m_index = _index; }
 
-  const bvh::dynarray< bvh::m::vec3d > &vertices() const { return m_vertices; }
+  bvh::span< const bvh::m::vec3d > vertices() const { return m_vertices; }
 
   const kdop_type &kdop() const { return m_bounds; }
   std::size_t global_id() const { return m_index; }
@@ -127,7 +121,7 @@ public:
 private:
 
   std::size_t m_index;
-  bvh::dynarray< bvh::m::vec3d > m_vertices;
+  std::array< bvh::m::vec3d, 8 > m_vertices;
   kdop_type m_bounds;
 };
 
@@ -172,14 +166,14 @@ inline bvh::dynarray< Element > buildElementGrid( int _x, int _y, int _z, std::s
         double y = _origin_shift + j * dy;
         double z = _origin_shift + k * dz;
         Element el( index++ );
-        el.setVertices( { bvh::m::vec3d{ x, y, z },
-                                    { x + dx, y, z },
-                                    { x + dx, y + dy, z },
-                                    { x, y + dy, z },
-                                    { x, y, z + dz },
-                                    { x + dx, y, z + dz },
-                                    { x + dx, y + dy, z + dz },
-                                    { x, y + dy, z + dz } } );
+        el.setVertices( bvh::m::vec3d{ x, y, z },
+                        bvh::m::vec3d{ x + dx, y, z },
+                        bvh::m::vec3d{ x + dx, y + dy, z },
+                        bvh::m::vec3d{ x, y + dy, z },
+                        bvh::m::vec3d{ x, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                        bvh::m::vec3d{ x, y + dy, z + dz } );
         ret.emplace_back( std::move( el ) );
       }
     }
@@ -209,14 +203,14 @@ inline bvh::dynarray< bvh::patch<> > buildElementPatchGrid( int _x, int _y, int 
         double y = j * dy;
         double z = k * dz;
         Element el( index++ );
-        el.setVertices( { bvh::m::vec3d{ x, y, z },
-                          { x + dx, y, z },
-                          { x + dx, y + dy, z },
-                          { x, y + dy, z },
-                          { x, y, z + dz },
-                          { x + dx, y, z + dz },
-                          { x + dx, y + dy, z + dz },
-                          { x, y + dy, z + dz } } );
+        el.setVertices( bvh::m::vec3d{ x, y, z },
+                        bvh::m::vec3d{ x + dx, y, z },
+                        bvh::m::vec3d{ x + dx, y + dy, z },
+                        bvh::m::vec3d{ x, y + dy, z },
+                        bvh::m::vec3d{ x, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                        bvh::m::vec3d{ x, y + dy, z + dz } );
         ret.emplace_back( el.global_id(), bvh::span< const Element >( &el, &el + 1 ) );
       }
     }
@@ -253,14 +247,14 @@ buildElementGridParallel( std::size_t _rank, std::size_t _nranks,
     const double y = j * dy;
     const double z = k * dz;
     ret.emplace_back( idx );
-    ret.back().setVertices( { bvh::m::vec3d{ x, y, z },
-                      { x + dx, y, z },
-                      { x + dx, y + dy, z },
-                      { x, y + dy, z },
-                      { x, y, z + dz },
-                      { x + dx, y, z + dz },
-                      { x + dx, y + dy, z + dz },
-                      { x, y + dy, z + dz }} );
+    ret.back().setVertices( bvh::m::vec3d{ x, y, z },
+                            bvh::m::vec3d{ x + dx, y, z },
+                            bvh::m::vec3d{ x + dx, y + dy, z },
+                            bvh::m::vec3d{ x, y + dy, z },
+                            bvh::m::vec3d{ x, y, z + dz },
+                            bvh::m::vec3d{ x + dx, y, z + dz },
+                            bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                            bvh::m::vec3d{ x, y + dy, z + dz } );
   }
 
   return ret;
@@ -293,14 +287,14 @@ buildElementPatchGridParallel( std::size_t _rank, std::size_t _nranks,
     const double z = k * dz;
 
     Element e( idx );
-    e.setVertices( { bvh::m::vec3d{ x, y, z },
-                     { x + dx, y, z },
-                     { x + dx, y + dy, z },
-                     { x, y + dy, z },
-                     { x, y, z + dz },
-                     { x + dx, y, z + dz },
-                     { x + dx, y + dy, z + dz },
-                     { x, y + dy, z + dz }} );
+    e.setVertices( bvh::m::vec3d{ x, y, z },
+                   bvh::m::vec3d{ x + dx, y, z },
+                   bvh::m::vec3d{ x + dx, y + dy, z },
+                   bvh::m::vec3d{ x, y + dy, z },
+                   bvh::m::vec3d{ x, y, z + dz },
+                   bvh::m::vec3d{ x + dx, y, z + dz },
+                   bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                   bvh::m::vec3d{ x, y + dy, z + dz } );
 
     ret.emplace_back( idx, bvh::span< const Element >( &e, &e + 1 ) );
   }
