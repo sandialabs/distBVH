@@ -155,16 +155,14 @@ namespace bvh
       {
         m_clusterer = morton_cluster( n );
         Kokkos::resize( m_split_indices, n );
-        Kokkos::resize( m_splits, n );
+        Kokkos::resize( m_splits, n - 1 );
         Kokkos::resize( m_split_indices_h, n );
-        Kokkos::resize( m_splits_h, n );
+        Kokkos::resize( m_splits_h, n - 1 );
       }
 
       const auto od_factor = this->overdecomposition_factor();
-      const int depth = bit_log2( od_factor );
-      std::size_t num_splits = 0;
 
-      m_clusterer( _data_view, m_split_indices, m_splits, depth, num_splits );
+      m_clusterer( _data_view, m_split_indices, m_splits, od_factor - 1 );
 
       update_snapshots( _data_view );
 
@@ -174,7 +172,7 @@ namespace bvh
       Kokkos::deep_copy( m_splits_h, m_splits );
       Kokkos::deep_copy( m_split_indices_h, m_split_indices );
 
-      set_entity_data_impl( hview.data(), sizeof( T ), num_splits );
+      set_entity_data_impl( hview.data(), sizeof( T ), od_factor - 1 );
     }
 
     template< typename F >

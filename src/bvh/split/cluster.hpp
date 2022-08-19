@@ -2,6 +2,7 @@
 #define INC_BVH_CLUSTER_HPP
 
 #include "../util/span.hpp"
+#include "../vt/print.hpp"
 #include "../util/kokkos.hpp"
 #include "../util/sort.hpp"
 #include "../snapshot.hpp"
@@ -22,7 +23,7 @@ namespace bvh
     void operator()( view< const Element * > _elements,
                      view< index_type * > _indices,
                      view< index_type * > _splits,
-                     int _d, std::size_t &_out_num_splits );
+                     std::size_t _cluster_count );
 
     std::size_t size() const noexcept { return m_size; }
 
@@ -36,8 +37,12 @@ namespace bvh
     radix_sorter< morton_type, index_type > m_sorter;
     single_view< std::size_t > m_count;
     single_host_view< std::size_t > m_host_count;
-    view< index_type * > m_expanded_indices;
-    view< index_type * > m_should_split;
+    view< index_type * > m_depths_indices;
+    view< unsigned * > m_depths;
+    view< index_type * > m_reindex;
+    view< index_type * > m_initial_splits;
+    host_view< unsigned * > m_host_depths;
+    radix_sorter< unsigned, index_type > m_depth_sorter;
   };
 
   inline morton_cluster::morton_cluster( std::size_t _n )
@@ -47,8 +52,12 @@ namespace bvh
       m_sorter( _n ),
       m_count( "morton_cluster_split_count" ),
       m_host_count( "morton_cluster_split_count_host" ),
-      m_should_split( "morton_cluster_should_split", _n ),
-      m_expanded_indices( "morton_cluster_expanded_indices", _n )
+      m_depths_indices( "morton_cluster_split_indices", _n - 1 ),
+      m_depths( "morton_cluster_depths", _n - 1 ),
+      m_reindex( "morton_cluster_reindex", _n - 1 ),
+      m_initial_splits( "morton_cluster_reindex", _n - 1 ),
+      m_host_depths( Kokkos::create_mirror_view( m_depths ) ),
+      m_depth_sorter( _n - 1 )
   {
 
   }
@@ -58,18 +67,14 @@ namespace bvh
   morton_cluster::operator()( view< const Element * > _elements,
                             view< index_type * > _indices,
                             view< index_type * > _splits,
-                            int _d, std::size_t &_out_num_splits )
+                            std::size_t _cluster_count )
   {
-    // Depth of zero is not interesting
-    assert( _d > 0 );
-
-          // Well we can't have more than 30 bits of morton hash
-    assert( _d <= 30 );
+    assert( _cluster_count < m_size );
 
     assert( m_hashes.extent( 0 ) == m_size );
     assert( m_hashes.extent( 0 ) == _elements.extent( 0 ) );
     assert( m_hashes.extent( 0 ) == _indices.extent( 0 ) );
-    assert( m_hashes.extent( 0 ) == _splits.extent( 0 ) );
+    assert( m_hashes.extent( 0 ) - 1 == _splits.extent( 0 ) );
 
     // Reinitialize count; we don't need to reset our buffers since they get overwritten
     Kokkos::deep_copy( m_count, 0 );
@@ -95,47 +100,45 @@ namespace bvh
     static_assert( sizeof( morton_type ) == 4 );
 
     const auto n = m_hashes.extent( 0 );
+
     // Exclude the last index from the range since there is not going
     // to be a split in the tree after it...
-    Kokkos::parallel_for( n - 1, [this, _d] KOKKOS_FUNCTION( int _i ) {
-      for ( morton_type shift = 0; shift < morton_type( _d ); ++shift )
-      {
-        // We should only be looking at the lower 30 bits (10 bit morton codes per component), so skip top two
-        const auto msb_shift = static_cast< morton_type >( shift + 2 ); // This is always >= 2 and <= 31
-        const morton_type mask = 0x1 << ( 31 - msb_shift );
+    Kokkos::parallel_for( n - 1, [this, _splits] KOKKOS_FUNCTION( int _i ) {
+      auto mask = m_hashes( _i ) ^ m_hashes( _i + 1 );
+      m_depths_indices( _i ) = _i;
 
-        // If the bit at our depth differs, that means there is a split
-        // in the tree
-        // This split carries on to the leaves so we can exit early
-        if ( ( m_hashes( _i ) & mask ) != ( m_hashes( _i + 1 ) & mask ) )
-        {
-          m_should_split( _i ) = 1;
-        } else {
-          m_should_split( _i ) = 0;
-        }
+      // Kokkos doesn't currently offer clz but they do offer int_log2 but in the Impl namespace ;_;
+      constexpr int shift = sizeof(unsigned) * CHAR_BIT - 1;
+      m_depths( _i ) = ( mask != 0 ) ? shift - Kokkos::Impl::int_log2( mask ) : static_cast< unsigned >( -1 );  // this could break at any version of Kokkos...
+    } );
+
+    // Sort in order of increasing depth
+    m_depth_sorter( m_depths, m_depths_indices );
+
+    // We want the first cluster_count indices -- but they have to be in sorted index order
+    // Mark these with 1, then we can execute an exclusive scan to re-index
+    Kokkos::parallel_for( n - 1, [this, _cluster_count] KOKKOS_FUNCTION( int _i ) {
+      m_reindex( m_depths_indices( _i ) ) = ( _i < _cluster_count ) ? 1 : 0;
+    } );
+
+    prefix_sum( m_reindex );
+    Kokkos::parallel_for( n - 1, [this, _splits, _cluster_count] KOKKOS_FUNCTION( int _i ) {
+      if ( _i < _cluster_count )
+      {
+        auto new_idx = m_reindex( m_depths_indices( _i ) );
+        _splits( new_idx ) = m_depths_indices( _i );
       }
     } );
 
-    // Get the compressed indices preserving the order
-    Kokkos::deep_copy( m_expanded_indices, m_should_split );
-    prefix_sum( m_expanded_indices );
+#ifdef BVH_ENABLE_CLUSTERING_PERFORMANCE_WARNING
+    Kokkos::deep_copy( m_host_depths, m_depths );
 
-    Kokkos::parallel_for( n - 1, [this, _splits, n] KOKKOS_FUNCTION( int _i ) {
-      if ( m_should_split( _i ) != 0 )
-      {
-        auto new_idx = m_expanded_indices( _i );
-        _splits( new_idx ) = _i;
-      }
-
-      // Get the count since we are using exlusive prefix sum
-      if ( _i == ( n - 2 ) )
-        m_count() = m_should_split( _i ) + m_expanded_indices( _i );
-    } );
-
-    Kokkos::deep_copy( m_host_count, m_count );
-    Kokkos::fence();
-
-    _out_num_splits = m_host_count();
+    for ( std::size_t i = 0; i < _cluster_count; ++i )
+    {
+      if ( m_host_depths( i ) > 31 )  // no diff found
+        ::bvh::vt::warn( "identical hash encountered at split index {} during clustering, this could lead to performance degradation\n", i );
+    }
+#endif // BVH_ENABLE_CLUSTERING_PERFORMANCE_WARNING
   }
 }
 

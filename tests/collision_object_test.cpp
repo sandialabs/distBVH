@@ -431,39 +431,46 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 
 TEST_CASE( "set entity data benchmark", "[vt]")
 {
-  bvh::collision_world world( 2 );
+  bvh::collision_world world( 16 );
 
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
   auto vec = buildElementGrid( 64, 64, 64, rank );
 
-  BENCHMARK("splitting")
+  SECTION( "splitting" )
   {
-    ::vt::runInEpochCollective( [&]() {
-      world.start_iteration();
+    BENCHMARK("splitting")
+    {
+      ::vt::runInEpochCollective( [&]() {
+        world.start_iteration();
 
-      obj.set_entity_data( bvh::make_const_span( vec ));
-      obj.init_broadphase();
+        obj.set_entity_data( bvh::make_const_span( vec ));
+        obj.init_broadphase();
 
-      world.finish_iteration();
-    } );
-  };
+        world.finish_iteration();
+      } );
+    };
+  }
 
-  auto tmp_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( vec.data(), vec.size() );
-  bvh::view< Element * > elements( "elements", vec.size() );
-  Kokkos::deep_copy( elements, tmp_view );
-
-  BENCHMARK("clustering")
+  SECTION("clustering")
   {
-    ::vt::runInEpochCollective( [&]() {
-      world.start_iteration();
+    auto tmp_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( vec.data(), vec.size() );
+    bvh::view< Element * > elements( "elements", vec.size() );
+    Kokkos::deep_copy( elements, tmp_view );
 
-      obj.set_entity_data( elements );
+    BENCHMARK("clustering")
+    {
+      ::vt::runInEpochCollective( [&]() {
+        world.start_iteration();
 
-      world.finish_iteration();
-    } );
-  };
+        obj.set_entity_data( elements );
+        obj.init_broadphase();
+
+        world.finish_iteration();
+      } );
+    };
+  }
 }
 
 
