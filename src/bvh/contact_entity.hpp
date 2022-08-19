@@ -64,7 +64,7 @@ namespace bvh
                        single_view< bphase_kdop > _bounds )
   {
     Kokkos::parallel_reduce( "compute_bounds", _elements.extent( 0 ),
-                             detail::bounds_union{ _elements }, _bounds );
+                             detail::bounds_union< Entity >{ _elements }, _bounds );
   }
 
   template< typename Entity >
