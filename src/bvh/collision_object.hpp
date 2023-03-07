@@ -114,18 +114,17 @@ namespace bvh
         set_entity_data<T>( _data, m_last_permutations, std::move( scope ) );
       }
       else {
-        m_snapshots.clear();
-        m_snapshots.reserve( _data.size() );
-        for (size_t ii = 0; ii < _data.size(); ++ii) {
-          m_snapshots.emplace_back( make_snapshot( _data[ii], ii ) );
-        }
+        Kokkos::resize( m_snapshots, _data.size() );
+        Kokkos::parallel_for( _data.size(), KOKKOS_LAMBDA( int _ii ){
+          m_snapshots( _ii ) = make_snapshot( _data[_ii], _ii );
+        } );
         {
           ::vt::trace::TraceScopedEvent scope(this->bvh_splitting_ml_);
           split_permutations_ml< split::mean, axis::longest, bvh::entity_snapshot >(m_snapshots, depth, &m_last_permutations);
         }
         {
           ::vt::trace::TraceScopedEvent scope(this->bvh_set_entity_data_impl_);
-          set_entity_data_impl(m_snapshots, _data.data(), sizeof( T ), m_last_permutations);
+          set_entity_data_impl(_data.data(), sizeof( T ), m_last_permutations.splits.size());
         }
       }
     }
@@ -211,8 +210,19 @@ namespace bvh
       // No-op if the view is the same size, which is typically the case
       Kokkos::resize( Kokkos::WithoutInitializing, m_snapshots, _data_view.extent( 0 ) );
       Kokkos::parallel_for( _data_view.extent( 0 ), KOKKOS_LAMBDA( int _idx ){
-        m_snapshots( _idx ) = make_snapshot( _data_view( _idx ) );
+        m_snapshots( _idx ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
       } );
+    }
+
+    template< typename T >
+    void
+    update_snapshots( span< const T * > _data )
+    {
+      // No-op if the view is the same size, which is typically the case
+      Kokkos::resize( Kokkos::WithoutInitializing, m_snapshots, _data.size() );
+      Kokkos::parallel_for( _data.size(), KOKKOS_LAMBDA( int _idx ){
+          m_snapshots( _idx ) = make_snapshot( _data[_idx], static_cast< std::size_t >( _idx ) );
+        } );
     }
 
     collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition );
