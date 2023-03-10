@@ -429,7 +429,7 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
   } );
 }
 
-TEST_CASE( "set entity data benchmark", "[vt]")
+TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
 {
   bvh::collision_world world( 16 );
 
