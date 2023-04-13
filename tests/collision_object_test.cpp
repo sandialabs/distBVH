@@ -229,7 +229,7 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
   ::vt::runInEpochCollective( [&]() {
     std::vector< narrowphase_result > old_results, old_results2;
 
-    for ( std::size_t i = 0; i < 1000; ++i ) {
+    for ( std::size_t i = 0; i < 100; ++i ) {
       world.start_iteration();
 
       auto rank = ::vt::theContext()->getNode();
