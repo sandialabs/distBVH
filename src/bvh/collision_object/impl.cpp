@@ -52,49 +52,20 @@ namespace bvh
       self->get_impl().active_narrowphase_local_index.insert( _msg->idx.x() );
     }
 
-    namespace detail
-    {
-      void
-      narrowphase_patch_copy( collision_object_impl::narrowphase_patch_collection_type *_patch,
-                              narrowphase_patch_msg *_msg )
-      {
-        _patch->ghost_destinations.clear();
-        _patch->patch_meta = _msg->patch_meta;
-        _patch->bytes.resize(_msg->data_size);
-        std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
-        _patch->origin_node = _msg->origin_node;
-      }
-    } // namespace detail
-
     void
     collision_object_holder::setup_narrowphase(setup_narrowphase_msg *_msg )
     {
       auto &impl = self->get_impl();
-      int rank = ::vt::theContext()->getNode();
+      auto rank = static_cast< int >( ::vt::theContext()->getNode() );
       const auto od_factor = impl.overdecomposition;
       const std::size_t od_offset = rank * od_factor;
-      auto &_patches = impl.narrowphase_patch_collection_proxy;
-      for (const auto id : impl.active_narrowphase_local_index) {
-        const auto sbeg = impl.m_latest_permutations.splits[id];
-        const auto send = impl.m_latest_permutations.splits[id + 1];
-        const std::size_t nelements = send - sbeg;
-        std::size_t data_size = nelements * impl.m_entity_unit_size;
-        //
-        // Could / should be replaced with VT serialization ?
-        //
-        auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( data_size );
-        send_msg->data_size = data_size;
-        std::size_t offset = 0;
-        for (std::size_t j = sbeg; j < send; ++j)
-        {
-          std::memcpy( &send_msg->user_data()[offset], impl.m_entity_ptr + (impl.m_latest_permutations.indices[j] * impl.m_entity_unit_size), impl.m_entity_unit_size);
-          offset += impl.m_entity_unit_size;
-        }
-        //
-        send_msg->origin_node = rank;
-        send_msg->patch_meta = impl.local_patches[id];
-        _patches[od_offset + id].sendMsg< narrowphase_patch_msg, &detail::narrowphase_patch_copy >( send_msg );
-      } // for (const auto id : impl.active_narrowphase_local_index)
+      auto &patches = impl.narrowphase_patch_collection_proxy;
+
+      for ( const auto idx : impl.active_narrowphase_local_index )
+      {
+        auto send_msg = impl.prepare_local_patch_for_sending( idx, rank );
+        patches[od_offset + idx].sendMsg< narrowphase_patch_msg, &collision_object_impl::narrowphase_patch_copy >( send_msg );
+      }
     }
 
     void

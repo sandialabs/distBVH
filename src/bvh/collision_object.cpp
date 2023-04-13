@@ -253,36 +253,11 @@ namespace bvh
 
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
-
-    const auto &_splits = m_impl->m_latest_permutations;
-    const auto splits_len = _splits.splits.size() - 1;
-
-    auto src_ptr = m_impl->m_entity_ptr;
-    const auto _element_size = m_impl->m_entity_unit_size;
+    const auto splits_len = m_impl->m_latest_permutations.splits.size() - 1;
 
     for ( std::size_t i = 0; i < splits_len; ++i )
     {
-      const auto sbeg = _splits.splits[i];
-      const auto send = _splits.splits[i + 1];
-      const std::size_t nelements = send - sbeg;
-
-      // Number of elements may be different since the last iteration depending on
-      // the splits
-      // Only reallocate if we need more space
-      // TODO: maybe replace by amortized table expansion?
-      auto &send_msg = m_impl->narrowphase_patch_messages[i];
-      std::size_t data_size = nelements * _element_size;
-      send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( data_size );
-      send_msg->data_size = data_size;
-
-      std::size_t offset = 0;
-      // Should be replaced with VT serialization
-      for (std::size_t j = sbeg; j < send; ++j)
-      {
-        debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        std::memcpy( &send_msg->user_data()[offset], src_ptr + (_splits.indices[j] * _element_size), _element_size);
-        offset += _element_size;
-      }
+      m_impl->narrowphase_patch_messages[i] = m_impl->prepare_local_patch_for_sending( i, rank );
     }
 
     always_assert( m_impl->local_patches.size() == od_factor,

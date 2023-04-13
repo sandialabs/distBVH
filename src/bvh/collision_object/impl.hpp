@@ -45,6 +45,20 @@
 
 namespace bvh
 {
+  namespace collision_object_impl
+  {
+    inline void
+    narrowphase_patch_copy( collision_object_impl::narrowphase_patch_collection_type *_patch,
+                            narrowphase_patch_msg *_msg )
+    {
+      _patch->ghost_destinations.clear();
+      _patch->patch_meta = _msg->patch_meta;
+      _patch->bytes.resize(_msg->data_size);
+      std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
+      _patch->origin_node = _msg->origin_node;
+    }
+  }
+
   struct collision_object::impl
   {
     explicit impl( collision_world &_world, std::size_t _idx );
@@ -59,7 +73,47 @@ namespace bvh
     using narrowphase_patch_collection_type = collision_object_impl::narrowphase_patch_collection_type;
 
     using narrowphase_collection_type = collision_object_impl::narrowphase_collection_type;
-    using ghost_table_index = collision_object_impl::narrowphase_index ;
+    using ghost_table_index = collision_object_impl::narrowphase_index;
+
+    /**
+     * @brief Copy the local data pointed to by m_entity_ptr at the offset corresponding to the
+     * permutation for the given local element index
+     *
+     * @param _idx the local element index
+     * @param _rank the current rank, passed in to avoid an extra function call
+     * @return the message containing the narrowphase data
+     */
+    ::vt::MsgPtr< collision_object_impl::narrowphase_patch_msg >
+    prepare_local_patch_for_sending( std::size_t _local_idx, int _rank )
+    {
+      using narrowphase_patch_msg = collision_object_impl::narrowphase_patch_msg;
+
+      const auto idx = _local_idx;
+      const auto sbeg = m_latest_permutations.splits[idx];
+      const auto send = m_latest_permutations.splits[idx + 1];
+      const std::size_t nelements = send - sbeg;
+      const std::size_t chunk_data_size = nelements * m_entity_unit_size;
+      const int rank = _rank;
+
+      auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( chunk_data_size );
+      send_msg->data_size = chunk_data_size;
+
+      std::size_t offset = 0;
+      // Should be replaced with VT serialization
+      for (std::size_t j = sbeg; j < send; ++j)
+      {
+        debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
+        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (m_latest_permutations.indices[j] * m_entity_unit_size), m_entity_unit_size);
+        offset += m_entity_unit_size;
+      }
+
+      send_msg->origin_node = rank;
+      send_msg->patch_meta = local_patches[idx];
+
+      return send_msg;
+    }
+
+
 
     collision_world *world;
 
