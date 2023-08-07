@@ -34,6 +34,7 @@
 #include "../vt/helpers.hpp"
 #include "../tree_build.hpp"
 #include "impl.hpp"
+#include "types.hpp"
 
 namespace bvh
 {
@@ -69,35 +70,70 @@ namespace bvh
         collision_object_proxy_type coll_obj;
       };
 
+      class tree_reduction
+      {
+      public:
+
+        tree_reduction() = default;
+
+        tree_reduction( entity_snapshot _initial, collision_object_proxy_type _collision_object )
+          : m_collision_object_proxy( _collision_object ),
+            m_snapshots{ _initial }
+        {}
+
+        tree_reduction &operator+=( const tree_reduction &_other )
+        {
+          // The collision object proxies should be the same so no need to reduce those
+          m_snapshots += _other.m_snapshots;
+          return *this;
+        }
+
+        friend tree_reduction operator+( tree_reduction _lhs, const tree_reduction &_rhs )
+        {
+          return _lhs += _rhs;
+        }
+
+        span< const entity_snapshot > snapshots() const noexcept { return m_snapshots.vec; }
+
+        collision_object_proxy_type collision_object_proxy() const noexcept { return m_collision_object_proxy; }
+
+        template< typename Serializer >
+        void serialize( Serializer &_s )
+        {
+          _s | m_collision_object_proxy | m_snapshots;
+        }
+
+      private:
+
+        collision_object_proxy_type m_collision_object_proxy;
+        reduce_vec m_snapshots;
+      };
+
 
       void set_broadphase_trees( collision_object *_coll_obj, broadphase_tree_msg *_msg )
       {
         _coll_obj->get_impl().tree = _msg->tree;
       }
 
-      struct tree_build_reduce
+      void tree_build_reduce( const tree_reduction &_reduc )
       {
-        void operator()( tree_reduce_msg *_msg )
-        {
           // Build the tree
           auto msg = ::vt::makeMessage< broadphase_tree_msg >();
-          msg->tree = build_tree_top_down< tree_type >( _msg->getConstVal().vec );
+          msg->tree = build_tree_top_down< tree_type >( _reduc.snapshots() );
 
           // Broadcast to every element of the collision object objgroup
-          _msg->coll_obj.broadcastMsg< broadphase_tree_msg, &collision_object_holder::delegate< broadphase_tree_msg, &set_broadphase_trees > >( msg );
-        }
-      };
+          _reduc.collision_object_proxy().broadcastMsg< broadphase_tree_msg, &collision_object_holder::delegate< broadphase_tree_msg, &set_broadphase_trees > >( msg );
+      }
 
       void tree_build_broadcast( broadphase_patch_collection_type *_patch, tree_build_broadcast_msg *_msg )
       {
-        auto msg = ::vt::makeMessage< tree_reduce_msg >( make_snapshot( _patch->patch, static_cast< std::size_t >( _patch->getIndex().x() ) ),
-                                                            _msg->coll_obj );
+        auto snap = make_snapshot( _patch->patch, static_cast< std::size_t >( _patch->getIndex().x() ) );
 
         using ::vt::collective::reduce::makeStamp;
         using ::vt::collective::reduce::StrongUserID;
         auto stamp = makeStamp<StrongUserID>(static_cast<uint64_t>(::vt::thePhase()->getCurrentPhase()));
 
-        _patch->getCollectionProxy().reduce< reduce_vec::opt, tree_build_reduce, tree_reduce_msg >( msg.get(), stamp );
+        _patch->getCollectionProxy().reduce< tree_build_reduce, ::vt::collective::PlusOp >( 0, tree_reduction{ snap, _msg->coll_obj }, stamp );
       }
     }
 

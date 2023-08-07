@@ -55,7 +55,7 @@ namespace bvh
     struct patch_storage
     {
       using container_type = std::vector< Element >;
-      
+
       using iterator = typename container_type::iterator;
       using const_iterator = typename container_type::const_iterator;
       using reverse_iterator = typename container_type::reverse_iterator;
@@ -63,24 +63,24 @@ namespace bvh
       using size_type = typename container_type::size_type;
 
       using value_type = typename container_type::value_type;
-      
+
       container_type m_entities;
 
       template< typename KDop >
       void set_elements( span< const Element > _span, KDop &_kdop, m::vec3< float_type > &_centroid ) noexcept
       {
         m_entities.insert( m_entities.end(), _span.begin(), _span.end() );
-        
+
         static auto get_kdop = []( const auto &_a ) { return element_traits< Element >::get_kdop( _a ); };
         auto kdop_range = make_range( make_transform_iterator( _span.begin(), get_kdop ),
                                       make_transform_iterator( _span.end(), get_kdop ) );
-    
+
         _kdop = KDop::from_kdops( kdop_range.begin(), kdop_range.end() );
-    
+
         static auto get_centroid = []( const auto &_a ) { return element_traits< Element >::get_centroid( _a ); };
         auto centroid_range = make_range( make_transform_iterator( _span.begin(), get_centroid ),
                                           make_transform_iterator( _span.end(), get_centroid ) );
-    
+
         _centroid = std::accumulate( centroid_range.begin(), centroid_range.end(), m::vec3< float_type >() )
                      / static_cast< float_type >( centroid_range.size() );
       }
@@ -89,25 +89,25 @@ namespace bvh
       {
         return m_entities[_n];
       }
-  
+
       const value_type &operator[]( std::size_t _n ) const
       {
         return m_entities[_n];
       }
-  
+
       iterator begin() noexcept { return m_entities.begin(); }
       const_iterator begin() const noexcept { return m_entities.begin(); }
       const_iterator cbegin() const noexcept { return m_entities.cbegin(); }
-  
+
       iterator end() noexcept { return m_entities.end(); }
       const_iterator end() const noexcept { return m_entities.end(); }
       const_iterator cend() const noexcept { return m_entities.cend(); }
-      
+
       size_type size() const noexcept { return m_entities.size(); }
       bool empty() const noexcept { return m_entities.empty(); }
       value_type *data() noexcept { return m_entities.data(); }
       const value_type *data() const noexcept { return m_entities.data(); }
-  
+
       template< typename Serializer >
       friend void serialize( Serializer &_s, const patch_storage &_storage )
       {
@@ -121,17 +121,17 @@ namespace bvh
     {
       using snapshot_type = entity_snapshot;
       using container_type = Kokkos::View< snapshot_type * >;
-  
+
       using index_type = typename snapshot_type::index_type;
       using kdop_type = typename snapshot_type::kdop_type;
       using arithmetic_type = float_type;
-  
+
       using iterator = snapshot_type *;
       using const_iterator = const iterator;
       using reverse_iterator = snapshot_type *;
       using const_reverse_iterator = const reverse_iterator;
       using size_type = typename container_type::size_type;
-      
+
       container_type entities;
 
       template< typename KDop >
@@ -159,12 +159,12 @@ namespace bvh
         _centroid = std::accumulate( centroid_range.begin(), centroid_range.end(), m::vec3< float_type >() )
                     / static_cast< float_type >( centroid_range.size() );
       }
-  
+
       snapshot_type &operator[]( std::size_t _n )
       {
         return entities( _n );
       }
-  
+
       const snapshot_type &operator[]( std::size_t _n ) const
       {
         return entities( _n );
@@ -174,7 +174,7 @@ namespace bvh
       iterator begin() noexcept { return &entities( 0 ); }
       const_iterator begin() const noexcept { return &entities( 0 ); }
       const_iterator cbegin() const noexcept { return &entities( 0 ); }
-  
+
       iterator end() noexcept { return begin() + entities.dimension_0(); }
       const_iterator end() const noexcept { return begin() + entities.dimension_0(); }
       const_iterator cend() const noexcept { return cbegin() + entities.dimension_0(); }
@@ -192,7 +192,7 @@ namespace bvh
 #endif
   }
 #endif
-  
+
   /**
    * Utility class for representing a patch, or collection of elements. Does not store the
    * elements themselves, but rather stores information that is useful for constructing a
@@ -208,10 +208,8 @@ namespace bvh
     using index_type = std::size_t;
     using kdop_type = KDop;
     using size_type = std::size_t;
-    
-    patch()
-      : m_global_id( -1 )
-    {}
+
+    patch() = default;
 
     template< typename E >
     patch( index_type _patch_id, span< const E > _span )
@@ -232,20 +230,20 @@ namespace bvh
       compute_kdops_and_centroid( _span );
       m_size = _span.size();
     }
-    
+
     index_type global_id() const noexcept { return m_global_id; }
     kdop_type kdop() const noexcept { return m_kdop; }
     m::vec3< float_type > centroid() const noexcept { return m_centroid; }
-    
+
     bool empty() const noexcept { return m_size == 0; }
     size_type size() const noexcept { return m_size; }
-    
+
     template< typename Serializer >
     friend void serialize( Serializer &_s, const patch &_patch )
     {
       _s | _patch.m_global_id | _patch.m_size | _patch.m_kdop | _patch.m_centroid;
     }
-    
+
   private:
 
     template< typename Element >
@@ -265,33 +263,33 @@ namespace bvh
                   / static_cast< float_type >( centroid_range.size() );
     }
 
-    index_type  m_global_id;
-    std::size_t m_size;
+    index_type  m_global_id = static_cast< index_type >( -1 );
+    std::size_t m_size = 0;
     kdop_type   m_kdop;
-    m::vec3< float_type > m_centroid;
+    m::vec3< float_type > m_centroid = m::vec3< float_type >::zeros();
   };
-  
+
   template< typename KDop >
   decltype(auto)
   get_entity_kdop( const patch< KDop > &_patch )
   {
     return _patch.kdop();
   }
-  
+
   template< typename KDop >
   decltype(auto)
   get_entity_global_id( const patch< KDop > &_patch )
   {
     return _patch.global_id();
   }
-  
+
   template< typename KDop >
   decltype(auto)
   get_entity_centroid( const patch< KDop > &_patch )
   {
     return _patch.centroid();
   }
-  
+
 }
 
 #endif  // INC_BVH_PATCH_HPP

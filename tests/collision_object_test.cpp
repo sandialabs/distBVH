@@ -35,6 +35,7 @@
 #include <bvh/collision_world.hpp>
 #include <bvh/util/epoch.hpp>
 #include <bvh/vt/print.hpp>
+#include <vt/context/context.h>
 #include <vt/termination/epoch_guard.h>
 
 void test_trees( const bvh::snapshot_tree &_tree )
@@ -79,8 +80,8 @@ TEST_CASE( "collision_object init", "[vt]")
   // We should be able to set the data correctly
   SECTION( "set_data split" )
   {
-    ::vt::runInEpochCollective( [&]() {
-        vt::runInEpochCollective( [&]() {
+    ::vt::runInEpochCollective( "set_data_split", [&]() {
+        vt::runInEpochCollective( "set_data_split.init", [&]() {
           obj.set_entity_data( bvh::make_const_span( vec ));
           obj.init_broadphase();
 
@@ -88,7 +89,7 @@ TEST_CASE( "collision_object init", "[vt]")
         } );
 
         // Data should be updateable
-        vt::runInEpochCollective( [&]() {
+        vt::runInEpochCollective( "set_data_split.update", [&]() {
 
           obj.set_entity_data( bvh::make_const_span( sing_vec ));
           obj.init_broadphase();
@@ -111,8 +112,8 @@ TEST_CASE( "collision_object init", "[vt]")
     bvh::view< Element * > sing_elements( "elements", sing_vec.size() );
     Kokkos::deep_copy( sing_elements, tmp_sing_view );
 
-    ::vt::runInEpochCollective( [&]() {
-      vt::runInEpochCollective( [&]() {
+    ::vt::runInEpochCollective( "set_data_cluster", [&]() {
+      vt::runInEpochCollective( "set_data_cluster.init", [&]() {
         obj.set_entity_data( elements );
         obj.init_broadphase();
 
@@ -120,7 +121,7 @@ TEST_CASE( "collision_object init", "[vt]")
       } );
 
       // Data should be updateable
-      vt::runInEpochCollective( [&]() {
+      vt::runInEpochCollective( "set_data_cluster.update", [&]() {
         obj.set_entity_data( sing_elements );
         obj.init_broadphase();
 
@@ -138,7 +139,7 @@ TEST_CASE( "collision_object broadphase", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
+  ::vt::runInEpochCollective( "collision_object.broadphase", [&]() {
     auto rank = ::vt::theContext()->getNode();
 
     auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
@@ -163,7 +164,7 @@ TEST_CASE( "collision_object multiple broadphase", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
+  ::vt::runInEpochCollective( "collision_object.multiple_broadphase", [&]() {
     auto rank = ::vt::theContext()->getNode();
 
     auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
@@ -203,7 +204,7 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
+  ::vt::runInEpochCollective( "collision_object.narrowphase", [&]() {
     world.start_iteration();
 
     auto rank = ::vt::theContext()->getNode();
@@ -259,9 +260,11 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
-    std::vector< narrowphase_result > old_results, old_results2;
+  std::vector< narrowphase_result > new_results;
+  std::vector< narrowphase_result > new_results2;
+  std::vector< narrowphase_result > old_results, old_results2;
 
+  ::vt::runInEpochCollective( "collision_object.multiple_narrowphase", [&]() {
     for ( std::size_t i = 0; i < 100; ++i ) {
       world.start_iteration();
 
@@ -275,7 +278,7 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
       obj2.set_entity_data( bvh::make_const_span( vec2 ));
       obj2.init_broadphase();
 
-      world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
+      world.set_narrowphase_functor< Element >( [rank]( const bvh::broadphase_collision< Element > &_a,
                                                     const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
         res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
@@ -294,6 +297,10 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
         for ( auto &&e: _b.elements ) {
           CHECK( e.global_id() < ::vt::theContext()->getNumNodes() * 12 );
+          bvh::vt::debug("{}: intersect result ({}, {}, {}) with ({}, {}, {})\n",
+                         ::vt::theContext()->getNode(),
+                         _a.object.id(), _a.patch_id, _a.elements[0].global_id(),
+                         _b.object.id(), _b.patch_id, e.global_id() );
           resa.emplace_back( e.global_id());
           resb.emplace_back( _a.elements[0].global_id());
         }
@@ -303,15 +310,16 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
       obj.broadphase( obj2 );
 
-      std::vector< narrowphase_result > new_results;
-      obj.for_each_result< narrowphase_result >( [rank, i, &new_results]( const narrowphase_result &_res ) {
+      // results for obj
+      new_results.clear();
+      obj.for_each_result< narrowphase_result >( [rank, &new_results]( const narrowphase_result &_res ) {
         new_results.emplace_back( _res );
         bvh::vt::debug("{}: got result {}\n", rank, _res.idx );
       } );
 
-      std::vector< narrowphase_result > new_results2;
-      obj2.for_each_result< narrowphase_result >( [i, &new_results2]( const narrowphase_result &_res ) {
-        std::cout << "got a result!!!\n";
+      // results for obj2
+      new_results2.clear();
+      obj2.for_each_result< narrowphase_result >( [&new_results2]( const narrowphase_result &_res ) {
         new_results2.emplace_back( _res );
       } );
 
@@ -338,7 +346,6 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
       std::cout << "new results2 size " << new_results2.size() << '\n';
       old_results2 = new_results2;
-
     }
   } );
 }
@@ -350,7 +357,7 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
+  ::vt::runInEpochCollective( "collision_object.multiple_narrowphase_no_overlap", [&]() {
     std::vector< narrowphase_result > old_results, old_results2;
 
     for ( std::size_t i = 0; i < 8; ++i ) {
@@ -442,7 +449,7 @@ TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
   {
     BENCHMARK("splitting")
     {
-      ::vt::runInEpochCollective( [&]() {
+      ::vt::runInEpochCollective( "set_entity_data_benchmark.splitting", [&]() {
         world.start_iteration();
 
         obj.set_entity_data( bvh::make_const_span( vec ));
@@ -461,7 +468,7 @@ TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
 
     BENCHMARK("clustering")
     {
-      ::vt::runInEpochCollective( [&]() {
+      ::vt::runInEpochCollective( "set_entity_data_benchmark.clustering", [&]() {
         world.start_iteration();
 
         obj.set_entity_data( elements );

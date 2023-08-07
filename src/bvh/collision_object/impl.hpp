@@ -89,8 +89,8 @@ namespace bvh
       using narrowphase_patch_msg = collision_object_impl::narrowphase_patch_msg;
 
       const auto idx = _local_idx;
-      const auto sbeg = ( _i == 0 ) ? 0 : m_splits_h( _i - 1 );
-      const auto send = ( _i == splits_len ) ? m_split_indices_h.extent( 0 ) : m_splits_h( _i );
+      const auto sbeg = ( idx == 0 ) ? 0 : splits_h( idx - 1 );
+      const auto send = ( idx == num_splits ) ? split_indices_h.extent( 0 ) : splits_h( idx );
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_entity_unit_size;
       const int rank = _rank;
@@ -103,8 +103,8 @@ namespace bvh
       for (std::size_t j = sbeg; j < send; ++j)
       {
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        debug_assert( m_split_indices_h( j ) < m_snapshots.extent( 0 ), "user index is out of bounds" );
-        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (m_split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
+        debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
+        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
         offset += m_entity_unit_size;
       }
 
@@ -163,6 +163,14 @@ namespace bvh
     };
 
     std::unordered_map< vt_index, narrowphase_patch_cache_entry > narrowphase_patch_cache;
+
+    // Split and clustering views
+    view< bvh::entity_snapshot * > snapshots;
+    view< std::size_t * > split_indices;  ///< Mapping from original element indices to the reordered indices
+    view< std::size_t * > splits; ///< bounds of each split
+    host_view< std::size_t * > split_indices_h;
+    host_view< std::size_t * > splits_h;
+    std::size_t num_splits = 0; ///< The number of actual splits -- may be les than splits.extent( 0 )
   };
 
   namespace collision_object_impl

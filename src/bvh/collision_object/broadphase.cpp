@@ -72,6 +72,9 @@ namespace bvh
         auto &tok = *patch_obj->get_impl().narrowphase_modification_token;
         collision_object_impl::narrowphase_index tmp_idx( 0, static_cast< int >( patch_obj->get_impl().collision_idx ), 0 );
         patch_obj->get_impl().narrowphase_collection_proxy[tmp_idx].insert( tok );
+
+        debug_assert( patch.global_id() != static_cast< broadphase_patch_type::index_type >( -1 ), "patch wasn't initialized" );
+
         //--- Quick exit for empty patch
         if (patch.size() == 0)
           return;

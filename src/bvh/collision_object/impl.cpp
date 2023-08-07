@@ -36,7 +36,12 @@
 namespace bvh
 {
   collision_object::impl::impl( collision_world &_world, std::size_t _idx )
-    : world( &_world ), collision_idx( _idx )
+    : world( &_world ), collision_idx( _idx ),
+      snapshots( fmt::format( "contact entity {} snapshot", _idx ), 0 ),
+      split_indices( fmt::format( "contact entity {} split indices", _idx ), 0 ),
+      splits( fmt::format( "contact entity {} splits", _idx ), 0 ),
+      split_indices_h( fmt::format( "contact entity host {} split indices", _idx ), 0 ),
+      splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 )
   {
   }
 

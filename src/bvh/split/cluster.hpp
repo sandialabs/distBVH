@@ -62,6 +62,17 @@ namespace bvh
 
   }
 
+  /**
+   * Invoke the clustering operation.
+   *
+   * Generally, _indices should be equivalent to $(0,...,n - 1)$ where $n$ is the size of _elements.
+   *
+   * \tparam Element the element type. Must support the centroid and kdop operations.
+   * \param[in]     _elements       a 1D view of elements
+   * \param[inout]  _indices        the element indices.
+   * \param[out]    _splits         an output list of indices where the clusters should be split
+   * \param[in]     _cluster_count  the number of clusters to generate
+   */
   template< typename Element >
   void
   morton_cluster::operator()( view< const Element * > _elements,
@@ -103,7 +114,7 @@ namespace bvh
 
     // Exclude the last index from the range since there is not going
     // to be a split in the tree after it...
-    Kokkos::parallel_for( n - 1, [this, _splits] KOKKOS_FUNCTION( int _i ) {
+    Kokkos::parallel_for( n - 1, [this] KOKKOS_FUNCTION( int _i ) {
       auto mask = m_hashes( _i ) ^ m_hashes( _i + 1 );
       m_depths_indices( _i ) = _i;
 
