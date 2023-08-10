@@ -31,6 +31,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "TestCommon.hpp"
+#include "bvh/types.hpp"
 #include <bvh/collision_object.hpp>
 #include <bvh/collision_world.hpp>
 #include <bvh/util/epoch.hpp>
@@ -62,27 +63,25 @@ TEST_CASE( "collision_object init", "[vt]")
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
-  auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
-  auto sing_vec = std::vector< Element >{};
-  sing_vec.reserve( 12 );
-  for ( std::size_t i = 0; i < 12; ++i ) {
-    sing_vec.emplace_back( i );
-    sing_vec.back().setVertices( bvh::m::vec3d::zeros(),
-                                 bvh::m::vec3d::zeros(),
-                                 bvh::m::vec3d::zeros(),
-                                 bvh::m::vec3d::zeros(),
-                                 bvh::m::vec3d::zeros(),
-                                 bvh::m::vec3d::zeros(),
-                                 bvh::m::vec3d::zeros(),
-                                 bvh::m::vec3d::zeros() );
-  }
+  auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+  auto update_elements = bvh::view< Element * >{ "sing_vec", 12 };
+  Kokkos::parallel_for(
+    12, KOKKOS_LAMBDA( int _i ) {
+      update_elements( _i ).setVertices( bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(),
+                                         bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(),
+                                         bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros() );
+    } );
+
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
 
   // We should be able to set the data correctly
-  SECTION( "set_data split" )
+  SECTION( "set_data" )
   {
-    ::vt::runInEpochCollective( "set_data_split", [&]() {
+    ::vt::runInEpochCollective(
+      "set_data_split", [&]() {
         vt::runInEpochCollective( "set_data_split.init", [&]() {
-          obj.set_entity_data( bvh::make_const_span( vec ));
+          obj.set_entity_data( elements, split_method );
           obj.init_broadphase();
 
           obj.for_each_tree( &test_trees );
@@ -90,50 +89,21 @@ TEST_CASE( "collision_object init", "[vt]")
 
         // Data should be updateable
         vt::runInEpochCollective( "set_data_split.update", [&]() {
-
-          obj.set_entity_data( bvh::make_const_span( sing_vec ));
+          obj.set_entity_data( update_elements, split_method );
           obj.init_broadphase();
 
           obj.for_each_tree( &test_sing_trees );
         } );
 
-      obj.end_phase();
-    } );
-  }
-
-  // We should be able to set the data correctly
-  SECTION( "set_data cluster" )
-  {
-    auto tmp_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( vec.data(), vec.size() );
-    bvh::view< Element * > elements( "elements", vec.size() );
-    Kokkos::deep_copy( elements, tmp_view );
-
-    auto tmp_sing_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( sing_vec.data(), sing_vec.size() );
-    bvh::view< Element * > sing_elements( "elements", sing_vec.size() );
-    Kokkos::deep_copy( sing_elements, tmp_sing_view );
-
-    ::vt::runInEpochCollective( "set_data_cluster", [&]() {
-      vt::runInEpochCollective( "set_data_cluster.init", [&]() {
-        obj.set_entity_data( elements );
-        obj.init_broadphase();
-
-        obj.for_each_tree( &test_trees );
+        obj.end_phase();
       } );
-
-      // Data should be updateable
-      vt::runInEpochCollective( "set_data_cluster.update", [&]() {
-        obj.set_entity_data( sing_elements );
-        obj.init_broadphase();
-
-        obj.for_each_tree( &test_sing_trees );
-      } );
-      obj.end_phase();
-    } );
   }
 }
 
 TEST_CASE( "collision_object broadphase", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -142,12 +112,12 @@ TEST_CASE( "collision_object broadphase", "[vt]")
   ::vt::runInEpochCollective( "collision_object.broadphase", [&]() {
     auto rank = ::vt::theContext()->getNode();
 
-    auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
-    obj.set_entity_data( bvh::make_const_span( vec ));
+    auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+    obj.set_entity_data( elements, split_method );
     obj.init_broadphase();
 
-    auto vec2 = buildElementGrid( 1, 1, 1, rank );
-    obj2.set_entity_data( bvh::make_const_span( vec2 ));
+    auto elements2 = build_element_grid( 1, 1, 1, rank );
+    obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
     obj.broadphase( obj2 );
@@ -159,6 +129,8 @@ TEST_CASE( "collision_object broadphase", "[vt]")
 
 TEST_CASE( "collision_object multiple broadphase", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -167,12 +139,12 @@ TEST_CASE( "collision_object multiple broadphase", "[vt]")
   ::vt::runInEpochCollective( "collision_object.multiple_broadphase", [&]() {
     auto rank = ::vt::theContext()->getNode();
 
-    auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
-    obj.set_entity_data( bvh::make_const_span( vec ));
+    auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+    obj.set_entity_data( elements, split_method );
     obj.init_broadphase();
 
-    auto vec2 = buildElementGrid( 1, 1, 1, rank );
-    obj2.set_entity_data( bvh::make_const_span( vec2 ));
+    auto elements2 = build_element_grid( 1, 1, 1, rank );
+    obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
     obj.broadphase( obj2 );
@@ -199,6 +171,8 @@ bool operator<( const narrowphase_result &_lhs, const narrowphase_result &_rhs )
 
 TEST_CASE( "collision_object narrowphase", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -209,12 +183,12 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 
     auto rank = ::vt::theContext()->getNode();
 
-    auto vec = buildElementGrid( 1, 1, 1, rank );
-    obj.set_entity_data( bvh::make_const_span( vec ));
+    auto elements = build_element_grid( 1, 1, 1, rank );
+    obj.set_entity_data( elements, split_method );
     obj.init_broadphase();
 
-    auto vec2 = buildElementGrid( 2, 3, 2, rank * 12 );
-    obj2.set_entity_data( bvh::make_const_span( vec2 ));
+    auto elements2 = build_element_grid( 2, 3, 2, rank * 12 );
+    obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
@@ -255,6 +229,8 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -270,12 +246,12 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
       auto rank = ::vt::theContext()->getNode();
 
-      auto vec = buildElementGrid( 1, 1, 1, rank );
-      obj.set_entity_data( bvh::make_const_span( vec ));
+      auto elements = build_element_grid( 1, 1, 1, rank );
+      obj.set_entity_data( elements, split_method );
       obj.init_broadphase();
 
-      auto vec2 = buildElementGrid( 2, 3, 2, rank * 12 );
-      obj2.set_entity_data( bvh::make_const_span( vec2 ));
+      auto elements2 = build_element_grid( 2, 3, 2, rank * 12 );
+      obj2.set_entity_data( elements2, split_method );
       obj2.init_broadphase();
 
       world.set_narrowphase_functor< Element >( [rank]( const bvh::broadphase_collision< Element > &_a,
@@ -352,6 +328,8 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
 TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -365,12 +343,12 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 
       auto rank = ::vt::theContext()->getNode();
 
-      auto vec = buildElementGrid( 1, 1, 1, rank );
-      obj.set_entity_data( bvh::make_const_span( vec ));
+      auto elements = build_element_grid( 1, 1, 1, rank );
+      obj.set_entity_data( elements, split_method );
       obj.init_broadphase();
 
-      auto vec2 = buildElementGrid( 2, 3, 2, rank * 12 , 16.0);
-      obj2.set_entity_data( bvh::make_const_span( vec2 ));
+      auto elements2 = build_element_grid( 2, 3, 2, rank * 12 , 16.0);
+      obj2.set_entity_data( elements2, split_method );
       obj2.init_broadphase();
 
       world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
@@ -443,16 +421,31 @@ TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
-  auto vec = buildElementGrid( 64, 64, 64, rank );
+  auto elements = build_element_grid( 64, 64, 64, rank );
 
-  SECTION( "splitting" )
+  SECTION( "geom_axis" )
   {
-    BENCHMARK("splitting")
+    BENCHMARK( "geom_axis" )
     {
       ::vt::runInEpochCollective( "set_entity_data_benchmark.splitting", [&]() {
         world.start_iteration();
 
-        obj.set_entity_data( bvh::make_const_span( vec ));
+        obj.set_entity_data( elements, bvh::split_algorithm::geom_axis );
+        obj.init_broadphase();
+
+        world.finish_iteration();
+      } );
+    };
+  }
+
+  SECTION( "ml_geom_axis" )
+  {
+    BENCHMARK( "ml_geom_axis" )
+    {
+      ::vt::runInEpochCollective( "set_entity_data_benchmark.splitting", [&]() {
+        world.start_iteration();
+
+        obj.set_entity_data( elements, bvh::split_algorithm::ml_geom_axis );
         obj.init_broadphase();
 
         world.finish_iteration();
@@ -462,16 +455,13 @@ TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
 
   SECTION("clustering")
   {
-    auto tmp_view = Kokkos::View< Element *, Kokkos::HostSpace, Kokkos::MemoryTraits< Kokkos::Unmanaged > >( vec.data(), vec.size() );
-    bvh::view< Element * > elements( "elements", vec.size() );
-    Kokkos::deep_copy( elements, tmp_view );
 
     BENCHMARK("clustering")
     {
       ::vt::runInEpochCollective( "set_entity_data_benchmark.clustering", [&]() {
         world.start_iteration();
 
-        obj.set_entity_data( elements );
+        obj.set_entity_data( elements, bvh::split_algorithm::clustering );
         obj.init_broadphase();
 
         world.finish_iteration();
@@ -479,5 +469,3 @@ TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
     };
   }
 }
-
-

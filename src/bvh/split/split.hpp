@@ -37,6 +37,7 @@
 #include "../range.hpp"
 #include "../traits.hpp"
 #include "../util/span.hpp"
+#include "../util/kokkos.hpp"
 
 #include "../snapshot.hpp"
 
@@ -47,9 +48,6 @@
 #include <algorithm>
 #include <vector>
 
-#ifdef BVH_ENABLE_KOKKOS
-#include <Kokkos_Core.hpp>
-#endif
 
 namespace bvh
 {
@@ -168,7 +166,7 @@ namespace bvh
     }
 
     template< typename SplittingMethod, typename Element >
-    auto split_permutation( span< Element > _elements,
+    auto split_permutation( span< const Element > _elements,
                            permute_range _perm, int _axis )
     {
       using traits_type = element_traits< Element >;
@@ -239,7 +237,7 @@ namespace bvh
 
     template< typename SplittingMethod, typename AxisSelector, typename Element >
     void
-    split_permutations_recursive_impl( span< Element > _elements, int _depth,
+    split_permutations_recursive_impl( span< const Element > _elements, int _depth,
                                        const std::vector< std::size_t >::iterator _start,
                                        permute_range _perm, std::vector< std::size_t > &_splits )
     {
@@ -333,7 +331,7 @@ namespace bvh
 
   template< typename SplittingMethod, typename AxisSelector, typename Element >
   void
-  split_permutations( span< Element > _elements, int _depth, element_permutations *_permutations )
+  split_permutations( span< const Element > _elements, int _depth, element_permutations *_permutations )
   {
     _permutations->indices.resize( _elements.size() );
     std::iota( _permutations->indices.begin(), _permutations->indices.end(), 0 );

@@ -66,43 +66,20 @@ namespace bvh
     ~collision_object();
 
     template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data( span< const T > _data, bvh::split_algorithm _algorithm = geom_axis)
+    void set_entity_data( view< T * > _data_view, split_algorithm _algorithm )
     {
-      //
-      // Split data by overdecomposition factor
-      //
-      const auto od_factor = this->overdecomposition_factor();
-      //
-      int depth = bit_log2( od_factor );
-      //
-      if (_algorithm == geom_axis) {
-        ::vt::trace::TraceScopedEvent scope(this->bvh_splitting_geom_axis_);
-        split_permutations< split::mean, axis::longest >( _data, depth, &m_last_permutations );
-        set_entity_data_with_permutations( _data, m_last_permutations, std::move( scope ) );
-      }
-      else {
-        auto &snap = get_snapshots();
-        Kokkos::resize( Kokkos::WithoutInitializing, snap, _data.size() );
-        Kokkos::parallel_for( _data.size(), KOKKOS_LAMBDA( int _ii ){
-          snap( _ii ) = make_snapshot( _data[_ii], _ii );
-        } );
-        {
-          ::vt::trace::TraceScopedEvent scope(this->bvh_splitting_ml_);
-          split_permutations_ml< split::mean, axis::longest, bvh::entity_snapshot >(snap, depth, &m_last_permutations);
-          initialize_split_indices( m_last_permutations );
-        }
-        {
-          ::vt::trace::TraceScopedEvent scope(this->bvh_set_entity_data_impl_);
-          set_entity_data_impl(_data.data(), sizeof( T ), m_last_permutations.splits.size());
-        }
-      }
+      set_entity_data( view< const T * >( std::move( _data_view ) ), _algorithm );
     }
 
     template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data( const std::vector< T > &_data, bvh::split_algorithm _algorithm = geom_axis)
+    void set_entity_data( view< const T * > _data, split_algorithm _algorithm )
     {
-      span< const T > _data_span{ _data.data(), _data.size() };
-      set_entity_data( _data_span, _algorithm );
+      switch ( _algorithm )
+      {
+        case split_algorithm::geom_axis: set_entity_data_geom_axis( _data ); break;
+        case split_algorithm::ml_geom_axis: set_entity_data_ml_geom_axis( _data ); break;
+        case split_algorithm::clustering: set_entity_data_clustering( _data ); break;
+      }
     }
 
     /// \brief Set up data for the broadphase (including the tree)
@@ -110,13 +87,7 @@ namespace bvh
 
     template< typename T >
     void
-    set_entity_data( view< T * > _data_view )
-    {
-      set_entity_data( view< const T * >( std::move( _data_view ) ) );
-    }
-    template< typename T >
-    void
-    set_entity_data( view< const T * > _data_view )
+    set_entity_data_clustering( view< const T * > _data_view )
     {
       static const auto n = _data_view.extent( 0 );
       if ( n != m_clusterer.size() )
@@ -143,13 +114,41 @@ namespace bvh
 
       update_snapshots( _data_view );
 
-      // Maybe we can do better at some point...
-      auto hview = Kokkos::create_mirror_view_and_copy( bvh::default_execution_space{}, _data_view );
-
       Kokkos::deep_copy( get_splits_h(), get_splits() );
       Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
 
-      set_entity_data_impl( hview.data(), sizeof( T ), od_factor - 1 );
+      // This assumes _data_view is on host for now... at the moment we can't do much better
+      set_entity_data_impl( _data_view.data(), sizeof( T ), od_factor - 1 );
+    }
+
+    template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
+    void set_entity_data_ml_geom_axis( view< const T * > _data )
+    {
+      // Split data by overdecomposition factor
+      const auto od_factor = this->overdecomposition_factor();
+      int depth = bit_log2( od_factor );
+      update_snapshots( _data );
+      {
+        ::vt::trace::TraceScopedEvent scope( this->bvh_splitting_ml_ );
+        split_permutations_ml< split::mean, axis::longest, bvh::entity_snapshot >( get_snapshots(), depth,
+                                                                                    &m_last_permutations );
+        initialize_split_indices( m_last_permutations );
+      }
+      {
+        ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
+        set_entity_data_impl( _data.data(), sizeof( T ), m_last_permutations.splits.size() );
+      }
+    }
+
+    template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
+    void set_entity_data_geom_axis( view< const T * > _data )
+    {
+      // Split data by overdecomposition factor
+      const auto od_factor = this->overdecomposition_factor();
+      int depth = bit_log2( od_factor );
+      ::vt::trace::TraceScopedEvent scope( this->bvh_splitting_geom_axis_ );
+      split_permutations< split::mean, axis::longest, T >( _data, depth, &m_last_permutations );
+      set_entity_data_with_permutations( _data, m_last_permutations, std::move( scope ) );
     }
 
     template< typename F >
@@ -182,9 +181,9 @@ namespace bvh
     friend class collision_world;
 
     template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data_with_permutations( span< const T > _data, const element_permutations &_splits, ::vt::trace::TraceScopedEvent &&_trace )
+    void set_entity_data_with_permutations( view< const T * > _data, const element_permutations &_splits, ::vt::trace::TraceScopedEvent &&_trace )
     {
-      always_assert( _splits.indices.size() == _data.size(), "must have a split index per data element!" );
+      always_assert( _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
 
       initialize_split_indices( _splits );
 
@@ -205,19 +204,6 @@ namespace bvh
       Kokkos::parallel_for( ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ){
         snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
       } );
-    }
-
-    template< typename T >
-    void
-    update_snapshots( span< const T > _data )
-    {
-      // No-op if the view is the same size, which is typically the case
-      auto &snap = get_snapshots();
-      Kokkos::resize( Kokkos::WithoutInitializing, snap, _data.size() );
-      auto &ind = get_split_indices_h();
-      Kokkos::parallel_for( _data.size(), KOKKOS_LAMBDA( int _idx ){
-          snap( ind( _idx ) ) = make_snapshot( _data[_idx], static_cast< std::size_t >( _idx ) );
-        } );
     }
 
     collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition );
