@@ -89,24 +89,30 @@ namespace bvh
     void
     set_entity_data_clustering( view< const T * > _data_view )
     {
-      static const auto n = _data_view.extent( 0 );
+      const auto n = _data_view.extent( 0 );
+
+      const auto od_factor = this->overdecomposition_factor();
+      const auto num_splits = od_factor - 1;
+
       if ( n != m_clusterer.size() )
       {
         m_clusterer = morton_cluster( n );
         Kokkos::resize( get_split_indices(), n );
-        Kokkos::resize( get_splits(), n - 1 );
         Kokkos::resize( get_split_indices_h(), n );
-        Kokkos::resize( get_splits_h(), n - 1 );
       }
 
-      const auto od_factor = this->overdecomposition_factor();
+      Kokkos::resize( get_splits(), num_splits );
+      Kokkos::resize( get_splits_h(), num_splits );
 
       // Initialize our indices
       Kokkos::parallel_for(n, KOKKOS_LAMBDA( int _i ){
         get_split_indices()( _i ) = _i;
       } );
 
-      m_clusterer( _data_view, get_split_indices(), get_splits(), od_factor - 1 );
+      m_clusterer( _data_view, get_split_indices(), get_splits() );
+
+      Kokkos::deep_copy( get_splits_h(), get_splits() );
+      Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
 
       // Now split_indices/_h is reordered according to the morton encoding
       // It provides a mapping from original indices to the new reordered elements that
@@ -114,11 +120,8 @@ namespace bvh
 
       update_snapshots( _data_view );
 
-      Kokkos::deep_copy( get_splits_h(), get_splits() );
-      Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
-
       // This assumes _data_view is on host for now... at the moment we can't do much better
-      set_entity_data_impl( _data_view.data(), sizeof( T ), od_factor - 1 );
+      set_entity_data_impl( _data_view.data(), sizeof( T ) );
     }
 
     template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
@@ -136,7 +139,7 @@ namespace bvh
       }
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
-        set_entity_data_impl( _data.data(), sizeof( T ), m_last_permutations.splits.size() );
+        set_entity_data_impl( _data.data(), sizeof( T ) );
       }
     }
 
@@ -176,6 +179,8 @@ namespace bvh
       } );
     }
 
+    span< const patch<> > local_patches() const noexcept;
+
   private:
 
     friend class collision_world;
@@ -189,7 +194,7 @@ namespace bvh
 
       update_snapshots( _data );
 
-      set_entity_data_impl( _data.data(), sizeof( T ), _splits.splits.size() );
+      set_entity_data_impl( _data.data(), sizeof( T ) );
       std::move( _trace ).end();
     }
 
@@ -212,7 +217,7 @@ namespace bvh
     ///
     /// \param[in] _data
     /// \param[in] _element_size
-    void set_entity_data_impl( const void *_data, std::size_t _element_size, std::size_t _num_splits );
+    void set_entity_data_impl( const void *_data, std::size_t _element_size );
 
     void set_all_narrow_patches();
     void set_active_narrow_patches();

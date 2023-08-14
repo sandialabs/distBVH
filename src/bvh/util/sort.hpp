@@ -89,6 +89,14 @@ namespace bvh
 
     }
 
+    void resize_scratch( std::size_t _n )
+    {
+      Kokkos::resize( m_scratch, _n );
+      Kokkos::resize( m_index_scratch, _n );
+      Kokkos::resize( m_scan, _n );
+      Kokkos::resize( m_bits, _n );
+    }
+
     void operator()( view< T * > _hashes, view< IndexType * > _indices )
     {
       assert( _hashes.extent( 0 ) == _indices.extent( 0 )

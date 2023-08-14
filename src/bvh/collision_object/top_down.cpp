@@ -49,27 +49,6 @@ namespace bvh
 
       using reduce_vec = vt::reducable_vector< entity_snapshot >;
 
-      struct tree_reduce_msg : ::vt::collective::ReduceTMsg< reduce_vec >
-      {
-        vt_msg_serialize_required();
-
-        tree_reduce_msg() = default;
-        tree_reduce_msg( entity_snapshot _snap, collision_object_proxy_type _coll_obj )
-          : coll_obj( _coll_obj )
-        {
-          this->getVal() = reduce_vec{ _snap };
-        }
-
-        template< typename Serializer >
-        void serialize( Serializer &_s )
-        {
-          ::vt::collective::ReduceTMsg< reduce_vec >::serialize( _s );
-          _s | coll_obj;
-        }
-
-        collision_object_proxy_type coll_obj;
-      };
-
       class tree_reduction
       {
       public:

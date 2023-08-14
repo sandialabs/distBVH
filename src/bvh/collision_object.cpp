@@ -101,12 +101,12 @@ namespace bvh
 
   collision_object::~collision_object() = default;
 
-  void collision_object::set_entity_data_impl( const void *_data, std::size_t _element_size, std::size_t _num_splits )
+  void collision_object::set_entity_data_impl( const void *_data, std::size_t _element_size )
   {
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
 
-    m_impl->num_splits = _num_splits;
+    m_impl->num_splits = m_impl->splits.extent( 0 );
 
     m_impl->local_patches.clear();
     m_impl->local_patches.resize( od_factor );
@@ -398,6 +398,12 @@ namespace bvh
   collision_object::get_splits_h()
   {
     return m_impl->splits_h;
+  }
+
+  span< const patch<> >
+  collision_object::local_patches() const noexcept
+  {
+    return m_impl->local_patches;
   }
 
   void

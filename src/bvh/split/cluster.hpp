@@ -22,10 +22,10 @@ namespace bvh
     template< typename Element >
     void operator()( view< const Element * > _elements,
                      view< index_type * > _indices,
-                     view< index_type * > _splits,
-                     std::size_t _cluster_count );
+                     view< index_type * > _splits );
 
     std::size_t size() const noexcept { return m_size; }
+    void resize( std::size_t _n );
 
   private:
 
@@ -62,6 +62,19 @@ namespace bvh
 
   }
 
+  inline void
+  morton_cluster::resize( std::size_t _n )
+  {
+    m_size = _n;
+    Kokkos::resize( m_hashes, m_size );
+    m_sorter.resize_scratch( m_size );
+    Kokkos::resize( m_depths_indices, m_size - 1 );
+    Kokkos::resize( m_depths, m_size - 1 );
+    Kokkos::resize( m_reindex, m_size - 1 );
+    Kokkos::resize( m_initial_splits, m_size - 1 );
+    m_depth_sorter.resize_scratch( m_size );
+  }
+
   /**
    * Invoke the clustering operation.
    *
@@ -77,15 +90,13 @@ namespace bvh
   void
   morton_cluster::operator()( view< const Element * > _elements,
                             view< index_type * > _indices,
-                            view< index_type * > _splits,
-                            std::size_t _cluster_count )
+                            view< index_type * > _splits )
   {
-    assert( _cluster_count < m_size );
-
     assert( m_hashes.extent( 0 ) == m_size );
     assert( m_hashes.extent( 0 ) == _elements.extent( 0 ) );
     assert( m_hashes.extent( 0 ) == _indices.extent( 0 ) );
-    assert( m_hashes.extent( 0 ) - 1 == _splits.extent( 0 ) );
+
+    const auto cluster_count = _splits.extent( 0 );
 
     // Reinitialize count; we don't need to reset our buffers since they get overwritten
     Kokkos::deep_copy( m_count, 0 );
@@ -111,6 +122,16 @@ namespace bvh
     static_assert( sizeof( morton_type ) == 4 );
 
     const auto n = m_hashes.extent( 0 );
+    const auto max_idx = n - 1;
+
+    // We may have requested more clusters than are available.
+    // In that case, we fill the clusters with the max index
+    // Our algorithm can produce at most n - 1 clusters
+    if ( cluster_count > max_idx )
+    {
+      Kokkos::deep_copy(_splits, max_idx );
+    }
+
 
     // Exclude the last index from the range since there is not going
     // to be a split in the tree after it...
@@ -128,13 +149,13 @@ namespace bvh
 
     // We want the first cluster_count indices -- but they have to be in sorted index order
     // Mark these with 1, then we can execute an exclusive scan to re-index
-    Kokkos::parallel_for( n - 1, [this, _cluster_count] KOKKOS_FUNCTION( int _i ) {
-      m_reindex( m_depths_indices( _i ) ) = ( _i < _cluster_count ) ? 1 : 0;
+    Kokkos::parallel_for( n - 1, [this, cluster_count] KOKKOS_FUNCTION( int _i ) {
+      m_reindex( m_depths_indices( _i ) ) = ( _i < cluster_count ) ? 1 : 0;
     } );
 
     prefix_sum( m_reindex );
-    Kokkos::parallel_for( n - 1, [this, _splits, _cluster_count] KOKKOS_FUNCTION( int _i ) {
-      if ( _i < _cluster_count )
+    Kokkos::parallel_for( n - 1, [this, _splits, cluster_count] KOKKOS_FUNCTION( int _i ) {
+      if ( _i < cluster_count )
       {
         auto new_idx = m_reindex( m_depths_indices( _i ) );
         _splits( new_idx ) = m_depths_indices( _i );
@@ -144,7 +165,7 @@ namespace bvh
 #ifdef BVH_ENABLE_CLUSTERING_PERFORMANCE_WARNING
     Kokkos::deep_copy( m_host_depths, m_depths );
 
-    for ( std::size_t i = 0; i < _cluster_count; ++i )
+    for ( std::size_t i = 0; i < cluster_count; ++i )
     {
       if ( m_host_depths( i ) > 31 )  // no diff found
         ::bvh::vt::warn( "identical hash encountered at split index {} during clustering, this could lead to performance degradation\n", i );

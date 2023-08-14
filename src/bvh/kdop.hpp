@@ -35,6 +35,7 @@
 
 #include "math/vec.hpp"
 #include "math/constant_vec.hpp"
+#include "math/common.hpp"
 #include <algorithm>
 #include <cmath>
 #include "range.hpp"
@@ -98,6 +99,12 @@ namespace bvh
     friend BVH_INLINE bool operator!=( const extent &_lhs, const extent &_rhs )
     {
       return !( _lhs == _rhs );
+    }
+
+    friend BVH_INLINE bool approx_equals( const extent &_lhs, const extent &_rhs )
+    {
+      using namespace m;
+      return ( approx_equals( _lhs.min, _rhs.min ) && ( approx_equals( _lhs.max, _rhs.max ) ) );
     }
   };
 
@@ -499,6 +506,18 @@ namespace bvh
     {
       return !( _lhs == _rhs );
     }
+
+    friend BVH_INLINE bool approx_equals( const kdop_base &_lhs, const kdop_base &_rhs )
+    {
+      for ( int i = 0; i < K / 2; ++i )
+      {
+        if ( !approx_equals( _lhs.extents[i], _rhs.extents[i] ) )
+          return false;
+      }
+
+      return true;
+    }
+
 
     array< extent< T >, K / 2 > extents;
   };

@@ -227,7 +227,8 @@ namespace bvh
     template< typename Element >
     void set_elements( span< const Element > _span ) noexcept
     {
-      compute_kdops_and_centroid( _span );
+      if ( _span.size() > 0 )
+        compute_kdops_and_centroid( _span );
       m_size = _span.size();
     }
 
