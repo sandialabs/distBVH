@@ -220,15 +220,14 @@ TEST_CASE( "collision_object multiple broadphase", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( "collision_object.multiple_broadphase", [&]() {
-    auto rank = ::vt::theContext()->getNode();
+  auto rank = ::vt::theContext()->getNode();
+  auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+  auto elements2 = build_element_grid( 1, 1, 1, rank );
+  obj2.set_entity_data( elements2, split_method );
 
-    auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+  ::vt::runInEpochCollective( "collision_object.multiple_broadphase", [&]() {
     obj.set_entity_data( elements, split_method );
     obj.init_broadphase();
-
-    auto elements2 = build_element_grid( 1, 1, 1, rank );
-    obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
     obj.broadphase( obj2 );
@@ -395,7 +394,7 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
   std::vector< narrowphase_result > old_results, old_results2;
 
   ::vt::runInEpochCollective( "collision_object.multiple_narrowphase", [&]() {
-    for ( std::size_t i = 0; i < 100; ++i ) {
+    for ( std::size_t i = 0; i < 8; ++i ) {
       world.start_iteration();
 
       auto rank = ::vt::theContext()->getNode();

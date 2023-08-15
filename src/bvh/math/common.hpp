@@ -57,6 +57,9 @@ namespace bvh
 #else
     constexpr double epsilon = std::numeric_limits< double >::epsilon();
     constexpr double epsilonf = std::numeric_limits< float >::epsilon();
+
+    template< typename T >
+    constexpr T epsilon_value = std::numeric_limits< T >::epsilon();
 #endif
 
     namespace detail
@@ -152,21 +155,21 @@ namespace bvh
     }
 
     constexpr bool
-    BVH_INLINE approx_equals( int _a, int _b )
+    BVH_INLINE approx_equals( int _a, int _b, int )
     {
       return _a == _b;
     }
 
     constexpr bool
-    BVH_INLINE approx_equals( float _a, float _b )
+    BVH_INLINE approx_equals( float _a, float _b, float _eps = epsilonf )
     {
-      return abs( _a - _b ) < epsilonf;
+      return abs( _a - _b ) < _eps;
     }
 
     constexpr bool
-    BVH_INLINE approx_equals( double _a, double _b )
+    BVH_INLINE approx_equals( double _a, double _b, double _eps = epsilon )
     {
-      return abs( _a - _b ) < epsilon;
+      return abs( _a - _b ) < _eps;
     }
 
 #ifdef BVH_EXPERIMENTAL

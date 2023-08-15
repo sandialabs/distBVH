@@ -92,6 +92,13 @@ namespace bvh
     template< typename T, unsigned N >
     struct is_vector_type< T[N] > : std::true_type {};
 
+    template< typename U, typename V >
+    using common_component_t
+      = std::common_type_t< typename vector_traits< U >::component_type, typename vector_traits< V >::component_type >;
+
+    template< typename T >
+    using epsilon_type_of_t = std::conditional_t< is_vector_type< T >::value, typename vector_traits< T >::component_type, T >;
+
     namespace detail
     {
       template< typename Vec, typename Replace >

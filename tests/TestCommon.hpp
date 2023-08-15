@@ -199,9 +199,10 @@ build_element_grid( int _x, int _y, int _z, std::size_t _base_index = 0, double 
     double y = _origin_shift + _j * dy;
     double z = _origin_shift + _k * dz;
 
-    const std::size_t index = _base_index + _i + _j * _x + _k * _x * _y;
+    const std::size_t index = _i + _j * _x + _k * _x * _y;
+    assert( index < ret.extent( 0 ) );
     auto &el = ret( index );
-    el.setIndex( index );
+    el.setIndex( _base_index + index );
     el.setVertices( bvh::m::vec3d{ x, y, z }, bvh::m::vec3d{ x + dx, y, z }, bvh::m::vec3d{ x + dx, y + dy, z },
                     bvh::m::vec3d{ x, y + dy, z }, bvh::m::vec3d{ x, y, z + dz }, bvh::m::vec3d{ x + dx, y, z + dz },
                     bvh::m::vec3d{ x + dx, y + dy, z + dz }, bvh::m::vec3d{ x, y + dy, z + dz } );
@@ -416,5 +417,34 @@ snapshots_from_kdops( bvh::view< const bvh::bphase_kdop * > _kdops )
 
   return ret;
 }
+
+template< typename T >
+struct approx
+{
+  explicit approx( const T &_val, bvh::m::epsilon_type_of_t< T > _eps = bvh::m::epsilon_value< bvh::m::epsilon_type_of_t< T > > )
+    : val( _val ), eps( _eps )
+  {}
+
+  T val;
+  bvh::m::epsilon_type_of_t< T > eps;
+
+  friend bool operator==( const T &_lhs, const approx< T > &_rhs )
+  {
+    using bvh::m::approx_equals;
+    return approx_equals( _lhs, _rhs.val, _rhs.eps );
+  }
+
+  friend bool operator==( const approx< T > &_lhs, const T &_rhs )
+  {
+    using bvh::m::approx_equals;
+    return approx_equals( _lhs.val, _rhs, _lhs.eps );
+  }
+
+  friend std::ostream &operator<<( std::ostream &_oss, const approx< T > &_val )
+  {
+    _oss << "approx( " << _val.val << " )";
+    return _oss;
+  }
+};
 
 #endif  // INC_TEST_COMMON_HPP

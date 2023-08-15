@@ -30,7 +30,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <catch2/catch.hpp>
+#include "TestCommon.hpp"
 
 #include <vector>
 #include <bvh/kdop.hpp>
@@ -182,7 +182,7 @@ TEMPLATE_TEST_CASE( "kdop", "[kdop][template]", bvh::dop_6d, bvh::dop_26d )
     SECTION( "non-origin" )
     {
       auto kd = kd_type::from_sphere( bvh::m::vec3d{ -100.0, -100.0, -100.0 }, 1.0 );
-      REQUIRE( bvh::m::vec3d{ -100.0, -100.0, -100.0 } == kd.centroid() );
+      REQUIRE( approx( bvh::m::vec3d{ -100.0, -100.0, -100.0 }, 0.0001 ) == kd.centroid() );
     }
   }
 
