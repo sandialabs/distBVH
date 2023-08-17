@@ -43,11 +43,11 @@ namespace bvh
   prefix_sum( view< T * > _view )
   {
     const auto n = static_cast< unsigned int >( _view.extent( 0 ) );
-    Kokkos::parallel_scan( n, [_view] KOKKOS_FUNCTION ( const int &i, T &_x, const bool &_final ){
-      auto val = _view( i );
+    Kokkos::parallel_scan( n, KOKKOS_LAMBDA ( int _i, T &_x, bool _final ){
+      auto val = _view( _i );
 
       if ( _final )
-        _view( i ) = _x;
+        _view( _i ) = _x;
 
       _x += val;
     } );

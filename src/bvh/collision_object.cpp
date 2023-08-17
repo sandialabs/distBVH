@@ -120,6 +120,8 @@ namespace bvh
     m_impl->m_entity_ptr = static_cast< const unsigned char * >( _data );
     m_impl->m_entity_unit_size = _element_size;
 
+    // Ensure that our update of m_impl->snapshots has finished before reading it here
+    Kokkos::fence();
 
     for ( std::size_t i = 0; i < od_factor; ++i ) {
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
@@ -256,10 +258,8 @@ namespace bvh
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
 
-    auto range_policy = Kokkos::RangePolicy< host_execution_space >( 0, od_factor );
-    Kokkos::parallel_for( range_policy, KOKKOS_LAMBDA( int _i ) {
-      m_impl->narrowphase_patch_messages[_i] = m_impl->prepare_local_patch_for_sending( _i, rank );
-    } );
+    for ( std::size_t i = 0; i < od_factor; ++i )
+      m_impl->narrowphase_patch_messages[i] = m_impl->prepare_local_patch_for_sending( i, rank );
 
     always_assert( m_impl->local_patches.size() == od_factor,
                   "\n !!! Error during splitting process -- Splits do not match od factor !!!\n\n" );

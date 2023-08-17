@@ -105,9 +105,8 @@ namespace bvh
       Kokkos::resize( get_splits_h(), num_splits );
 
       // Initialize our indices
-      Kokkos::parallel_for(n, KOKKOS_LAMBDA( int _i ){
-        get_split_indices()( _i ) = _i;
-      } );
+      Kokkos::parallel_for(
+        n, KOKKOS_LAMBDA( int _i ) { get_split_indices()( _i ) = _i; } );
 
       m_clusterer( _data_view, get_split_indices(), get_splits() );
 
@@ -133,6 +132,7 @@ namespace bvh
       update_snapshots( _data );
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_splitting_ml_ );
+        Kokkos::fence();  // snapshots need to finish updating
         split_permutations_ml< split::mean, axis::longest, bvh::entity_snapshot >( get_snapshots(), depth,
                                                                                     &m_last_permutations );
         initialize_split_indices( m_last_permutations );
@@ -206,9 +206,10 @@ namespace bvh
       auto &snap = get_snapshots();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
       auto &ind = get_split_indices_h();
-      Kokkos::parallel_for( ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ){
-        snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
-      } );
+      Kokkos::parallel_for(
+        ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
+          snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
+        } );
     }
 
     collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition );

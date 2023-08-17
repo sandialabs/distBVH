@@ -350,9 +350,10 @@ inline void test_array( bvh::host_view< T > _arr, Args &&... _args )
   using value_type = typename bvh::host_view< T >::value_type;
 
   std::array< value_type, sizeof...( _args ) > expected = {{ static_cast< value_type >( std::forward< Args >( _args ) )... }};
-  Kokkos::parallel_for( Kokkos::RangePolicy< bvh::host_execution_space >( 0, sizeof...( _args ) ), [_arr, expected]( int i ){
+  for ( std::size_t i = 0; i < sizeof...( _args ); ++i )
+  {
     REQUIRE( _arr( i ) == expected[i] );
-  } );
+  }
 }
 
 inline bvh::view< bvh::bphase_kdop * >
