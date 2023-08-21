@@ -129,7 +129,7 @@ namespace bvh
       // Split data by overdecomposition factor
       const auto od_factor = this->overdecomposition_factor();
       int depth = bit_log2( od_factor );
-      update_snapshots( _data );
+      update_snapshots_without_permuting( _data );
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_splitting_ml_ );
         Kokkos::fence();  // snapshots need to finish updating
@@ -198,20 +198,6 @@ namespace bvh
       std::move( _trace ).end();
     }
 
-    template< typename T >
-    void
-    update_snapshots( view< const T * > _data_view )
-    {
-      // No-op if the view is the same size, which is typically the case
-      auto &snap = get_snapshots();
-      Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
-      auto &ind = get_split_indices_h();
-      Kokkos::parallel_for(
-        ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
-          snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
-        } );
-    }
-
     collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition );
 
     /// \brief Implementation for setting the container of data
@@ -232,6 +218,33 @@ namespace bvh
     const impl &get_impl() const noexcept { return *m_impl; }
 
   private:
+
+    template< typename T >
+    void
+    update_snapshots( view< const T * > _data_view )
+    {
+      // No-op if the view is the same size, which is typically the case
+      auto &snap = get_snapshots();
+      Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
+      auto &ind = get_split_indices_h();
+      Kokkos::parallel_for(
+        ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
+          snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
+        } );
+    }
+
+    template< typename T >
+    void
+    update_snapshots_without_permuting( view< const T * > _data_view )
+    {
+      // No-op if the view is the same size, which is typically the case
+      auto &snap = get_snapshots();
+      Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
+      Kokkos::parallel_for(
+        _data_view.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
+          snap( _idx ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
+        } );
+    }
 
     void for_each_tree_impl( tree_function &&_fun );
     void for_each_result_impl( std::function< void(const narrowphase_result &) > &&_fun );
