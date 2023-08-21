@@ -367,6 +367,8 @@ namespace bvh
      */
     BVH_INLINE m::vec3< T > centroid() const noexcept
     {
+      using m::approx_equals;
+
       // Quick'n dirty approximation for the centroid
       // For each k/2 slab, find hyperplane equidistant to the extents of the slab.
       // For every combination of three planes, find the intersection. Take the average
@@ -398,7 +400,9 @@ namespace bvh
 
             const auto det = dot( n1, n2xn3 );
             // Planes don't intersect
-            if ( det == 0.0 )
+            // Note there are some numerical issues here, we are using approx_equals
+            // To see whether det is within the epsilon, but this might cause further problems
+            if ( approx_equals( det, 0.0 ) )
               continue;
 
             const auto isect = ( center_planes[i] * n2xn3 + center_planes[j] * n3xn1 + center_planes[l] * n1xn2 ) / det;
