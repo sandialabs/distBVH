@@ -119,17 +119,15 @@ namespace bvh
     void step( view< T * > _hashes, view< IndexType * > _indices, std::uint32_t _shift )
     {
       const auto n = _hashes.extent( 0 );
-      Kokkos::parallel_for( n, [this, _hashes, _shift] KOKKOS_FUNCTION ( int i ){
+      auto range_policy = Kokkos::RangePolicy<>( 0, n );
+      Kokkos::parallel_for( range_policy, [this, _hashes, _shift] KOKKOS_FUNCTION ( int i ){
         auto h = _hashes( i ) >> _shift;
         m_bits( i ) = ~h & 0x1;
         m_scan( i ) = m_bits( i );
       } );
 
-      Kokkos::fence();
-
       prefix_sum( m_scan );
-      Kokkos::fence();
-      Kokkos::parallel_for( n, [this, _hashes, _indices, n] KOKKOS_FUNCTION ( int i ){
+      Kokkos::parallel_for( range_policy, [this, _hashes, _indices, n] KOKKOS_FUNCTION ( int i ){
         const auto total = m_scan( n - 1 ) + m_bits( n - 1 );
 
         auto t = i - m_scan( i ) + total;
@@ -137,7 +135,6 @@ namespace bvh
         m_index_scratch( new_idx ) = _indices( i );
         m_scratch( new_idx ) = _hashes( i );
       } );
-      Kokkos::fence();
     }
 
     view< T * > m_scratch;
