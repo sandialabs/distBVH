@@ -161,8 +161,9 @@ TEST_CASE("morton hashing", "[hash]")
 
 TEST_CASE("quantization", "[hash]")
 {
-  bvh::m::vec3d min{ -1.0, 0.0, 3.0 };
-  bvh::m::vec3d max{ -0.5, 2.0, 4.0 };
+  const bvh::m::vec3d min{ -1.0, 0.0, 3.0 };
+  const bvh::m::vec3d max{ -0.5, 2.0, 4.0 };
+  const auto inv_diag = 1.0 / ( max - min );
 
   SECTION("32 bit")
   {
@@ -170,8 +171,8 @@ TEST_CASE("quantization", "[hash]")
     SECTION("bounds")
     {
       auto almost_max = max - bvh::m::vec3d::set1( 0.00001 );
-      REQUIRE( bvh::quantize32( min, min, max ) == vec_type{ 0, 0, 0 } );
-      REQUIRE( bvh::quantize32( almost_max, min, max ) == vec_type{ 0x3ff, 0x3ff, 0x3ff } );
+      REQUIRE( bvh::quantize32( min, min, inv_diag ) == vec_type{ 0, 0, 0 } );
+      REQUIRE( bvh::quantize32( almost_max, min, inv_diag ) == vec_type{ 0x3ff, 0x3ff, 0x3ff } );
     }
   }
 }

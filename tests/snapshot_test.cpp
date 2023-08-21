@@ -30,8 +30,9 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
 
   SECTION("morton hashing")
   {
-    auto offset = bvh::m::vec3d{ 12.5, 12.5, 12.5 };
-    auto kdops = generate_kdop_grid( 8, bound_min + offset, bound_max + offset, 12.5 );
+    const auto half_cell = ( bound_max - bound_min ) / 2048.0; // 10 bit max value divided by 2
+    const auto radius = std::min( std::min( half_cell[0], half_cell[1] ), half_cell[2] );
+    auto kdops = generate_kdop_grid( 8, bound_min + half_cell, bound_max + half_cell, radius );
     auto snapshots = snapshots_from_kdops( kdops );
 
     bvh::single_view< bvh::min_inv_diag_bounds > bounds( "min_bound" );

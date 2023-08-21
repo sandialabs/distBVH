@@ -155,10 +155,10 @@ namespace bvh
 
   template< typename T >
   m::vec3< std::uint32_t >
-  quantize32( const m::vec3< T > &_p, const m::vec3< T > &_min, const m::vec3< T > &_max )
+  quantize32( const m::vec3< T > &_p, const m::vec3< T > &_min, const m::vec3< T > &_inv_diagonal )
   {
     // Normalize
-    auto norm = ( _p - _min ) / ( _max - _min );
+    auto norm = ( _p - _min ) * _inv_diagonal;
 
     // Assume normalized components are in [0, 1), which is a precondition anyway
     return quantize32( norm );
