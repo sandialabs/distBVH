@@ -6,6 +6,7 @@
 #include "../util/kokkos.hpp"
 #include "../util/sort.hpp"
 #include "../snapshot.hpp"
+#include "../contact_entity.hpp"
 #include "split.hpp"
 
 namespace bvh
@@ -32,7 +33,7 @@ namespace bvh
     using morton_type = std::uint32_t;
 
     std::size_t m_size = 0;
-    single_view< bvh::bphase_kdop > m_bounds;
+    single_view< min_inv_diag_bounds > m_min_inv_diag_bounds;
     view< morton_type * > m_hashes;
     radix_sorter< morton_type, index_type > m_sorter;
     single_view< std::size_t > m_count;
@@ -47,7 +48,7 @@ namespace bvh
 
   inline morton_cluster::morton_cluster( std::size_t _n )
     : m_size( _n ),
-      m_bounds( "morton_cluster_bounds" ),
+      m_min_inv_diag_bounds( "morton_cluster_bounds" ),
       m_hashes( "morton_hashes", _n ),
       m_sorter( _n ),
       m_count( "morton_cluster_split_count" ),
@@ -105,8 +106,8 @@ namespace bvh
     // 2. Sort the indices according to spatial hash
     // 3. Compute split points from d-bit change
 
-    compute_bounds( _elements, m_bounds );
-    morton( _elements, m_bounds, m_hashes );
+    compute_bounds( _elements, m_min_inv_diag_bounds );
+    morton( _elements, m_min_inv_diag_bounds, m_hashes );
 
     m_sorter( m_hashes, _indices );
 

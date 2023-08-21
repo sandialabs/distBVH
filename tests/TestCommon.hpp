@@ -419,10 +419,13 @@ snapshots_from_kdops( bvh::view< const bvh::bphase_kdop * > _kdops )
   return ret;
 }
 
+static_assert( std::is_same_v< bvh::m::epsilon_type_of_t< bvh::m::vec3d >, double > );
+static_assert( std::is_same_v< bvh::m::epsilon_type_of_t< double >, double > );
+
 template< typename T >
 struct approx
 {
-  explicit approx( const T &_val, bvh::m::epsilon_type_of_t< T > _eps = bvh::m::epsilon_value< bvh::m::epsilon_type_of_t< T > > )
+  explicit approx( const T &_val, bvh::m::epsilon_type_of_t< std::remove_cv_t< std::remove_reference_t< T > > > _eps = bvh::m::epsilon_value< bvh::m::epsilon_type_of_t< T > > )
     : val( _val ), eps( _eps )
   {}
 

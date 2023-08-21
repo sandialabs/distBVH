@@ -1,4 +1,5 @@
 #include "TestCommon.hpp"
+#include <bvh/contact_entity.hpp>
 #include <bvh/types.hpp>
 #include <bvh/snapshot.hpp>
 
@@ -31,8 +32,6 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
   {
     auto kdops = generate_kdop_grid( 8, bound_min, bound_max, 0.0 );
     auto snapshots = snapshots_from_kdops( kdops );
-    bvh::single_host_view< bvh::bphase_kdop > hbounds( "host_bounds" );
-    bvh::single_view< bvh::bphase_kdop > bounds( "bounds" );
     bvh::dynarray< bvh::m::vec3d > box{
       { -100.0, -100.0, -100.0 },
       {  100.0, -100.0, -100.0 },
@@ -44,15 +43,10 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
       {  100.0,  100.0,  100.0 }
     };
 
-    // The number of axes doesn't really matter here since we are obtaining the cardinal
-    // directions in our bounds
-    bvh::bphase_kdop ref_bounds;
-    ref_bounds.extents[0] = { -100.0, 100.0 };
-    ref_bounds.extents[1] = { -100.0, 100.0 };
-    ref_bounds.extents[2] = { -100.0, 100.0 };
-
-    hbounds() = ref_bounds;
-    Kokkos::deep_copy( bounds, hbounds );
+    bvh::single_view< bvh::min_inv_diag_bounds > bounds( "min_bound" );
+    Kokkos::deep_copy( bounds, bvh::min_inv_diag_bounds{
+      bvh::m::vec3d{ -100.0, -100.0, -100.0 },
+      bvh::m::vec3d{ 0.005, 0.005, 0.005 } } );
 
     bvh::view< bvh::morton32_t * > hashes( "hashes", snapshots.extent( 0 ) );
     bvh::morton( snapshots, bounds, hashes );
