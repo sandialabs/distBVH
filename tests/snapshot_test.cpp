@@ -30,18 +30,9 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
 
   SECTION("morton hashing")
   {
-    auto kdops = generate_kdop_grid( 8, bound_min, bound_max, 0.0 );
+    auto offset = bvh::m::vec3d{ 12.5, 12.5, 12.5 };
+    auto kdops = generate_kdop_grid( 8, bound_min + offset, bound_max + offset, 12.5 );
     auto snapshots = snapshots_from_kdops( kdops );
-    bvh::dynarray< bvh::m::vec3d > box{
-      { -100.0, -100.0, -100.0 },
-      {  100.0, -100.0, -100.0 },
-      { -100.0,  100.0, -100.0 },
-      {  100.0,  100.0, -100.0 },
-      { -100.0, -100.0,  100.0 },
-      {  100.0, -100.0,  100.0 },
-      { -100.0,  100.0,  100.0 },
-      {  100.0,  100.0,  100.0 }
-    };
 
     bvh::single_view< bvh::min_inv_diag_bounds > bounds( "min_bound" );
     Kokkos::deep_copy( bounds, bvh::min_inv_diag_bounds{

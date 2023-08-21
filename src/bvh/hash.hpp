@@ -226,24 +226,6 @@ namespace bvh
   {
     return detail::quantize_impl< B >::quantize( _p, _min, _inv_diagonal );
   }
-
-
-#ifdef BVH_ENABLE_KOKKOS
-  template< typename T >
-  void morton( const view< T *[3] > _points, const m::vec3< T > &_min, const m::vec3< T > &_max,
-    view< std::uint32_t * > _codes )
-  {
-    Kokkos::parallel_for( _points.extent( 0 ), [_points, _min, _max, _codes] KOKKOS_FUNCTION ( int i ){
-      auto p = m::vec3< T >( _points( i, 0 ), _points( i, 1 ), _points( i, 2 ) );
-      auto norm = ( p - _min ) / ( _max - _min );
-      auto clamped = m::clamp( norm * T{ 1024 }, m::vec3< T >{ T{ 0 } }, m::vec3< T >{ T{ 1023 } } );
-
-      _codes( i ) = ::bvh::morton( static_cast< std::uint32_t >( clamped.x() ),
-        static_cast< std::uint32_t >( clamped.y() ),
-        static_cast< std::uint32_t >( clamped.z() ) );
-    } );
-  }
-#endif
 }
 
 #endif  // INC_BVH_HASH_HPP
