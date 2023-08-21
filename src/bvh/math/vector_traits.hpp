@@ -96,8 +96,20 @@ namespace bvh
     using common_component_t
       = std::common_type_t< typename vector_traits< U >::component_type, typename vector_traits< V >::component_type >;
 
+    template< typename T, typename Enabled = void >
+    struct epsilon_type_of
+    {
+      using type = T;
+    };
+
     template< typename T >
-    using epsilon_type_of_t = std::conditional_t< is_vector_type< T >::value, typename vector_traits< T >::component_type, T >;
+    struct epsilon_type_of< T, std::enable_if_t< is_vector_type< T >::value > >
+    {
+      using type = typename vector_traits< T >::component_type;
+    };
+
+    template< typename T >
+    using epsilon_type_of_t = typename epsilon_type_of< T >::type;
 
     namespace detail
     {

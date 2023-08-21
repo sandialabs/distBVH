@@ -1,4 +1,5 @@
 #include "TestCommon.hpp"
+#include <bvh/types.hpp>
 #include <bvh/snapshot.hpp>
 
 TEST_CASE("snapshot", "[snapshot][kokkos]")
@@ -42,7 +43,22 @@ TEST_CASE("snapshot", "[snapshot][kokkos]")
       { -100.0,  100.0,  100.0 },
       {  100.0,  100.0,  100.0 }
     };
+
+    // The number of axes doesn't really matter here since we are obtaining the cardinal
+    // directions in our bounds
+    bvh::bphase_kdop ref_bounds;
+    ref_bounds.extents[0] = { -100.0, 100.0 };
+    ref_bounds.extents[1] = { -100.0, 100.0 };
+    ref_bounds.extents[2] = { -100.0, 100.0 };
+
     hbounds() = bvh::bphase_kdop::from_vertices( box.begin(), box.end() );
+    static_assert( !bvh::m::is_vector_type< double >::value );
+    REQUIRE( hbounds().extents[0].min == approx( ref_bounds.extents[0].min ) );
+    REQUIRE( hbounds().extents[0].max == approx( ref_bounds.extents[0].max ) );
+    REQUIRE( hbounds().extents[1].min == approx( ref_bounds.extents[1].min ) );
+    REQUIRE( hbounds().extents[1].max == approx( ref_bounds.extents[1].max ) );
+    REQUIRE( hbounds().extents[2].min == approx( ref_bounds.extents[2].min ) );
+    REQUIRE( hbounds().extents[2].max == approx( ref_bounds.extents[2].max ) );
     Kokkos::deep_copy( bounds, hbounds );
 
     bvh::view< bvh::morton32_t * > hashes( "hashes", snapshots.extent( 0 ) );
