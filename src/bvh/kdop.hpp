@@ -101,10 +101,10 @@ namespace bvh
       return !( _lhs == _rhs );
     }
 
-    friend BVH_INLINE bool approx_equals( const extent &_lhs, const extent &_rhs )
+    friend BVH_INLINE bool approx_equals( const extent &_lhs, const extent &_rhs, T _eps = {} )
     {
       using namespace m;
-      return ( approx_equals( _lhs.min, _rhs.min ) && ( approx_equals( _lhs.max, _rhs.max ) ) );
+      return ( approx_equals( _lhs.min, _rhs.min, _eps ) && ( approx_equals( _lhs.max, _rhs.max, _eps ) ) );
     }
   };
 
@@ -511,11 +511,11 @@ namespace bvh
       return !( _lhs == _rhs );
     }
 
-    friend BVH_INLINE bool approx_equals( const kdop_base &_lhs, const kdop_base &_rhs )
+    friend BVH_INLINE bool approx_equals( const kdop_base &_lhs, const kdop_base &_rhs, kdop_base::arithmetic_type _eps = {} )
     {
       for ( int i = 0; i < K / 2; ++i )
       {
-        if ( !approx_equals( _lhs.extents[i], _rhs.extents[i] ) )
+        if ( !approx_equals( _lhs.extents[i], _rhs.extents[i], _eps ) )
           return false;
       }
 
@@ -706,6 +706,12 @@ namespace bvh
   struct is_kdop_type< KDop, std::enable_if_t< std::is_base_of< kdop_base< typename KDop::arithmetic_type, KDop::k, KDop >, KDop >::value > >
       : std::true_type
   {};
+
+  template< typename KDop >
+  struct m::epsilon_type_of< KDop, std::enable_if_t< is_kdop_type< KDop >::value > >
+  {
+    using type = typename KDop::arithmetic_type;
+  };
 }
 
 #endif  // INC_BVH_KDOP_HPP

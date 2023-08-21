@@ -374,9 +374,7 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 0, &m_permutations);
     //
-    REQUIRE( m_permutations.splits.size() == 2 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N );
+    REQUIRE( m_permutations.splits.size() == 0 );
   }
 
   SECTION( "recursive split depth 1" )
@@ -386,10 +384,8 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 1, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 3 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N/2 );
-    REQUIRE( m_permutations.splits[2] == N );
+    REQUIRE( m_permutations.splits.size() == 1 );
+    REQUIRE( m_permutations.splits[0] == N/2 );
     //
   }
 
@@ -401,15 +397,15 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 2, &m_permutations);
     //
-    REQUIRE( m_permutations.splits.size() == 5 );
+    REQUIRE( m_permutations.splits.size() == 3 );
     //
-    REQUIRE( m_permutations.splits[2] - m_permutations.splits[0] == 6);
-    REQUIRE( m_permutations.splits[4] - m_permutations.splits[2] == 6);
+    REQUIRE( m_permutations.splits[1] - 0 == 6);
+    REQUIRE( N - m_permutations.splits[1] == 6);
     //
+    REQUIRE( m_permutations.splits[0] - 0 >= 2 );
     REQUIRE( m_permutations.splits[1] - m_permutations.splits[0] >= 2 );
     REQUIRE( m_permutations.splits[2] - m_permutations.splits[1] >= 2 );
-    REQUIRE( m_permutations.splits[3] - m_permutations.splits[2] >= 2 );
-    REQUIRE( m_permutations.splits[4] - m_permutations.splits[3] >= 2 );
+    REQUIRE( N - m_permutations.splits[2] >= 2 );
     //
   }
 
@@ -420,7 +416,7 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 3, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 9 );
+    REQUIRE( m_permutations.splits.size() == 7 );
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i+1] );
       REQUIRE( ( m_permutations.splits[i+1] - m_permutations.splits[i] ) <= 4 );
@@ -435,7 +431,7 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 4, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 17 );
+    REQUIRE( m_permutations.splits.size() == 15 );
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i + 1] );
       REQUIRE( ( m_permutations.splits[i+1] - m_permutations.splits[i] ) <= 2 );
