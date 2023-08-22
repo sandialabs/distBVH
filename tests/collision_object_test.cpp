@@ -111,7 +111,7 @@ TEST_CASE( "collision_object init", "[vt]")
     } );
 
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
 
@@ -119,16 +119,17 @@ TEST_CASE( "collision_object init", "[vt]")
   SECTION( "set_data" )
   {
     ::vt::runInEpochCollective(
-      "set_data_split", [&]() {
-        vt::runInEpochCollective( "set_data_split.init", [&]() {
+      "set_data", [&]() {
+        vt::runInEpochCollective( "set_data.init", [&]() {
           obj.set_entity_data( elements, split_method );
           obj.init_broadphase();
 
           obj.for_each_tree( test_trees{ od_factor } );
         } );
 
-        vt::runInEpochCollective( "set_data_split.init.check", [&]() {
+        vt::runInEpochCollective( "set_data.init.check", [&]() {
           auto local_patches = obj.local_patches();
+          REQUIRE( local_patches.size() == od_factor );
           std::size_t total_num_elements
             = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
                                      []( const auto &_patch ) { return _patch.size(); } );
@@ -143,21 +144,21 @@ TEST_CASE( "collision_object init", "[vt]")
             k.union_with( p.kdop() );
           }
 
-          REQUIRE( approx_equals( k, bounds ) );
+          REQUIRE( k == approx( bounds, 0.00001 ) );
 
           auto r = ::vt::theCollective()->global();
           r->reduce< verify_num_elements, ::vt::collective::PlusOp >( ::vt::Node{0}, total_num_elements );
         } );
 
         // Data should be updateable
-        vt::runInEpochCollective( "set_data_split.update", [&]() {
+        vt::runInEpochCollective( "set_data.update", [&]() {
           obj.set_entity_data( update_elements, split_method );
           obj.init_broadphase();
 
           obj.for_each_tree( test_sing_trees{ od_factor } );
         } );
 
-        vt::runInEpochCollective( "set_data_split.update.check", [&]() {
+        vt::runInEpochCollective( "set_data.update.check", [&]() {
           auto local_patches = obj.local_patches();
           std::size_t total_num_elements
             = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
@@ -173,7 +174,7 @@ TEST_CASE( "collision_object init", "[vt]")
             k.union_with( p.kdop() );
           }
 
-          REQUIRE( approx_equals( k, update_bounds ) );
+          REQUIRE( k == approx( update_bounds, 0.00001 ) );
 
           auto r = ::vt::theCollective()->global();
           r->reduce< verify_num_elements, ::vt::collective::PlusOp >( ::vt::Node{0}, total_num_elements );
@@ -187,7 +188,7 @@ TEST_CASE( "collision_object init", "[vt]")
 TEST_CASE( "collision_object broadphase", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -214,7 +215,7 @@ TEST_CASE( "collision_object broadphase", "[vt]")
 TEST_CASE( "collision_object multiple broadphase", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -310,7 +311,7 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
 TEST_CASE( "collision_object narrowphase", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -380,7 +381,7 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -487,7 +488,7 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -574,12 +575,15 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 
 TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
 {
-  bvh::collision_world world( 16 );
+  std::size_t od_factor = GENERATE(1, 2, 4, 8, 16, 32, 64, 128, 256);
+  CAPTURE(od_factor);
+
+  bvh::collision_world world( od_factor );
 
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
-  auto elements = build_element_grid( 64, 64, 64, rank );
+  auto elements = build_element_grid( 256, 64, 64, rank );
 
   SECTION( "geom_axis" )
   {

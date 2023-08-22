@@ -33,6 +33,7 @@
 #ifndef INC_TEST_COMMON_HPP
 #define INC_TEST_COMMON_HPP
 
+#include <bvh/types.hpp>
 #include <catch2/catch.hpp>
 
 #include <array>
