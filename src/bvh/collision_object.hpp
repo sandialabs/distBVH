@@ -65,14 +65,14 @@ namespace bvh
 
     ~collision_object();
 
-    template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data( view< T * > _data_view, split_algorithm _algorithm )
+    template< typename T, typename... ViewProp, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
+    void set_entity_data( Kokkos::View< T *, ViewProp... > _data_view, split_algorithm _algorithm )
     {
       set_entity_data( view< const T * >( std::move( _data_view ) ), _algorithm );
     }
 
-    template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data( view< const T * > _data, split_algorithm _algorithm )
+    template< typename T, typename... ViewProp, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
+    void set_entity_data( Kokkos::View< const T *, ViewProp... > _data, split_algorithm _algorithm )
     {
       switch ( _algorithm )
       {
@@ -85,9 +85,9 @@ namespace bvh
     /// \brief Set up data for the broadphase (including the tree)
     void init_broadphase() const;
 
-    template< typename T >
+    template< typename T, typename... ViewProp >
     void
-    set_entity_data_clustering( view< const T * > _data_view )
+    set_entity_data_clustering( Kokkos::View< const T *, ViewProp... > _data_view )
     {
       const auto n = _data_view.extent( 0 );
 
@@ -123,8 +123,8 @@ namespace bvh
       set_entity_data_impl( _data_view.data(), sizeof( T ) );
     }
 
-    template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data_ml_geom_axis( view< const T * > _data )
+    template< typename T, typename... ViewProp >
+    void set_entity_data_ml_geom_axis( Kokkos::View< const T *, ViewProp... > _data )
     {
       // Split data by overdecomposition factor
       const auto od_factor = this->overdecomposition_factor();
@@ -143,8 +143,8 @@ namespace bvh
       }
     }
 
-    template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data_geom_axis( view< const T * > _data )
+    template< typename T, typename... ViewProp >
+    void set_entity_data_geom_axis( Kokkos::View< const T *, ViewProp... > _data )
     {
       // Split data by overdecomposition factor
       const auto od_factor = this->overdecomposition_factor();
@@ -185,8 +185,8 @@ namespace bvh
 
     friend class collision_world;
 
-    template< typename T, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
-    void set_entity_data_with_permutations( view< const T * > _data, const element_permutations &_splits, ::vt::trace::TraceScopedEvent &&_trace )
+    template< typename T, typename...ViewProp >
+    void set_entity_data_with_permutations( Kokkos::View< const T *, ViewProp... > _data, const element_permutations &_splits, ::vt::trace::TraceScopedEvent &&_trace )
     {
       always_assert( _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
 
@@ -219,9 +219,9 @@ namespace bvh
 
   private:
 
-    template< typename T >
+    template< typename T, typename... ViewProp >
     void
-    update_snapshots( view< const T * > _data_view )
+    update_snapshots( Kokkos::View< const T *, ViewProp... > _data_view )
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
@@ -233,9 +233,9 @@ namespace bvh
         } );
     }
 
-    template< typename T >
+    template< typename T, typename... ViewProp >
     void
-    update_snapshots_without_permuting( view< const T * > _data_view )
+    update_snapshots_without_permuting( Kokkos::View< const T *, ViewProp... > _data_view )
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();

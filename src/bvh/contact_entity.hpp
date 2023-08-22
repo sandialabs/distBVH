@@ -4,6 +4,7 @@
 #include "util/kokkos.hpp"
 #include "types.hpp"
 #include "hash.hpp"
+#include "traits.hpp"
 #include <limits>
 
 namespace bvh
@@ -57,6 +58,7 @@ namespace bvh
     {
       using value_type = min_inv_diag_bounds;
       using size_type = typename view< const Entity * >::size_type;
+      using traits_type = element_traits< Entity >;
 
       explicit min_diag_bounds_union( const view< const Entity * > &_v )
         : entities( _v )
@@ -66,8 +68,8 @@ namespace bvh
       void
       operator()( size_type _i, min_inv_diag_bounds &_update ) const noexcept
       {
-        const auto &cmin = entities( _i ).kdop().cardinal_min();
-        const auto &cmax = entities( _i ).kdop().cardinal_max();
+        const auto &cmin = traits_type::get_kdop( entities( _i ) ).cardinal_min();
+        const auto &cmax = traits_type::get_kdop( entities( _i ) ).cardinal_max();
         for ( int i = 0; i < 3; ++i )
         {
           _update.min[i] = Kokkos::min( _update.min[i], cmin[i] );
@@ -105,8 +107,9 @@ namespace bvh
                  single_view< min_inv_diag_bounds > _bounds,
                  view< T * > _out_codes )
     {
+      using traits_type = element_traits< Entity >;
       Kokkos::parallel_for( _elements.extent( 0 ), KOKKOS_LAMBDA( int _i ){
-          const auto p = _elements( _i ).centroid();
+          const auto p = traits_type::get_centroid( _elements( _i ) );
           m::vec3< T > discretized = quantize< T >( p, _bounds().min, _bounds().inv_diag );
 
           _out_codes( _i ) = morton( discretized.x(), discretized.y(), discretized.z() );
