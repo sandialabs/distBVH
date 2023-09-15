@@ -1,0 +1,24 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Optional VTK dependency if bvh was built with it
+if (@VTK_FOUND@)
+  find_dependency(VTK REQUIRED HINTS @VTK_DIR@)
+endif()
+
+# VT optional dependency
+if (@vt_FOUND@)
+  find_dependency(vt REQUIRED HINTS @vt_DIR@)
+endif()
+
+# Kokkos optional dependency
+if (@Kokkos_FOUND@)
+    find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
+endif()
+
+if (@perf_FOUND@)
+  find_dependency(perf REQUIRED HINTS @perf_DIR@)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/bvhTargets.cmake")

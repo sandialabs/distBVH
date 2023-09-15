@@ -1,0 +1,22 @@
+.idea/
+*-build-*/
+build-*/
+build/
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+.venv/
+venv/
+*/__pycache__/*
+
+.vscode/*
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+CMakeUserPresets.json
+
+*.user

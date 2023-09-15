@@ -1,0 +1,12 @@
+For basic installation, make sure you have at least CMake 3.15 and a recent version of DARMA/vt.
+
+cd bvh
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/install/prefix \
+      -DCMAKE_BUILD_TYPE=Release \
+      -Dvt_DIR=/path/to/vt/install/cmake \
+      -DVTK_DIR=/path/to/vtk/8.2.0/lib/cmake/vtk-8.2 \
+      -DBVH_DEBUG_LEVEL=5 \
+      ..
+make -j8 install
