@@ -89,38 +89,43 @@ namespace bvh
     void
     set_entity_data_clustering( Kokkos::View< const T *, ViewProp... > _data_view )
     {
-      const auto n = _data_view.extent( 0 );
-
-      const auto od_factor = this->overdecomposition_factor();
-      const auto num_splits = od_factor - 1;
-
-      if ( n != m_clusterer.size() )
       {
-        m_clusterer = morton_cluster( n );
-        Kokkos::resize( get_split_indices(), n );
-        Kokkos::resize( get_split_indices_h(), n );
+        ::vt::trace::TraceScopedEvent scope( this->bvh_clustering_ );
+        const auto n = _data_view.extent( 0 );
+
+        const auto od_factor = this->overdecomposition_factor();
+        const auto num_splits = od_factor - 1;
+
+        if ( n != m_clusterer.size() )
+        {
+          m_clusterer = morton_cluster( n );
+          Kokkos::resize( get_split_indices(), n );
+          Kokkos::resize( get_split_indices_h(), n );
+        }
+
+        Kokkos::resize( get_splits(), num_splits );
+        Kokkos::resize( get_splits_h(), num_splits );
+
+        // Initialize our indices
+        Kokkos::parallel_for(
+          n, KOKKOS_LAMBDA( int _i ) { get_split_indices()( _i ) = _i; } );
+
+        m_clusterer( _data_view, get_split_indices(), get_splits() );
+
+        Kokkos::deep_copy( get_splits_h(), get_splits() );
+        Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
+
+        // Now split_indices/_h is reordered according to the morton encoding
+        // It provides a mapping from original indices to the new reordered elements that
+        // are clustered by locality
+
+        update_snapshots( _data_view );
       }
-
-      Kokkos::resize( get_splits(), num_splits );
-      Kokkos::resize( get_splits_h(), num_splits );
-
-      // Initialize our indices
-      Kokkos::parallel_for(
-        n, KOKKOS_LAMBDA( int _i ) { get_split_indices()( _i ) = _i; } );
-
-      m_clusterer( _data_view, get_split_indices(), get_splits() );
-
-      Kokkos::deep_copy( get_splits_h(), get_splits() );
-      Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
-
-      // Now split_indices/_h is reordered according to the morton encoding
-      // It provides a mapping from original indices to the new reordered elements that
-      // are clustered by locality
-
-      update_snapshots( _data_view );
-
       // This assumes _data_view is on host for now... at the moment we can't do much better
-      set_entity_data_impl( _data_view.data(), sizeof( T ) );
+      {
+        ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
+        set_entity_data_impl( _data_view.data(), sizeof( T ) );
+      }
     }
 
     template< typename T, typename... ViewProp >
@@ -265,6 +270,7 @@ namespace bvh
     ::vt::trace::UserEventIDType bvh_splitting_geom_axis_ = ::vt::trace::no_user_event_id;
     ::vt::trace::UserEventIDType bvh_splitting_ml_ = ::vt::trace::no_user_event_id;
     ::vt::trace::UserEventIDType bvh_set_entity_data_impl_ = ::vt::trace::no_user_event_id;
+    ::vt::trace::UserEventIDType bvh_clustering_ = ::vt::trace::no_user_event_id;
     ::vt::trace::UserEventIDType bvh_build_trees_ = ::vt::trace::no_user_event_id;
 
     morton_cluster m_clusterer;

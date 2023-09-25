@@ -77,6 +77,7 @@ namespace bvh
     bvh_splitting_geom_axis_ = ::vt::theTrace()->registerUserEventColl("bvh_splitting_geom_axis_");
     bvh_splitting_ml_ = ::vt::theTrace()->registerUserEventColl("bvh_splitting_ml_");
     bvh_set_entity_data_impl_ = ::vt::theTrace()->registerUserEventColl("bvh_set_entity_data_impl_");
+    bvh_clustering_ = ::vt::theTrace()->registerUserEventColl("bvh_clustering_");
     bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl("bvh_build_trees_");
 
     m_impl->overdecomposition = static_cast< int >( _overdecomposition );
