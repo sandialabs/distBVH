@@ -36,6 +36,7 @@
 #include <cstddef>
 #include <memory>
 #include <functional>
+#include <optional>
 
 #include "snapshot.hpp"
 #include "split/split.hpp"
@@ -96,7 +97,7 @@ namespace bvh
         const auto od_factor = this->overdecomposition_factor();
         const auto num_splits = od_factor - 1;
 
-        if ( n != m_clusterer.size() )
+        if ( !m_clusterer || ( n != m_clusterer->size() ) )
         {
           m_clusterer = morton_cluster( n );
           Kokkos::resize( get_split_indices(), n );
@@ -110,7 +111,7 @@ namespace bvh
         Kokkos::parallel_for(
           n, KOKKOS_LAMBDA( int _i ) { get_split_indices()( _i ) = _i; } );
 
-        m_clusterer( _data_view, get_split_indices(), get_splits() );
+        ( *m_clusterer )( _data_view, get_split_indices(), get_splits() );
 
         Kokkos::deep_copy( get_splits_h(), get_splits() );
         Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
@@ -273,7 +274,7 @@ namespace bvh
     ::vt::trace::UserEventIDType bvh_clustering_ = ::vt::trace::no_user_event_id;
     ::vt::trace::UserEventIDType bvh_build_trees_ = ::vt::trace::no_user_event_id;
 
-    morton_cluster m_clusterer;
+    std::optional< morton_cluster > m_clusterer; // lazily initialized
   };
 }
 

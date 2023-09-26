@@ -107,7 +107,6 @@ namespace bvh
     // 2. Sort the indices according to spatial hash
     // 3. Compute split points from d-bit change
 
-    ::bvh::vt::debug( "cluster bounds: {}, {}\n", m_min_inv_diag_bounds().inv_diag, m_min_inv_diag_bounds().min );
     compute_bounds( _elements, m_min_inv_diag_bounds );
     morton( _elements, m_min_inv_diag_bounds, m_hashes );
 
