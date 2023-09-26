@@ -99,6 +99,23 @@ namespace bvh
     assert( m_hashes.extent( 0 ) == _indices.extent( 0 ) );
 
     const auto cluster_count = _splits.extent( 0 );
+    const auto n = m_hashes.extent( 0 );
+
+    if ( n == 0 )
+    {
+      Kokkos::deep_copy( _splits, 0 );
+      return;
+    }
+
+    const auto max_idx = n - 1;
+
+    // We may have requested more clusters than are available.
+    // In that case, we fill the clusters with the max index
+    // Our algorithm can produce at most n - 1 clusters
+    if ( cluster_count > max_idx )
+    {
+      Kokkos::deep_copy( _splits, max_idx );
+    }
 
     // Reinitialize count; we don't need to reset our buffers since they get overwritten
     Kokkos::deep_copy( m_count, 0 );
@@ -122,18 +139,6 @@ namespace bvh
     // hashes only have one bit. This static_assert is here to trigger
     // a compiler error if the assumption changes
     static_assert( sizeof( morton_type ) == 4 );
-
-    const auto n = m_hashes.extent( 0 );
-    const auto max_idx = n - 1;
-
-    // We may have requested more clusters than are available.
-    // In that case, we fill the clusters with the max index
-    // Our algorithm can produce at most n - 1 clusters
-    if ( cluster_count > max_idx )
-    {
-      Kokkos::deep_copy(_splits, max_idx );
-    }
-
 
     // Exclude the last index from the range since there is not going
     // to be a split in the tree after it...
