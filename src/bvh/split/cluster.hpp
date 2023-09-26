@@ -53,12 +53,12 @@ namespace bvh
       m_sorter( _n ),
       m_count( "morton_cluster_split_count" ),
       m_host_count( "morton_cluster_split_count_host" ),
-      m_depths_indices( "morton_cluster_split_indices", _n - 1 ),
-      m_depths( "morton_cluster_depths", _n - 1 ),
-      m_reindex( "morton_cluster_reindex", _n - 1 ),
-      m_initial_splits( "morton_cluster_reindex", _n - 1 ),
+      m_depths_indices( "morton_cluster_split_indices", _n > 0 ? _n - 1 : 0 ),
+      m_depths( "morton_cluster_depths", _n > 0 ? _n - 1 : 0 ),
+      m_reindex( "morton_cluster_reindex", _n > 0 ? _n - 1 : 0 ),
+      m_initial_splits( "morton_cluster_reindex", _n > 0 ? _n - 1 : 0 ),
       m_host_depths( Kokkos::create_mirror_view( m_depths ) ),
-      m_depth_sorter( _n - 1 )
+      m_depth_sorter( _n > 0 ? _n - 1 : 0 )
   {
     assert( _n > 0 );
   }
@@ -70,10 +70,10 @@ namespace bvh
     m_size = _n;
     Kokkos::resize( m_hashes, m_size );
     m_sorter.resize_scratch( m_size );
-    Kokkos::resize( m_depths_indices, m_size - 1 );
-    Kokkos::resize( m_depths, m_size - 1 );
-    Kokkos::resize( m_reindex, m_size - 1 );
-    Kokkos::resize( m_initial_splits, m_size - 1 );
+    Kokkos::resize( m_depths_indices, m_size > 0 ? m_size - 1 : 0 );
+    Kokkos::resize( m_depths, m_size > 0 ? m_size - 1 : 0 );
+    Kokkos::resize( m_reindex, m_size > 0 ? m_size - 1 : 0 );
+    Kokkos::resize( m_initial_splits, m_size > 0 ? m_size - 1 : 0 );
     m_depth_sorter.resize_scratch( m_size );
   }
 
