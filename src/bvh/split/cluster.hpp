@@ -60,12 +60,13 @@ namespace bvh
       m_host_depths( Kokkos::create_mirror_view( m_depths ) ),
       m_depth_sorter( _n - 1 )
   {
-
+    assert( _n > 0 );
   }
 
   inline void
   morton_cluster::resize( std::size_t _n )
   {
+    assert( _n > 0 );
     m_size = _n;
     Kokkos::resize( m_hashes, m_size );
     m_sorter.resize_scratch( m_size );
