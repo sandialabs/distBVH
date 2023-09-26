@@ -37,6 +37,7 @@
 #include <memory>
 #include <functional>
 #include <optional>
+#include <vt/context/context.h>
 
 #include "snapshot.hpp"
 #include "split/split.hpp"
@@ -97,6 +98,7 @@ namespace bvh
         const auto od_factor = this->overdecomposition_factor();
         const auto num_splits = od_factor - 1;
 
+        ::bvh::vt::debug( "{}: clustering {} elements\n", ::vt::theContext()->getNode(), n  );
         if ( !m_clusterer || ( n != m_clusterer->size() ) )
         {
           m_clusterer = morton_cluster( n );
