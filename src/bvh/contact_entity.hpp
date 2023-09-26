@@ -137,6 +137,7 @@ namespace bvh
   void compute_bounds( view< const Entity * > _elements,
                        single_view< min_inv_diag_bounds > _bounds )
   {
+    ::bvh::vt::debug( "bounds before (should be max): inc_diag {}, min {}\n", _bounds().inv_diag, _bounds().min );
     Kokkos::parallel_reduce( "compute_bounds_min_diag", _elements.extent( 0 ),
                              detail::min_diag_bounds_union< Entity >{ _elements },
                              _bounds );
