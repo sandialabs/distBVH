@@ -80,10 +80,16 @@ void verify_num_elements( std::size_t _count )
   REQUIRE( _count == 12 * ::vt::theContext()->getNumNodes() );
 };
 
+void
+verify_empty_elements( std::size_t _count )
+{
+  bvh::vt::debug( "{}: count: {}\n", ::vt::theContext()->getNode(), _count );
+  REQUIRE( _count == 0 );
+};
 
 TEST_CASE( "collision_object init", "[vt]")
 {
-  std::size_t od_factor = GENERATE( 1, 2, 4 );
+  std::size_t od_factor = GENERATE( 1, 2, 4, 32, 64 );
   bvh::collision_world world( od_factor );
 
   auto &obj = world.create_collision_object();
@@ -182,6 +188,51 @@ TEST_CASE( "collision_object init", "[vt]")
 
         obj.end_phase();
       } );
+  }
+
+  bvh::view< Element * > empty_elements( "empty_elements", 0 );
+  // Handle empt elements
+  SECTION( "set_empty_data" )
+  {
+    ::vt::runInEpochCollective( "set_empty_data", [&]() {
+      vt::runInEpochCollective( "set_empty_data.init", [&]() {
+        obj.set_entity_data( empty_elements, split_method );
+        obj.init_broadphase();
+
+        obj.for_each_tree( test_trees{ od_factor } );
+      } );
+
+      vt::runInEpochCollective( "set_data.init.check", [&]() {
+        auto local_patches = obj.local_patches();
+        REQUIRE( local_patches.size() == od_factor );
+        std::size_t total_num_elements
+          = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
+                                   []( const auto &_patch ) { return _patch.size(); } );
+
+        auto r = ::vt::theCollective()->global();
+        r->reduce< verify_empty_elements, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, total_num_elements );
+      } );
+
+      // Data should be updateable
+      vt::runInEpochCollective( "set_data.update", [&]() {
+        obj.set_entity_data( empty_elements, split_method );
+        obj.init_broadphase();
+
+        obj.for_each_tree( test_sing_trees{ od_factor } );
+      } );
+
+      vt::runInEpochCollective( "set_data.update.check", [&]() {
+        auto local_patches = obj.local_patches();
+        std::size_t total_num_elements
+          = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
+                                   []( const auto &_patch ) { return _patch.size(); } );
+
+        auto r = ::vt::theCollective()->global();
+        r->reduce< verify_empty_elements, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, total_num_elements );
+      } );
+
+      obj.end_phase();
+    } );
   }
 }
 

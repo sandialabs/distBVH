@@ -17,7 +17,7 @@ namespace bvh
 
     using index_type = std::size_t;
 
-    morton_cluster() = default;
+    morton_cluster();
     explicit morton_cluster( std::size_t _n );
 
     template< typename Element >
@@ -46,6 +46,10 @@ namespace bvh
     radix_sorter< unsigned, index_type > m_depth_sorter;
   };
 
+  inline morton_cluster::morton_cluster()
+    : morton_cluster( 0 )
+  {}
+
   inline morton_cluster::morton_cluster( std::size_t _n )
     : m_size( _n ),
       m_min_inv_diag_bounds( "morton_cluster_bounds" ),
@@ -60,13 +64,11 @@ namespace bvh
       m_host_depths( Kokkos::create_mirror_view( m_depths ) ),
       m_depth_sorter( _n > 0 ? _n - 1 : 0 )
   {
-    assert( _n > 0 );
   }
 
   inline void
   morton_cluster::resize( std::size_t _n )
   {
-    assert( _n > 0 );
     m_size = _n;
     Kokkos::resize( m_hashes, m_size );
     m_sorter.resize_scratch( m_size );
@@ -74,7 +76,7 @@ namespace bvh
     Kokkos::resize( m_depths, m_size > 0 ? m_size - 1 : 0 );
     Kokkos::resize( m_reindex, m_size > 0 ? m_size - 1 : 0 );
     Kokkos::resize( m_initial_splits, m_size > 0 ? m_size - 1 : 0 );
-    m_depth_sorter.resize_scratch( m_size );
+    m_depth_sorter.resize_scratch( m_size > 0 ? m_size - 1 : 0 );
   }
 
   /**

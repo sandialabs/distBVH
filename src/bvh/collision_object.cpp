@@ -63,7 +63,10 @@ namespace bvh
       // Set data
       _coll->patch_meta = _msg->patch_meta;
       _coll->bytes.resize( _msg->data_size );
-      std::memcpy( _coll->bytes.data(), _msg->user_data(), _msg->data_size );
+
+      // Guard the memcpy because it's UB even if size is zero if the pointers are invalid
+      if ( _msg->data_size > 0 )
+        std::memcpy( _coll->bytes.data(), _msg->user_data(), _msg->data_size );
       _coll->origin_node = _msg->origin_node;
 
       // Reset cache destinations
@@ -128,6 +131,7 @@ namespace bvh
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
       const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
+      ::bvh::vt::debug( "{}: creating broadphase patch size {} from offset {}\n", ::vt::theContext()->getNode(), nelements, sbeg );
       m_impl->local_patches[i] = broadphase_patch_type(
         i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
     }
