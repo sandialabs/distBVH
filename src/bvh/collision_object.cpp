@@ -131,7 +131,7 @@ namespace bvh
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
       const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
-      ::bvh::vt::debug( "{}: creating broadphase patch size {} from offset {}\n", ::vt::theContext()->getNode(), nelements, sbeg );
+      ::bvh::vt::debug( "{}: creating broadphase patch for body {} size {} from offset {}\n", ::vt::theContext()->getNode(), m_impl->collision_idx, nelements, sbeg );
       m_impl->local_patches[i] = broadphase_patch_type(
         i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
     }
@@ -165,6 +165,10 @@ namespace bvh
       msg->patch = m_impl->local_patches.at( _local.x() );
       msg->origin_node = rank;
       msg->local_idx = _local;
+      ::bvh::vt::debug( "{}: sending broadphase patch {} for body {} size {}\n",
+                        ::vt::theContext()->getNode(),
+                        vt_index{ _local.x() + offset }, m_impl->collision_idx,
+                        msg->patch.size() );
       return m_impl->broadphase_patch_collection_proxy[vt_index{ _local.x() + offset }]
       .sendMsg< broadphase_patch_msg, &details::set_broadphase_patches >( msg.get() );
     } );
@@ -175,12 +179,13 @@ namespace bvh
     {
       ::vt::trace::TraceScopedEvent scope(bvh_build_trees_);
       // Tree build needs to be done collectively, everyone needs to finish before the next step
-      m_impl->chainset.nextStepCollective( "build_tree_step", [this, offset]( vt_index _idx ){
+      m_impl->chainset.nextStepCollective( "build_tree_step", [this, offset]( vt_index _idx ) {
+        ::bvh::vt::debug( "{}: building tree reduction for patch {} for body {}\n", ::vt::theContext()->getNode(),
+                          vt_index{ _idx.x() + offset }, m_impl->collision_idx );
         return collision_object_impl::build_trees_top_down( vt_index{ _idx.x() + offset },
             m_impl->objgroup, m_impl->broadphase_patch_collection_proxy );
       } );
     }
-
   }
 
   void
@@ -221,8 +226,11 @@ namespace bvh
     int rank = static_cast< int >( ::vt::theContext()->getNode() );
     std::size_t offset = rank * od_factor;
 
-    m_impl->chainset.nextStepCollective( "start broadphase insertion", [this]( vt_index _local_idx) {
-      if ( _local_idx.x() == 0 ) {
+    m_impl->chainset.nextStepCollective( "start broadphase insertion", [this, &_other]( vt_index _local_idx) {
+      if ( _local_idx.x() == 0 )
+      {
+        ::bvh::vt::debug( "{}: starting broadphase between body {} and {}\n",
+                          ::vt::theContext()->getNode(), m_impl->collision_idx, _other.m_impl->collision_idx );
         auto msg = ::vt::makeMessage< collision_object_impl::messages::modify_msg >();
         return m_impl->objgroup[::vt::theContext()->getNode()].sendMsg< collision_object_impl::messages::modify_msg, &collision_object_impl::collision_object_holder::begin_narrowphase_modification >( msg );
       } else

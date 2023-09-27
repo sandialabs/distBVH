@@ -94,11 +94,14 @@ namespace bvh
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_entity_unit_size;
       const int rank = _rank;
+      debug_assert( m_entity_unit_size > 0, "entity unit size must be > 0" );
 
       auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( chunk_data_size );
       send_msg->data_size = chunk_data_size;
 
       std::size_t offset = 0;
+      ::bvh::vt::debug( "{}: sending narrowphase patch {} for body {} size {}\n", ::vt::theContext()->getNode(),
+                        vt_index{ _local_idx + rank * overdecomposition }, collision_idx, nelements );
       // Should be replaced with VT serialization
       for (std::size_t j = sbeg; j < send; ++j)
       {
