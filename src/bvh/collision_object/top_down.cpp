@@ -55,6 +55,11 @@ namespace bvh
 
         tree_reduction() = default;
 
+        tree_reduction( collision_object_proxy_type _collision_object )
+          : m_collision_object_proxy( _collision_object ),
+            m_snapshots{}
+        {}
+
         tree_reduction( entity_snapshot _initial, collision_object_proxy_type _collision_object )
           : m_collision_object_proxy( _collision_object ),
             m_snapshots{ _initial }
@@ -63,6 +68,7 @@ namespace bvh
         tree_reduction &operator+=( const tree_reduction &_other )
         {
           // The collision object proxies should be the same so no need to reduce those
+          debug_assert( m_collision_object_proxy.getProxy() == _other.m_collision_object_proxy.getProxy(), "collision objects must match" );
           m_snapshots += _other.m_snapshots;
           return *this;
         }
@@ -96,23 +102,28 @@ namespace bvh
 
       void tree_build_reduce( const tree_reduction &_reduc )
       {
-          // Build the tree
-          auto msg = ::vt::makeMessage< broadphase_tree_msg >();
-          msg->tree = build_tree_top_down< tree_type >( _reduc.snapshots() );
+        // Build the tree
+        auto msg = ::vt::makeMessage< broadphase_tree_msg >();
+        msg->tree = build_tree_top_down< tree_type >( _reduc.snapshots() );
 
-          // Broadcast to every element of the collision object objgroup
-          _reduc.collision_object_proxy().broadcastMsg< broadphase_tree_msg, &collision_object_holder::delegate< broadphase_tree_msg, &set_broadphase_trees > >( msg );
+        // Broadcast to every element of the collision object objgroup
+        _reduc.collision_object_proxy().broadcastMsg< broadphase_tree_msg, &collision_object_holder::delegate< broadphase_tree_msg, &set_broadphase_trees > >( msg );
       }
 
       void tree_build_broadcast( broadphase_patch_collection_type *_patch, tree_build_broadcast_msg *_msg )
       {
-        auto snap = make_snapshot( _patch->patch, static_cast< std::size_t >( _patch->getIndex().x() ) );
-
         using ::vt::collective::reduce::makeStamp;
         using ::vt::collective::reduce::StrongUserID;
         auto stamp = makeStamp<StrongUserID>(static_cast<uint64_t>(::vt::thePhase()->getCurrentPhase()));
 
-        _patch->getCollectionProxy().reduce< tree_build_reduce, ::vt::collective::PlusOp >( 0, tree_reduction{ snap, _msg->coll_obj }, stamp );
+        // Don't build a snapshot of an empty patch
+        if ( !_patch->patch.empty() )
+        {
+          auto snap = make_snapshot( _patch->patch, static_cast< std::size_t >( _patch->getIndex().x() ) );
+          _patch->getCollectionProxy().reduce< tree_build_reduce, ::vt::collective::PlusOp >( 0, tree_reduction{ snap, _msg->coll_obj }, stamp );
+        } else {
+          _patch->getCollectionProxy().reduce< tree_build_reduce, ::vt::collective::PlusOp >( 0, tree_reduction{ _msg->coll_obj }, stamp );
+        }
       }
     }
 

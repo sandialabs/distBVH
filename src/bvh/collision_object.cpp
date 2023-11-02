@@ -97,6 +97,8 @@ namespace bvh
 
       vt::debug( "objgroup make_collective {:x}\n", m_impl->objgroup.getProxy() );
     });
+
+    m_impl->local_patches.resize( m_impl->overdecomposition );
   }
 
   collision_object::collision_object( collision_object && ) noexcept = default;
@@ -111,6 +113,8 @@ namespace bvh
     const auto od_factor = m_impl->overdecomposition;
 
     m_impl->num_splits = m_impl->splits.extent( 0 );
+
+    std::swap( m_impl->last_step_local_patches, m_impl->local_patches );
 
     m_impl->local_patches.clear();
     m_impl->local_patches.resize( od_factor );
@@ -161,16 +165,26 @@ namespace bvh
     // Update the data; od_factor should be identical across nodes
     std::size_t offset = rank * od_factor;
     m_impl->chainset.nextStep( "broadphase_patch_step", [this, rank, offset]( vt_index _local ) {
-      auto msg = ::vt::makeMessage< broadphase_patch_msg >();
-      msg->patch = m_impl->local_patches.at( _local.x() );
-      msg->origin_node = rank;
-      msg->local_idx = _local;
-      ::bvh::vt::debug( "{}: sending broadphase patch {} for body {} size {}\n",
-                        ::vt::theContext()->getNode(),
-                        vt_index{ _local.x() + offset }, m_impl->collision_idx,
-                        msg->patch.size() );
-      return m_impl->broadphase_patch_collection_proxy[vt_index{ _local.x() + offset }]
-      .sendMsg< broadphase_patch_msg, &details::set_broadphase_patches >( msg.get() );
+      const auto &local_patch = m_impl->local_patches.at( _local.x() );
+      const auto &last_step_local_patch = m_impl->last_step_local_patches.at( _local.x() );
+
+      // A patch may become empty and we need to update it
+      // But if it was empty last time step and it's empty this time step, don't update
+      // We could also do a more complete diff against the patch
+      if ( !local_patch.empty() || !last_step_local_patch.empty()
+           || ( last_step_local_patch.global_id() == static_cast< broadphase_patch_type::index_type >( -1 ) ) )
+      {
+        auto msg = ::vt::makeMessage< broadphase_patch_msg >();
+        msg->patch = local_patch;
+        msg->origin_node = rank;
+        msg->local_idx = _local;
+        ::bvh::vt::debug( "{}: sending broadphase patch {} for body {} size {}\n", ::vt::theContext()->getNode(),
+                          vt_index{ _local.x() + offset }, m_impl->collision_idx, msg->patch.size() );
+        return m_impl->broadphase_patch_collection_proxy[vt_index{ _local.x() + offset }]
+          .sendMsg< broadphase_patch_msg, &details::set_broadphase_patches >( msg.get() );
+      } else {
+        return pending_send{ nullptr };
+      }
     } );
 
     // Right now use top down algorithm

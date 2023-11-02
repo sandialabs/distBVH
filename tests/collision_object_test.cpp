@@ -64,20 +64,29 @@ struct test_sing_trees
   {
     auto nranks = ::vt::theContext()->getNumNodes();
     REQUIRE( _tree.count() == od_factor * nranks );
-
-    for ( auto &&l : _tree.leafs() )
-    {
-      REQUIRE( l.kdop().centroid() == bvh::m::vec3d::zeros() );
-    }
   }
 
   std::size_t od_factor;
 };
 
+struct test_empty_trees
+{
+  void operator()( const bvh::snapshot_tree &_tree )
+  {
+    auto nranks = ::vt::theContext()->getNumNodes();
+    REQUIRE( _tree.count() == 0 );
+  }
+
+  std::size_t od_factor;
+};
+
+std::size_t test_od_factor = 0;
+
 void verify_num_elements( std::size_t _count )
 {
   bvh::vt::debug("{}: count: {}\n", ::vt::theContext()->getNode(), _count );
-  REQUIRE( _count == 12 * ::vt::theContext()->getNumNodes() );
+  // Cube test_od_factor because each dimension is multiplied...
+  REQUIRE( _count == 12 * ::vt::theContext()->getNumNodes() * test_od_factor * test_od_factor * test_od_factor );
 };
 
 void
@@ -90,12 +99,13 @@ verify_empty_elements( std::size_t _count )
 TEST_CASE( "collision_object init", "[vt]")
 {
   std::size_t od_factor = GENERATE( 1, 2, 4, 32, 64 );
+  test_od_factor = od_factor;
   bvh::collision_world world( od_factor );
 
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
-  auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+  auto elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor );
   const std::array bound_vers{ bvh::m::vec3d{ 0.0, 0.0, 0.0 },
                                bvh::m::vec3d{ 0.0, 0.0, 1.0 },
                                bvh::m::vec3d{ 0.0, 1.0, 0.0 },
@@ -105,16 +115,17 @@ TEST_CASE( "collision_object init", "[vt]")
                                bvh::m::vec3d{ 1.0, 1.0, 0.0 },
                                bvh::m::vec3d{ 1.0, 1.0, 1.0 } };
   const auto bounds = Element::kdop_type::from_vertices( bound_vers.begin(), bound_vers.end() );
-  const std::array update_bounds_vers{ bvh::m::vec3d{ 0.0, 0.0, 0.0 } };
+  const std::array update_bounds_vers{ bvh::m::vec3d{ 10.0, 10.0, 10.0 },
+                                       bvh::m::vec3d{ 10.0, 10.0, 11.0 },
+                                       bvh::m::vec3d{ 10.0, 11.0, 10.0 },
+                                       bvh::m::vec3d{ 10.0, 11.0, 11.0 },
+                                       bvh::m::vec3d{ 11.0, 10.0, 10.0 },
+                                       bvh::m::vec3d{ 11.0, 10.0, 11.0 },
+                                       bvh::m::vec3d{ 11.0, 11.0, 10.0 },
+                                       bvh::m::vec3d{ 11.0, 11.0, 11.0 } };
   const auto update_bounds = Element::kdop_type::from_vertices( update_bounds_vers.begin(), update_bounds_vers.end() );
   bvh::vt::debug( "{}: bounds: {}\n", ::vt::theContext()->getNode(), bounds );
-  auto update_elements = bvh::view< Element * >{ "sing_vec", 12 };
-  Kokkos::parallel_for(
-    12, KOKKOS_LAMBDA( int _i ) {
-      update_elements( _i ).setVertices( bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(),
-                                         bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros(),
-                                         bvh::m::vec3d::zeros(), bvh::m::vec3d::zeros() );
-    } );
+  auto update_elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor, 10.0 );
 
   auto split_method
     = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
@@ -199,7 +210,7 @@ TEST_CASE( "collision_object init", "[vt]")
         obj.set_entity_data( empty_elements, split_method );
         obj.init_broadphase();
 
-        obj.for_each_tree( test_trees{ od_factor } );
+        obj.for_each_tree( test_empty_trees{ od_factor } );
       } );
 
       vt::runInEpochCollective( "set_data.init.check", [&]() {
@@ -218,7 +229,7 @@ TEST_CASE( "collision_object init", "[vt]")
         obj.set_entity_data( empty_elements, split_method );
         obj.init_broadphase();
 
-        obj.for_each_tree( test_sing_trees{ od_factor } );
+        obj.for_each_tree( test_empty_trees{ od_factor } );
       } );
 
       vt::runInEpochCollective( "set_data.update.check", [&]() {

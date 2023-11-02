@@ -125,6 +125,7 @@ namespace bvh
     std::size_t collision_idx;
 
     std::vector< broadphase_patch_type > local_patches;
+    std::vector< broadphase_patch_type > last_step_local_patches;
     std::vector< ::vt::MsgPtr< collision_object_impl::narrowphase_patch_msg > > narrowphase_patch_messages;
     std::vector< std::size_t > local_data_indices;
 
