@@ -233,7 +233,6 @@ namespace bvh
       narrowphase_collection_type()
           : active( false )
       {
-        ::bvh::vt::debug( "{}: constructing narrowphase entry\n", ::vt::theContext()->getNode() );
       }
 
       bool active = false;

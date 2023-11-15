@@ -86,6 +86,8 @@ namespace bvh
     ::vt::MsgPtr< collision_object_impl::narrowphase_patch_msg >
     prepare_local_patch_for_sending( std::size_t _local_idx, int _rank )
     {
+      auto &logger = *broadphase_logger;
+
       using narrowphase_patch_msg = collision_object_impl::narrowphase_patch_msg;
 
       const auto idx = _local_idx;
@@ -100,8 +102,8 @@ namespace bvh
       send_msg->data_size = chunk_data_size;
 
       std::size_t offset = 0;
-      ::bvh::vt::debug( "{}: sending narrowphase patch {} for body {} size {}\n", ::vt::theContext()->getNode(),
-                        vt_index{ _local_idx + rank * overdecomposition }, collision_idx, nelements );
+      logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
+                    collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
       // Should be replaced with VT serialization
       for (std::size_t j = sbeg; j < send; ++j)
       {
@@ -175,6 +177,10 @@ namespace bvh
     host_view< std::size_t * > split_indices_h;
     host_view< std::size_t * > splits_h;
     std::size_t num_splits = 0; ///< The number of actual splits -- may be les than splits.extent( 0 )
+
+    // Loggers
+    std::shared_ptr< spdlog::logger > logger;
+    std::shared_ptr< spdlog::logger > broadphase_logger;
   };
 
   namespace collision_object_impl

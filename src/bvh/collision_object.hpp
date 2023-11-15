@@ -38,6 +38,7 @@
 #include <functional>
 #include <optional>
 #include <vt/context/context.h>
+#include <spdlog/spdlog.h>
 
 #include "snapshot.hpp"
 #include "split/split.hpp"
@@ -98,7 +99,7 @@ namespace bvh
         const auto od_factor = this->overdecomposition_factor();
         const auto num_splits = od_factor - 1;
 
-        ::bvh::vt::debug( "{}: clustering {} elements\n", ::vt::theContext()->getNode(), n  );
+        logger().debug( "obj={} clustering {} elements\n", id(), n  );
         if ( n != m_clusterer.size() )
         {
           m_clusterer.resize( n );
@@ -188,6 +189,9 @@ namespace bvh
     }
 
     span< const patch<> > local_patches() const noexcept;
+
+    spdlog::logger &logger() const noexcept;
+    spdlog::logger &broadphase_logger() const noexcept;
 
   private:
 

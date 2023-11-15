@@ -86,15 +86,25 @@ namespace bvh
         //
         tmp_idx[1] = static_cast<int>( tree_obj->get_impl().collision_idx );
         //
-        query_tree( tree, patch, [&_msg, local_idx, origin_node, &patch_obj, &tree_obj, &tok]( std::size_t _p, std::size_t _q ){
+
+        auto &logger = patch_obj->broadphase_logger();
+        logger.debug( "(objp={}, size={}) (objq={}, count={}) starting broadphase", patch_obj->id(), patch.size(), tree_obj->id(), tree.count() );
+
+        query_tree( tree, patch, [&_msg, &logger, local_idx, origin_node, &patch_obj, &tree_obj, &tok]( std::size_t _p, std::size_t _q ){
           collision_object_impl::narrowphase_index idx( static_cast< int >( _p ),
                                                         static_cast<int>( tree_obj->get_impl().collision_idx ),
                                                         static_cast< int >( _q ) );
+          logger.trace( "found broadphase contact <{}, {}, {}, {}>",
+                        patch_obj->id(), _p, tree_obj->id(), _q );
+          logger.trace( "obj={} inserting {} into narrowphase collection", patch_obj->id(), idx );
           patch_obj->get_impl().narrowphase_collection_proxy[idx].insert( tok );
+          logger.trace( "obj={} adding {} to active narrowphase indices", patch_obj->id(), idx );
           patch_obj->get_impl().active_narrowphase_indices.emplace_back( idx );
           //
           auto activate_narrowphase_index_msg = ::vt::makeMessage< active_narrowphase_local_index_msg  >();
           activate_narrowphase_index_msg->idx = local_idx;
+          logger.trace( "<send=objgroup({})> obj={} insert_active_narrow_local_index local_idx={}",
+                        origin_node, patch_obj->id(), local_idx );
           patch_obj->get_impl().objgroup[origin_node].sendMsg< active_narrowphase_local_index_msg, &collision_object_impl::collision_object_holder::insert_active_narrow_local_index >( activate_narrowphase_index_msg );
           //
           // Note that the global index `_q` may not be managed by VT on this rank
@@ -102,6 +112,8 @@ namespace bvh
           //
           auto tree_msg = ::vt::makeMessage< flag_active_narrowpatch_msg  >();
           tree_msg->patch_obj = _msg->tree_obj;
+          logger.trace( "<send={}> obj={} flag_active_narrowpatch",
+                        _q, patch_obj->id() );
           tree_obj->get_impl().broadphase_patch_collection_proxy[_q].sendMsg< flag_active_narrowpatch_msg, &flag_active_narrowpatch >( tree_msg );
         } );
       }

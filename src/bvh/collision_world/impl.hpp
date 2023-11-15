@@ -37,6 +37,10 @@
 #include <vt/transport.h>
 #include <vt/trace/trace_common.h>
 
+#define SPDLOG_HEADER_ONLY
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 namespace bvh
 {
 
@@ -60,6 +64,9 @@ namespace bvh
 
     ::vt::trace::UserEventIDType bvh_impl_functor_ = ::vt::trace::no_user_event_id;
 
+    std::shared_ptr< spdlog::logger > collision_world_logger;
+    std::shared_ptr< spdlog::logger > collision_object_logger;
+    std::shared_ptr< spdlog::logger > collision_object_broadphase_logger;
   };
 }
 
