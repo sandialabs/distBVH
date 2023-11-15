@@ -57,6 +57,8 @@ target_include_directories(bvh INTERFACE
         $<INSTALL_INTERFACE:include>
         )
 
+add_subdirectory(tpl)
+
 # Various default compiler options
 
 target_compile_options(bvh PUBLIC $<$<CONFIG:DEBUG>:-O0 -ggdb3 -fno-inline>)
