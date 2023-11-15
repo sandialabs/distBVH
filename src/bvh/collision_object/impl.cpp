@@ -41,7 +41,9 @@ namespace bvh
       split_indices( fmt::format( "contact entity {} split indices", _idx ), 0 ),
       splits( fmt::format( "contact entity {} splits", _idx ), 0 ),
       split_indices_h( fmt::format( "contact entity host {} split indices", _idx ), 0 ),
-      splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 )
+      splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 ),
+      logger( _world.collision_object_logger() ),
+      broadphase_logger( _world.collision_object_broadphase_logger() )
   {
   }
 
@@ -60,15 +62,19 @@ namespace bvh
     void
     collision_object_holder::setup_narrowphase(setup_narrowphase_msg *_msg )
     {
+      auto &logger = self->broadphase_logger();
       auto &impl = self->get_impl();
       auto rank = static_cast< int >( ::vt::theContext()->getNode() );
       const auto od_factor = impl.overdecomposition;
       const std::size_t od_offset = rank * od_factor;
       auto &patches = impl.narrowphase_patch_collection_proxy;
 
+      logger.debug( "obj={}, setting up {} active narrowphase patches",
+                    self->id(), impl.active_narrowphase_indices.size() );
       for ( const auto idx : impl.active_narrowphase_local_index )
       {
         auto send_msg = impl.prepare_local_patch_for_sending( idx, rank );
+        logger.trace( "<send=idx({})> obj={} narrowphase_patch_copy", od_offset + idx, self->id() );
         patches[od_offset + idx].sendMsg< narrowphase_patch_msg, &collision_object_impl::narrowphase_patch_copy >( send_msg );
       }
     }

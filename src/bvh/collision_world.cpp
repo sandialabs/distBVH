@@ -33,6 +33,9 @@
 #include "collision_world.hpp"
 #include "collision_object.hpp"
 #include "collision_world/impl.hpp"
+#include "logging.hpp"
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <memory>
 #include <vt/transport.h>
 #include <vt/trace/trace_lite.h>
 
@@ -42,8 +45,21 @@ namespace bvh
   collision_world::collision_world( std::size_t _overdecomposition_factor )
     : m_impl( std::make_unique< impl >() )
   {
+    auto stdout_sink = std::make_shared< spdlog::sinks::stdout_color_sink_st >();
+    stdout_sink->set_level( spdlog::level::trace );
+    m_impl->collision_world_logger = logging::make_logger( "collision_world", stdout_sink );
+    m_impl->collision_world_logger->trace( "Initialized collision world logger" );
+    m_impl->collision_object_logger = logging::make_logger( "collision_object", stdout_sink );
+    m_impl->collision_world_logger->trace( "Initialized collision object logger" );
+    m_impl->collision_object_broadphase_logger = logging::make_logger( "collision_object.broadphase", stdout_sink );
+    m_impl->collision_world_logger->trace( "Initialized collision object broadphase logger" );
+
     m_impl->overdecomposition = _overdecomposition_factor;
-    m_impl->bvh_impl_functor_ = ::vt::theTrace()->registerUserEventColl("bvh_impl_functor_");
+    auto user_event_name = "bvh_impl_functor_";
+    m_impl->bvh_impl_functor_ = ::vt::theTrace()->registerUserEventColl( user_event_name);
+    m_impl->collision_world_logger->trace( "registered user tracing event {}", user_event_name );
+
+    m_impl->collision_world_logger->info( "Initialized collision world with overdecomposition factor {}", _overdecomposition_factor );
   }
 
   collision_world::~collision_world() = default;
@@ -104,5 +120,17 @@ namespace bvh
     ::vt::thePhase()->nextPhaseCollective();
 
     m_impl->epoch = ::vt::no_epoch;
+  }
+
+  std::shared_ptr< spdlog::logger >
+  collision_world::collision_object_logger() const
+  {
+    return m_impl->collision_object_logger;
+  }
+
+  std::shared_ptr< spdlog::logger >
+  collision_world::collision_object_broadphase_logger() const
+  {
+    return m_impl->collision_object_broadphase_logger;
   }
 }

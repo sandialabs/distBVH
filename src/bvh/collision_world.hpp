@@ -39,10 +39,16 @@
 #include "snapshot.hpp"
 #include "util/functional.hpp"
 #include "tree_build.hpp"
+#include <spdlog/spdlog.h>
 
 namespace bvh
 {
   class collision_object;
+
+  struct world_config
+  {
+    spdlog::level::level_enum log_levels = spdlog::level::info;
+  };
 
   class collision_world
   {
@@ -88,6 +94,9 @@ namespace bvh
 
     void start_iteration();
     void finish_iteration();
+
+    std::shared_ptr< spdlog::logger > collision_object_logger() const;
+    std::shared_ptr< spdlog::logger > collision_object_broadphase_logger() const;
 
   private:
 

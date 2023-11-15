@@ -77,11 +77,16 @@ namespace bvh
   collision_object::collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition )
     : m_impl{ std::make_unique< impl >( _world, _idx ) }
   {
-    bvh_splitting_geom_axis_ = ::vt::theTrace()->registerUserEventColl("bvh_splitting_geom_axis_");
-    bvh_splitting_ml_ = ::vt::theTrace()->registerUserEventColl("bvh_splitting_ml_");
-    bvh_set_entity_data_impl_ = ::vt::theTrace()->registerUserEventColl("bvh_set_entity_data_impl_");
-    bvh_clustering_ = ::vt::theTrace()->registerUserEventColl("bvh_clustering_");
-    bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl("bvh_build_trees_");
+    bvh_splitting_geom_axis_ = ::vt::theTrace()->registerUserEventColl( "bvh_splitting_geom_axis_" );
+    m_impl->logger->trace( "obj={} registered user tracing event bvh_splitting_geom_axis_", m_impl->collision_idx );
+    bvh_splitting_ml_ = ::vt::theTrace()->registerUserEventColl( "bvh_splitting_ml_" );
+    m_impl->logger->trace( "obj={} registered user tracing event bvh_splitting_ml_", m_impl->collision_idx );
+    bvh_set_entity_data_impl_ = ::vt::theTrace()->registerUserEventColl( "bvh_set_entity_data_impl_" );
+    m_impl->logger->trace( "obj={} registered user tracing event bvh_set_entity_data_impl_", m_impl->collision_idx );
+    bvh_clustering_ = ::vt::theTrace()->registerUserEventColl( "bvh_clustering_" );
+    m_impl->logger->trace( "obj={} registered user tracing event bvh_clustering_", m_impl->collision_idx );
+    bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl( "bvh_build_trees_" );
+    m_impl->logger->trace( "obj={} registered user tracing event bvh_build_trees_", m_impl->collision_idx );
 
     m_impl->overdecomposition = static_cast< int >( _overdecomposition );
 
@@ -90,15 +95,19 @@ namespace bvh
       m_impl->chainset.addIndex( vt_index{ i } );
     }
 
+    m_impl->logger->trace( "obj={} adding {} local indices", m_impl->collision_idx, m_impl->overdecomposition );
+
     // Initialize objgroup for per-node data
     ::vt::runInEpochCollective( "collision_object.make_objgroup", [&](){
       m_impl->objgroup = ::vt::theObjGroup()->makeCollective<collision_object_holder>( fmt::vt::format( "collision_object {}", _idx ) );
       m_impl->objgroup.get()->self = this;
 
-      vt::debug( "objgroup make_collective {:x}\n", m_impl->objgroup.getProxy() );
+      m_impl->logger->debug( "obj={} objgroup make_collective {:x}", m_impl->collision_idx, m_impl->objgroup.getProxy() );
     });
 
     m_impl->local_patches.resize( m_impl->overdecomposition );
+
+    m_impl->logger->info( "initialized collision object {}", m_impl->collision_idx );
   }
 
   collision_object::collision_object( collision_object && ) noexcept = default;
@@ -119,7 +128,10 @@ namespace bvh
     m_impl->local_patches.clear();
     m_impl->local_patches.resize( od_factor );
 
-    always_assert( m_impl->num_splits + 1 == od_factor, "error during splitting process, splits {} do not match od factor {}\n", m_impl->num_splits + 1, od_factor );
+    BVH_ASSERT_ALWAYS( m_impl->num_splits + 1 == od_factor,
+                       logger(),
+                       "error during splitting process, splits {} do not match od factor {}\n", m_impl->num_splits + 1,
+                       od_factor );
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
@@ -135,12 +147,14 @@ namespace bvh
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
       const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
-      ::bvh::vt::debug( "{}: creating broadphase patch for body {} size {} from offset {}\n", ::vt::theContext()->getNode(), m_impl->collision_idx, nelements, sbeg );
+      logger().debug( "creating broadphase patch for body {} size {} from offset {}", m_impl->collision_idx, nelements, sbeg );
       m_impl->local_patches[i] = broadphase_patch_type(
         i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
     }
 
-    always_assert( m_impl->local_patches.size() == od_factor, "wrong number of patches\n" );
+    BVH_ASSERT_ALWAYS( m_impl->local_patches.size() == od_factor,
+                       logger(),
+                       "wrong number of patches\n" );
   }
 
   void collision_object::init_broadphase() const
@@ -157,8 +171,11 @@ namespace bvh
     auto coll_size = vt_index{ static_cast< std::size_t >( od_factor * ::vt::theContext()->getNumNodes() ) };
     if ( m_impl->broadphase_patch_collection_proxy.getProxy() == ::vt::no_vrt_proxy )
     {
+      logger().info( "lazily constructing broadphase patch collection with {} elements", coll_size );
       m_impl->broadphase_patch_collection_proxy = ::vt::makeCollection< broadphase_patch_collection_type >().bounds( coll_size ).bulkInsert().wait();
+      logger().info( "lazily constructing narrophase patch collection with {} elements", coll_size );
       m_impl->narrowphase_patch_collection_proxy = ::vt::makeCollection< narrowphase_patch_collection_type >().bounds( coll_size ).bulkInsert().wait();
+      logger().info( "lazily constructing narrowphase collection with dynamic membership" );
       m_impl->narrowphase_collection_proxy = ::vt::makeCollection< narrowphase_collection_type >().dynamicMembership( true ).wait();
     }
 
@@ -178,8 +195,11 @@ namespace bvh
         msg->patch = local_patch;
         msg->origin_node = rank;
         msg->local_idx = _local;
-        ::bvh::vt::debug( "{}: sending broadphase patch {} for body {} size {}\n", ::vt::theContext()->getNode(),
-                          vt_index{ _local.x() + offset }, m_impl->collision_idx, msg->patch.size() );
+        logger().debug( "<send={}> obj={} initialize broadphase patch {} size {}",
+                        vt_index{ _local.x() + offset },
+                         m_impl->collision_idx,
+                        _local.x() + offset,
+                        msg->patch.size() );
         return m_impl->broadphase_patch_collection_proxy[vt_index{ _local.x() + offset }]
           .sendMsg< broadphase_patch_msg, &details::set_broadphase_patches >( msg.get() );
       } else {
@@ -194,8 +214,10 @@ namespace bvh
       ::vt::trace::TraceScopedEvent scope(bvh_build_trees_);
       // Tree build needs to be done collectively, everyone needs to finish before the next step
       m_impl->chainset.nextStepCollective( "build_tree_step", [this, offset]( vt_index _idx ) {
-        ::bvh::vt::debug( "{}: building tree reduction for patch {} for body {}\n", ::vt::theContext()->getNode(),
-                          vt_index{ _idx.x() + offset }, m_impl->collision_idx );
+        logger().debug( "<send={}> obj={} building tree reduction for patch {}",
+                          vt_index{ _idx.x() + offset },
+                          m_impl->collision_idx,
+                          _idx.x() + offset );
         return collision_object_impl::build_trees_top_down( vt_index{ _idx.x() + offset },
             m_impl->objgroup, m_impl->broadphase_patch_collection_proxy );
       } );
@@ -243,9 +265,11 @@ namespace bvh
     m_impl->chainset.nextStepCollective( "start broadphase insertion", [this, &_other]( vt_index _local_idx) {
       if ( _local_idx.x() == 0 )
       {
-        ::bvh::vt::debug( "{}: starting broadphase between body {} and {}\n",
-                          ::vt::theContext()->getNode(), m_impl->collision_idx, _other.m_impl->collision_idx );
+        broadphase_logger().info( "starting broadphase between body {} and {}",
+                                  m_impl->collision_idx, _other.m_impl->collision_idx );
         auto msg = ::vt::makeMessage< collision_object_impl::messages::modify_msg >();
+        broadphase_logger().trace( "<send=objgroup({})> obj={} begin_narrowphase_modification",
+                                   ::vt::theContext()->getNode(), id() );
         return m_impl->objgroup[::vt::theContext()->getNode()].sendMsg< collision_object_impl::messages::modify_msg, &collision_object_impl::collision_object_holder::begin_narrowphase_modification >( msg );
       } else
         return pending_send{ nullptr };
@@ -254,14 +278,19 @@ namespace bvh
     using chainset_type = ::vt::messaging::CollectionChainSet< vt_index >;
     chainset_type::mergeStepCollective( "broadphase_step",m_impl->chainset, _other.m_impl->chainset,
                                        [this, rank, offset, &_other]( vt_index _idx ) {
-                                         return collision_object_impl::broadphase(
-                                           vt_index{ _idx.x() + offset }, vt_index{ _idx.x() }, rank,
-                                           m_impl->broadphase_patch_collection_proxy, m_impl->objgroup,
-                                           _other.m_impl->objgroup );
+      broadphase_logger().trace( "<send={}> obj={} target_obj={} start broadphase",
+                                 vt_index{ _idx.x() + offset }, id(), _other.id() );
+      return collision_object_impl::broadphase(
+        vt_index{ _idx.x() + offset }, vt_index{ _idx.x() }, rank,
+        m_impl->broadphase_patch_collection_proxy, m_impl->objgroup,
+        _other.m_impl->objgroup );
     } );
 
     m_impl->chainset.nextStepCollective( "finalize broadphase insertion", [this]( vt_index _local_idx) {
-      if ( _local_idx.x() == 0 ) {
+      if ( _local_idx.x() == 0 )
+      {
+        broadphase_logger().trace( "<send=objgroup({})> obj={} finish_narrowphase_modification",
+                                   ::vt::theContext()->getNode(), id() );
         auto msg = ::vt::makeMessage< collision_object_impl::messages::modify_msg >();
         return m_impl->objgroup[::vt::theContext()->getNode()].sendMsg< collision_object_impl::messages::modify_msg, &collision_object_impl::collision_object_holder::finish_narrowphase_modification >( msg );
       } else
@@ -446,6 +475,18 @@ namespace bvh
 
     Kokkos::deep_copy( m_impl->splits_h, splits_view );
     Kokkos::deep_copy( m_impl->split_indices_h, indices_view );
+  }
+
+  spdlog::logger &
+  collision_object::logger() const noexcept
+  {
+    return *m_impl->logger;
+  }
+
+  spdlog::logger &
+  collision_object::broadphase_logger() const noexcept
+  {
+    return *m_impl->broadphase_logger;
   }
 
 } // namespace bvh
