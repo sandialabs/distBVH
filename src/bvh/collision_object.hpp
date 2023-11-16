@@ -192,6 +192,7 @@ namespace bvh
 
     spdlog::logger &logger() const noexcept;
     spdlog::logger &broadphase_logger() const noexcept;
+    spdlog::logger &narrowphase_logger() const noexcept;
 
   private:
 

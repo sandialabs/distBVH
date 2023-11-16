@@ -53,6 +53,8 @@ namespace bvh
     m_impl->collision_world_logger->trace( "Initialized collision object logger" );
     m_impl->collision_object_broadphase_logger = logging::make_logger( "collision_object.broadphase", stdout_sink );
     m_impl->collision_world_logger->trace( "Initialized collision object broadphase logger" );
+    m_impl->collision_object_narrowphase_logger = logging::make_logger( "collision_object.narrowphase", stdout_sink );
+    m_impl->collision_world_logger->trace( "Initialized collision object narrowphase logger" );
 
     m_impl->overdecomposition = _overdecomposition_factor;
     auto user_event_name = "bvh_impl_functor_";
@@ -132,5 +134,11 @@ namespace bvh
   collision_world::collision_object_broadphase_logger() const
   {
     return m_impl->collision_object_broadphase_logger;
+  }
+
+  std::shared_ptr< spdlog::logger >
+  collision_world::collision_object_narrowphase_logger() const
+  {
+    return m_impl->collision_object_narrowphase_logger;
   }
 }

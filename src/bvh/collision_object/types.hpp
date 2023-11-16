@@ -36,6 +36,7 @@
 #include "../tree.hpp"
 #include "../serialization/bvh_serialize.hpp"
 #include "../patch.hpp"
+#include <vt/configs/types/types_type.h>
 #include <vt/transport.h>
 #include <array>
 #include <unordered_set>
@@ -103,44 +104,6 @@ namespace bvh
         MessageParentType::serialize( _s );
         _s | tree;
       }
-    };
-
-    struct narrowphase_patch_collection_type : ::vt::Collection< narrowphase_patch_collection_type, vt_index >
-    {
-      static void ( * migrate_hook )( narrowphase_patch_collection_type * );
-
-      using MessageParentType = ::vt::Collection< narrowphase_patch_collection_type, vt_index >;
-      vt_msg_serialize_required();
-
-      patch<> patch_meta;
-      std::vector< unsigned char > bytes;
-      ::vt::NodeType origin_node = ::vt::uninitialized_destination;
-      std::unordered_set< ::vt::NodeType > ghost_destinations;
-
-      void epiMigrateIn() override
-      {
-        if ( migrate_hook )
-          migrate_hook( this );
-      }
-
-      template< typename Serializer >
-      void serialize( Serializer &_s )
-      {
-        MessageParentType::serialize( _s );
-        _s | patch_meta | bytes | origin_node | ghost_destinations;
-      }
-    };
-
-    // Byte serializable
-    struct narrowphase_patch_msg : ::vt::CollectionMessage< narrowphase_patch_collection_type >
-    {
-      patch<> patch_meta;
-      ::vt::NodeType origin_node = ::vt::uninitialized_destination;
-      std::size_t data_size = 0;
-
-      // Used with makeMessageSz, invalid otherwise!
-      unsigned char *user_data() { return reinterpret_cast< unsigned char * >( this ) + sizeof( narrowphase_patch_msg ); }
-      const unsigned char *user_data() const { return reinterpret_cast< const unsigned char * >( this ) + sizeof( narrowphase_patch_msg ); }
     };
 
     struct result_msg : ::vt::Message
@@ -218,6 +181,48 @@ namespace bvh
     };
 
     using collision_object_proxy_type = ::vt::objgroup::ObjGroupManager::ProxyType< collision_object_holder >;
+
+    struct narrowphase_patch_collection_type : ::vt::Collection< narrowphase_patch_collection_type, vt_index >
+    {
+      using MessageParentType = ::vt::Collection< narrowphase_patch_collection_type, vt_index >;
+      vt_msg_serialize_required();
+
+      narrowphase_patch_collection_type() = default;
+      explicit narrowphase_patch_collection_type( collision_object_proxy_type _coll_obj )
+        : collision_object( _coll_obj )
+      {}
+
+      patch<> patch_meta;
+      std::vector< unsigned char > bytes;
+      ::vt::NodeType origin_node = ::vt::uninitialized_destination;
+      std::unordered_set< ::vt::NodeType > ghost_destinations;
+      collision_object_proxy_type collision_object;
+
+      template< typename Serializer > void serialize( Serializer &_s )
+      {
+        MessageParentType::serialize( _s );
+        _s | patch_meta | bytes | origin_node | ghost_destinations | collision_object;
+      }
+    };
+
+    // Byte serializable
+    struct narrowphase_patch_msg : ::vt::CollectionMessage< narrowphase_patch_collection_type >
+    {
+      patch<> patch_meta;
+      ::vt::NodeType origin_node = ::vt::uninitialized_destination;
+      std::size_t data_size = 0;
+
+      // Used with makeMessageSz, invalid otherwise!
+      unsigned char *user_data()
+      {
+        return reinterpret_cast< unsigned char * >( this ) + sizeof( narrowphase_patch_msg );
+      }
+
+      const unsigned char *user_data() const
+      {
+        return reinterpret_cast< const unsigned char * >( this ) + sizeof( narrowphase_patch_msg );
+      }
+    };
 
     /**
      * 3D index -- first dimension references the patch id,

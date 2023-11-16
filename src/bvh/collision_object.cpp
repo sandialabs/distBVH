@@ -174,7 +174,9 @@ namespace bvh
       logger().info( "lazily constructing broadphase patch collection with {} elements", coll_size );
       m_impl->broadphase_patch_collection_proxy = ::vt::makeCollection< broadphase_patch_collection_type >().bounds( coll_size ).bulkInsert().wait();
       logger().info( "lazily constructing narrophase patch collection with {} elements", coll_size );
-      m_impl->narrowphase_patch_collection_proxy = ::vt::makeCollection< narrowphase_patch_collection_type >().bounds( coll_size ).bulkInsert().wait();
+      m_impl->narrowphase_patch_collection_proxy = ::vt::makeCollection< narrowphase_patch_collection_type >()
+        .elementConstructor( [this]( narrowphase_patch_collection_type::IndexType ){ return std::make_unique< narrowphase_patch_collection_type >( m_impl->objgroup ); } )
+        .bounds( coll_size ).bulkInsert().wait();
       logger().info( "lazily constructing narrowphase collection with dynamic membership" );
       m_impl->narrowphase_collection_proxy = ::vt::makeCollection< narrowphase_collection_type >().dynamicMembership( true ).wait();
     }
@@ -487,6 +489,12 @@ namespace bvh
   collision_object::broadphase_logger() const noexcept
   {
     return *m_impl->broadphase_logger;
+  }
+
+  spdlog::logger &
+  collision_object::narrowphase_logger() const noexcept
+  {
+    return *m_impl->narrowphase_logger;
   }
 
 } // namespace bvh

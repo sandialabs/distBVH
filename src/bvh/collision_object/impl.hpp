@@ -181,6 +181,7 @@ namespace bvh
     // Loggers
     std::shared_ptr< spdlog::logger > logger;
     std::shared_ptr< spdlog::logger > broadphase_logger;
+    std::shared_ptr< spdlog::logger > narrowphase_logger;
   };
 
   namespace collision_object_impl
