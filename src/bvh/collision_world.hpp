@@ -97,6 +97,7 @@ namespace bvh
 
     std::shared_ptr< spdlog::logger > collision_object_logger() const;
     std::shared_ptr< spdlog::logger > collision_object_broadphase_logger() const;
+    std::shared_ptr< spdlog::logger > collision_object_narrowphase_logger() const;
 
   private:
 

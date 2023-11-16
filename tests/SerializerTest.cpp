@@ -55,7 +55,7 @@ TEMPLATE_TEST_CASE("a single value can be serialized", "[serializer]", int, doub
   REQUIRE( serialized->getSize() == sizeof( T ) + 12 );
 
   auto b = *checkpoint::deserialize< T >( serialized->getBuffer() );
-  
+
   REQUIRE( b == T{5} );
 }
 
@@ -188,7 +188,6 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
   using narrowphase_patch_collection_type = bvh::collision_object_impl::narrowphase_patch_collection_type;
   if ( ::vt::theContext()->getNumNodes() > 1 )
   {
-    narrowphase_patch_collection_type::migrate_hook = &narrowphase_patch_check;
     auto coll_size = vt_index{ static_cast< std::size_t >( 4 * ::vt::theContext()->getNumNodes() ) };
     auto ep = ::vt::theTerm()->makeEpochCollective( "narrowphase_patch_test" );
     ::vt::theMsg()->pushEpoch( ep );
@@ -227,7 +226,6 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
     ::vt::theMsg()->popEpoch();
     ::vt::theTerm()->finishedEpoch( ep );
     ::vt::runSchedulerThrough( ep );
-    narrowphase_patch_collection_type::migrate_hook = nullptr;
   }
 }
 
@@ -241,7 +239,7 @@ TEMPLATE_TEST_CASE("multiple values can be serialized", "[serializer]", int, dou
 
   s << T{ 17 } << static_cast< T >( 21.3 ) << static_cast< T >( 3.9 );
   s >> a >> b >> c;
-  
+
   REQUIRE( a == T{ 17 } );
   REQUIRE( b == static_cast< T >( 21.3 ) );
   REQUIRE( c == static_cast< T >( 3.9 ) );
@@ -251,13 +249,13 @@ TEST_CASE("multiple differently-typed values can be serialized", "[serializer]")
 {
   bvh::serializer s;
   s << 5 << 3.7 << 1.1f;
-  
+
   int a;
   double b;
   float c;
-  
+
   s >> a >> b >> c;
-  
+
   REQUIRE( a == 5 );
   REQUIRE( b == 3.7 );
   REQUIRE( c == 1.1f );
@@ -283,7 +281,7 @@ TEST_CASE("strings can be serialized", "[serializer]")
 TEST_CASE("char array literals can be serialized and deserialized as strings", "[serializer]")
 {
   using namespace std::string_literals;
-  
+
   bvh::serializer s;
 
   s << "hello, " << "world";
@@ -300,19 +298,19 @@ TEST_CASE("char array literals can be serialized and deserialized as strings", "
 TEST_CASE("a simple vector can be serialized", "[serializer]")
 {
   using namespace std::string_literals;
-  
+
   bvh::serializer s;
-  
+
   auto v = std::vector< int >{ 1, 2, 3 };
-  
+
   s << v;
 
   std::vector< int > r;
 
   s >> r;
-  
+
   REQUIRE( r.size() == v.size() );
-  
+
   for ( std::size_t i = 0; i < r.size(); ++i )
     REQUIRE( r[i] == v[i] );
 }
@@ -321,9 +319,9 @@ struct NonTrivial
 {
   NonTrivial() = default;
   NonTrivial( int _m ) : m( _m ) {}
-  
+
   int m;
-  
+
   virtual ~NonTrivial() {}
 };
 
@@ -332,7 +330,7 @@ bvh::serializer_interface< Serializer > &
 operator<<( bvh::serializer_interface< Serializer > &_serializer, const NonTrivial &_nt )
 {
   _serializer << _nt.m;
-  
+
   return _serializer;
 }
 
@@ -341,26 +339,26 @@ bvh::serializer_interface< Serializer > &
 operator>>( bvh::serializer_interface< Serializer > &_serializer, NonTrivial &_nt )
 {
   _serializer >> _nt.m;
-  
+
   return _serializer;
 }
 
 TEST_CASE("vectors of custom serialized types can be serialized", "[serializer]")
 {
   using namespace std::string_literals;
-  
+
   bvh::serializer s;
-  
+
   auto v = std::vector< NonTrivial >{ 1, 2, 3 };
-  
+
   s << v;
 
   std::vector< NonTrivial > r;
 
   s >> r;
-  
+
   REQUIRE( r.size() == v.size() );
-  
+
   for ( std::size_t i = 0; i < r.size(); ++i )
     REQUIRE( r[i].m == v[i].m );
 }
@@ -368,19 +366,19 @@ TEST_CASE("vectors of custom serialized types can be serialized", "[serializer]"
 TEST_CASE("a nontrivial vector that wraps an int can be identically deserialized as a vector of ints", "[serializer]")
 {
   using namespace std::string_literals;
-  
+
   bvh::serializer s;
-  
+
   auto v = std::vector< NonTrivial >{ 1, 2, 3 };
-  
+
   s << v;
 
   std::vector< int > r;
 
   s >> r;
-  
+
   REQUIRE( r.size() == v.size() );
-  
+
   for ( std::size_t i = 0; i < r.size(); ++i )
     REQUIRE( r[i] == v[i].m );
 }
@@ -388,19 +386,19 @@ TEST_CASE("a nontrivial vector that wraps an int can be identically deserialized
 TEST_CASE("a vector of ints can be identically deserialized as nontrivial wrapper type", "[serializer]")
 {
   using namespace std::string_literals;
-  
+
   bvh::serializer s;
-  
+
   auto v = std::vector< int >{ 1, 2, 3 };
-  
+
   s << v;
 
   std::vector< NonTrivial > r;
 
   s >> r;
-  
+
   REQUIRE( r.size() == v.size() );
-  
+
   for ( std::size_t i = 0; i < r.size(); ++i )
     REQUIRE( r[i].m == v[i] );
 }
@@ -408,35 +406,35 @@ TEST_CASE("a vector of ints can be identically deserialized as nontrivial wrappe
 TEST_CASE("a dop26d can be serialized", "[serializer]")
 {
   auto kdop = bvh::dop_26d::from_sphere( 0.0, 0.0, 0.0, 1.0 );
-  
+
   bvh::serializer s;
-  
+
   s << kdop;
-  
+
   bvh::dop_26d kdop2;
-  
+
   s >> kdop2;
-  
+
   REQUIRE( kdop == kdop2 );
 }
 
 TEST_CASE("an empty tree can be serialized", "[serializer]")
 {
   auto tree = bvh::snapshot_tree_26d< Element >{};
-  
+
   bvh::serializer s;
-  
+
   s << tree;
-  
+
   auto tree2 = bvh::snapshot_tree_26d< Element >{};
-  
+
   s >> tree2;
-  
+
   REQUIRE( tree2.debug_validate() );
-  
+
   REQUIRE( tree2.count() == 0 );
   REQUIRE( tree.count() == tree2.count() );
-  
+
   REQUIRE( tree == tree2 );
 }
 
@@ -444,20 +442,20 @@ TEST_CASE("a tree can be serialized", "[serializer]")
 {
   auto elements = buildElementGrid( 2, 2, 2 );
   auto tree = bvh::build_snapshot_tree_top_down(elements );
-  
+
   bvh::serializer s;
-  
+
   s << tree;
-  
+
   auto tree2 = bvh::snapshot_tree_26d< Element >{};
-  
+
   s >> tree2;
-  
+
   REQUIRE_NOTHROW( tree2.debug_validate() );
-  
+
   REQUIRE( tree2.count() == elements.size() );
   REQUIRE( tree.count() == tree2.count() );
-  
+
   REQUIRE( tree == tree2 );
 }
 
@@ -465,20 +463,20 @@ TEST_CASE("a tree with a single element can be serialized", "[serializer]")
 {
   auto elements = buildElementGrid( 1, 1, 1 );
   auto tree = bvh::build_snapshot_tree_top_down(elements );
-  
+
   bvh::serializer s;
-  
+
   s << tree;
-  
+
   auto tree2 = bvh::snapshot_tree_26d< Element >{};
-  
+
   s >> tree2;
-  
+
   REQUIRE_NOTHROW( tree2.debug_validate() );
-  
+
   REQUIRE( tree2.count() == elements.size() );
   REQUIRE( tree.count() == tree2.count() );
-  
+
   REQUIRE( tree == tree2 );
 }
 #endif
