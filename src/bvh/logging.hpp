@@ -42,6 +42,7 @@ namespace bvh::logging
     auto ret = std::make_shared< spdlog::logger >( std::move( _name ), std::move( _sink ) );
     ret->set_formatter( make_formatter() );
     ret->set_level( spdlog::level::trace );
+    ret->flush_on( spdlog::level::trace );
 
     return ret;
   }
