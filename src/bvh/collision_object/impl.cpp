@@ -169,6 +169,10 @@ namespace bvh
 
     void activate_narrowphase( collision_object_impl::narrowphase_collection_type *_narrow, activate_narrowphase_msg * )
     {
+      const auto &this_obj = *_narrow->this_proxy.get()->self;
+      auto &logger = this_obj.narrowphase_logger();
+      auto idx = _narrow->getIndex();
+      logger.trace( "marking <{}, {}, {}, {}> as active", this_obj.id(), idx[0], idx[1], idx[2] );
       _narrow->active = true;
     }
 
