@@ -51,6 +51,10 @@ namespace bvh
     narrowphase_patch_copy( collision_object_impl::narrowphase_patch_collection_type *_patch,
                             narrowphase_patch_msg *_msg )
     {
+      const auto &obj = *_patch->collision_object.get()->self;
+      auto &logger = obj.narrowphase_logger();
+      auto idx = _patch->getIndex();
+      logger.debug( "late initializing narrowphase patch {} with {} bytes", idx.x(), _msg->data_size );
       _patch->ghost_destinations.clear();
       _patch->patch_meta = _msg->patch_meta;
       _patch->bytes.resize(_msg->data_size);
