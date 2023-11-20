@@ -42,18 +42,18 @@
 namespace bvh
 {
 
-  collision_world::collision_world( std::size_t _overdecomposition_factor )
+  collision_world::collision_world( std::size_t _overdecomposition_factor, const world_config &_cfg )
     : m_impl( std::make_unique< impl >() )
   {
     auto stdout_sink = std::make_shared< spdlog::sinks::stdout_color_sink_st >();
     stdout_sink->set_level( spdlog::level::trace );
-    m_impl->collision_world_logger = logging::make_logger( "collision_world", stdout_sink );
+    m_impl->collision_world_logger = logging::make_logger( "collision_world", stdout_sink, _cfg );
     m_impl->collision_world_logger->trace( "Initialized collision world logger" );
-    m_impl->collision_object_logger = logging::make_logger( "collision_object", stdout_sink );
+    m_impl->collision_object_logger = logging::make_logger( "collision_object", stdout_sink, _cfg );
     m_impl->collision_world_logger->trace( "Initialized collision object logger" );
-    m_impl->collision_object_broadphase_logger = logging::make_logger( "collision_object.broadphase", stdout_sink );
+    m_impl->collision_object_broadphase_logger = logging::make_logger( "collision_object.broadphase", stdout_sink, _cfg );
     m_impl->collision_world_logger->trace( "Initialized collision object broadphase logger" );
-    m_impl->collision_object_narrowphase_logger = logging::make_logger( "collision_object.narrowphase", stdout_sink );
+    m_impl->collision_object_narrowphase_logger = logging::make_logger( "collision_object.narrowphase", stdout_sink, _cfg );
     m_impl->collision_world_logger->trace( "Initialized collision object narrowphase logger" );
 
     m_impl->overdecomposition = _overdecomposition_factor;

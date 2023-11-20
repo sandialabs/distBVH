@@ -90,6 +90,7 @@ namespace bvh
       for ( auto &&idx : impl.active_narrowphase_indices )
       {
         auto msg = ::vt::makeMessage< activate_narrowphase_msg >();
+        msg->this_obj = self->get_impl().objgroup;
         logger.trace( "<send={}> obj={} activate_narrowphase", idx, self->id() );
         impl.narrowphase_collection_proxy[idx]
           .sendMsg< activate_narrowphase_msg, &collision_object_impl::activate_narrowphase >( msg.get() );
@@ -167,9 +168,9 @@ namespace bvh
       self->get_impl().local_results.emplace_back( _msg->result );
     }
 
-    void activate_narrowphase( collision_object_impl::narrowphase_collection_type *_narrow, activate_narrowphase_msg * )
+    void activate_narrowphase( collision_object_impl::narrowphase_collection_type *_narrow, activate_narrowphase_msg *_msg )
     {
-      const auto &this_obj = *_narrow->this_proxy.get()->self;
+      const auto &this_obj = *_msg->this_obj.get()->self;
       auto &logger = this_obj.narrowphase_logger();
       auto idx = _narrow->getIndex();
       logger.trace( "marking <{}, {}, {}, {}> as active", this_obj.id(), idx[0], idx[1], idx[2] );

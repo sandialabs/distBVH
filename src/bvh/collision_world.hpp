@@ -47,7 +47,8 @@ namespace bvh
 
   struct world_config
   {
-    spdlog::level::level_enum log_levels = spdlog::level::info;
+    spdlog::level::level_enum log_levels = spdlog::level::trace;
+    spdlog::level::level_enum flush_level = spdlog::level::trace;
   };
 
   class collision_world
@@ -57,7 +58,7 @@ namespace bvh
     template< typename T >
     using narrowphase_functor = std::function< narrowphase_result_pair( const broadphase_collision< T > &, const broadphase_collision< T > & ) >;
 
-    explicit collision_world( std::size_t _overdecomposition_factor );
+    explicit collision_world( std::size_t _overdecomposition_factor, const world_config &_cfg = {} );
     ~collision_world();
 
     collision_world( const collision_world & ) = delete;
