@@ -93,9 +93,11 @@ namespace bvh
     {
       auto &this_obj = _this_obj.get()->self;
       auto &other_obj = _other_obj.get()->self;
+      auto &logger = this_obj->narrowphase_logger();
       auto msg = ::vt::makeMessage< start_ghosting_msg >();
       msg->this_obj = this_obj->get_impl().objgroup;
       msg->other_obj = other_obj->get_impl().objgroup;
+      logger.debug( "<send=local> requesting ghosts for objects {} and {} in potential collision", this_obj->id(), other_obj->id() );
       return _this_obj[::vt::theContext()->getNode()].sendMsg< start_ghosting_msg, &collision_object_impl::collision_object_holder::request_ghosts >( msg );
     }
 
