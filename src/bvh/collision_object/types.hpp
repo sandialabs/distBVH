@@ -259,7 +259,9 @@ namespace bvh
     { };
 
     struct activate_narrowphase_msg : ::vt::CollectionMessage< collision_object_impl::narrowphase_collection_type >
-    { };
+    {
+      collision_object_proxy_type this_obj;
+    };
 
     struct start_ghosting_msg : ::vt::CollectionMessage< collision_object_impl::narrowphase_collection_type >
     {

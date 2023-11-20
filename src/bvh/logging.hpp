@@ -7,6 +7,7 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/pattern_formatter.h>
 #include <spdlog/common.h>
+#include "collision_world.hpp"
 
 namespace bvh::logging
 {
@@ -36,13 +37,13 @@ namespace bvh::logging
     return ret;
   }
 
-  inline std::shared_ptr< spdlog::logger >
-  make_logger( std::string _name, spdlog::sink_ptr _sink )
+  inline std::shared_ptr< spdlog::logger > make_logger( std::string _name, spdlog::sink_ptr _sink,
+                                                        const world_config &_cfg )
   {
     auto ret = std::make_shared< spdlog::logger >( std::move( _name ), std::move( _sink ) );
     ret->set_formatter( make_formatter() );
-    ret->set_level( spdlog::level::trace );
-    ret->flush_on( spdlog::level::trace );
+    ret->set_level( _cfg.log_levels );
+    ret->flush_on( _cfg.flush_level );
 
     return ret;
   }
