@@ -32,6 +32,7 @@
  */
 #include "impl.hpp"
 #include "narrowphase.hpp"
+#include <vt/messaging/envelope/envelope_extended_util.h>
 
 namespace bvh
 {
@@ -173,7 +174,7 @@ namespace bvh
       const auto &this_obj = *_msg->this_obj.get()->self;
       auto &logger = this_obj.narrowphase_logger();
       auto idx = _narrow->getIndex();
-      logger.trace( "marking <{}, {}, {}, {}> as active", this_obj.id(), idx[0], idx[1], idx[2] );
+      logger.trace( "marking <{}, {}, {}, {}> as active (epoch={:x})", this_obj.id(), idx[0], idx[1], idx[2], ::vt::envelopeGetEpoch( _msg->env ) );
       _narrow->active = true;
     }
 
@@ -245,7 +246,7 @@ namespace bvh
       // msg->ordering = 0;
       msg->dest_node = rank;
       auto this_idx = collision_object_impl::vt_index{ static_cast< std::size_t >( idx[0] ) };
-      logger.trace( "<send={}> obj={} requesting patch {} from object {}", this_idx, this_obj->id(), this_idx.x(),
+      logger.trace( "<send={}> obj={} requesting primary patch {} from object {}", this_idx, this_obj->id(), this_idx.x(),
                     this_obj->id() );
       this_obj->get_impl()
         .narrowphase_patch_collection_proxy[this_idx]
@@ -258,7 +259,7 @@ namespace bvh
       other_msg->dest_node = rank;
       // other_msg->ordering = 1;
       auto other_idx = collision_object_impl::vt_index{ static_cast< std::size_t >( idx[2] ) };
-      logger.trace( "<send={}> obj={} requesting patch {} from object {}", other_idx, this_obj->id(), other_idx.x(),
+      logger.trace( "<send={}> obj={} requesting secondary patch {} from object {}", other_idx, this_obj->id(), other_idx.x(),
                     other_obj->id() );
       other_obj->get_impl()
         .narrowphase_patch_collection_proxy[other_idx]
