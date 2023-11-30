@@ -4,13 +4,10 @@ name: Build and Test Ubuntu 20.04 gcc 11 x64
 on:
   push:
     branches:
-      - master
-      - develop
+      - main
   pull_request:
     branches:
-      - develop-refactor
-      - master
-      - develop
+      - main
 
   workflow_dispatch:
 
