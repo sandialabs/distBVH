@@ -1,0 +1,39 @@
+name: Build ubuntu20-gcc11-x64 Image
+
+on:
+  push:
+    branches:
+      - ci-images
+  pull_request:
+    branches:
+      - ci-images
+  workflow_dispatch:
+
+jobs:
+  build_and_push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push' || github.ref == 'refs/heads/ci-images'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: nmm0/distBVH-ubuntu20.04-gcc11-x64
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ubuntu20.04-gcc11-x64.dockerfile
+          push: ${{ (github.event_name == 'push' || github.ref == 'refs/heads/ci-images') && 'true' || 'false' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
