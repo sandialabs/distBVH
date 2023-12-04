@@ -1,0 +1,92 @@
+name: ci-baseline
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+  push:
+    branches:
+      - 'main'
+
+concurrency:
+  group: ${{ github.event_name }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  CI:
+    name: baseline
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - amd64-ubuntu-22.04-clang-14-clang-14-cpp
+          - amd64-ubuntu-20.04-gcc-9-11.2.0-cpp
+        build_type:
+          - Release
+          - Debug
+
+    runs-on: ubuntu-latest
+    container:
+      image: lifflander1/vt:${{ matrix.image }}
+    # env:
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout vt
+        uses: actions/checkout@v4
+        with:
+          repository: DARMA-tasking/vt
+          path: vt
+
+      - name: Checkout magistrate
+        uses: actions/checkout@v4
+        with:
+          repository: DARMA-tasking/magistrate
+          path: vt/lib/checkpoint
+
+      - name: Checkout kokkos
+        uses: actions/checkout@v4
+        with:
+          repository: kokkos/kokkos
+          path: kokkos
+          ref: develop
+
+      - name: Configure vt
+        working-directory: vt
+        run: |
+          cmake -B builddir \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DVT_BUILD_EXAMPLES=OFF \
+            -DVT_BUILD_TESTS=OFF \
+            -Dvt_trace_enabled=ON
+
+      - name: Build vt
+        working-directory: vt
+        run: |
+          cmake --build builddir --target install
+
+      - name: Configure kokkos
+        working-directory: kokkos
+        run: |
+          cmake -B builddir \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+      - name: Build kokkos
+        working-directory: kokkos
+        run: |
+          cmake --build builddir --target install
+
+      - name: Configure distBVH
+        run: |
+          cmake -B builddir \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+      - name: Build distBVH
+        run: |
+          cmake --build builddir --target install
+
+      - name: Run tests
+        working-directory: builddir
+        run: |
+          ctest --output-on-failure

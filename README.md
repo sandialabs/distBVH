@@ -13,7 +13,8 @@ Building is done via CMake (version 3.15 required). Detailed instructions can be
 BVH requires a compiler that supports C++17. This includes at least clang 5 or gcc version 7.0.
 
 BVH uses [DARMA/vt](https://github.com/DARMA-tasking/vt) for asynchronous tasking. For more information about DARMA/vt
-please consult the [documentation](https://darma-tasking.github.io/docs/html/index.html). 
+please consult the [documentation](https://darma-tasking.github.io/docs/html/index.html).
+BVH requires [Kokkos](https://github.com/kokkos/kokkos) version `4.0` or later.
 
 VTK can also be used for visualizing the the tree data structure.
 
