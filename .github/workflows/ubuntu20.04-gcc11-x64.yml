@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build distBVH
     container:
-      image: nmm0/nimblesm-base-env:main
+      image: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
     steps:
       - uses: actions/checkout@v4
       - name: Configure
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Unit Tests
     container:
-      image: nmm0/nimblesm-base-env:main
+      image: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
     needs: build
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Integration Tests
     container:
-      image: nmm0/nimblesm-base-env:main
+      image: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
     needs: build
     env:
       TRACE_OUTPUT_DIR: /opt/runs/NimbleSM/trace
