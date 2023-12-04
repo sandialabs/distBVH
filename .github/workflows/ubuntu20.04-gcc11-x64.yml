@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IMAGE_TAG: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
+      CACHE_TAG: nmm0/distbvh-ubuntu20.04-gcc11-x64:buildcache
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +35,7 @@ jobs:
         with:
           context: .
           file: ubuntu20.04-gcc11-x64.dockerfile
-          cache-from: type=registry,ref=docker.io/nmm0/${{ env.IMAGE_TAG }}
+          cache-from: type=registry,ref=docker.io/${{ env.CACHE_TAG }}
+          cache-to: type=registry,ref=docker.io/${{ env.CACHE_TAG }}
           push: ${{ (github.event_name == 'push' || github.ref == 'refs/heads/ci-images') && 'true' || 'false' }}
           tags: ${{ env.IMAGE_TAG }}
