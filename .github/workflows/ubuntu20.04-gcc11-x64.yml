@@ -29,11 +29,17 @@ jobs:
         with:
           images: nmm0/distBVH-ubuntu20.04-gcc11-x64
 
+      - name: Pull Cached Image
+        run: docker pull ${{ steps.meta.outputs.tags }}
+        continue-on-error: true
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ubuntu20.04-gcc11-x64.dockerfile
+          build-args: BUILDKIT_INLINE_CACHE=1
+          cache_from: type=registry,ref=${{ steps.meta.outputs.tags }}
           push: ${{ (github.event_name == 'push' || github.ref == 'refs/heads/ci-images') && 'true' || 'false' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
