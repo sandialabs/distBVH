@@ -37,7 +37,9 @@
 #include <cstdint>
 #include <type_traits>
 
+#if !defined(KOKKOS_COMPILER_NVCC)
 #include <immintrin.h>
+#endif
 
 namespace bvh
 {
@@ -75,7 +77,7 @@ namespace bvh
 #error "unsupported compiler for find first set"
 #endif
   }
-  
+
   inline std::uint64_t ffs( std::uint64_t _val )
   {
 #ifdef __GNUC__
@@ -84,17 +86,25 @@ namespace bvh
 #error "unsupported compiler for find first set"
 #endif
   }
-  
+
   inline std::uint32_t clz( std::uint32_t _val )
   {
+#if !defined(KOKKOS_COMPILER_NVCC)
     return _lzcnt_u32( _val );
+#else
+    return 0u;
+#endif
   }
-  
+
   inline std::uint64_t clz( std::uint64_t _val )
   {
+#if !defined(KOKKOS_COMPILER_NVCC)
     return _lzcnt_u64( _val );
+#else
+    return 0u;
+#endif
   }
-  
+
   inline int bsr( unsigned long _val )
   {
 #ifdef __GNUC__
@@ -109,7 +119,7 @@ namespace bvh
   {
     return bsr( _val );
   }
-  
+
   inline bool is_pow2( unsigned _val )
   {
     return _val & ( _val - 1 );
