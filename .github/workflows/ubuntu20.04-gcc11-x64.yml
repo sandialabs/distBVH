@@ -29,17 +29,11 @@ jobs:
         run: docker pull ${{ env.IMAGE_TAG }}
         continue-on-error: true
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: nmm0/distBVH-ubuntu20.04-gcc11-x64
-
-      - name: Build and push Docker image
+      - name: Build and push Docker images
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ubuntu20.04-gcc11-x64.dockerfile
-          cache-from: ${{ env.IMAGE_TAG }}
+          cache-from: type=registry,ref=docker.io/nmm0/${{ env.IMAGE_TAG }}
           push: ${{ (github.event_name == 'push' || github.ref == 'refs/heads/ci-images') && 'true' || 'false' }}
           tags: ${{ env.IMAGE_TAG }}
