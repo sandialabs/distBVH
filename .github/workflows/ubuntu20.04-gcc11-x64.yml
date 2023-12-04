@@ -13,6 +13,8 @@ jobs:
   build_and_push:
     name: Build and Push Image
     runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
     steps:
       - uses: actions/checkout@v4
 
@@ -24,7 +26,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Pull Cached Image
-        run: docker pull nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
+        run: docker pull ${{ env.IMAGE_TAG }}
         continue-on-error: true
 
       - name: Extract metadata (tags, labels) for Docker
@@ -38,7 +40,6 @@ jobs:
         with:
           context: .
           file: ubuntu20.04-gcc11-x64.dockerfile
-          cache-from: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
+          cache-from: ${{ env.IMAGE_TAG }}
           push: ${{ (github.event_name == 'push' || github.ref == 'refs/heads/ci-images') && 'true' || 'false' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.IMAGE_TAG }}
