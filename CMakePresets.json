@@ -35,6 +35,9 @@
       "execution": {
         "stopOnFailure": false,
         "noTestsAction": "error"
+      },
+      "environment": {
+        "PATH": "/opt/view/bin:$penv{PATH}"
       }
     }
   ]

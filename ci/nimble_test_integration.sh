@@ -7,6 +7,8 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
+export PATH=/opt/view/bin:$PATH
+
 test_name=$1
 trace_out_dir=$TRACE_OUTPUT_DIR/$test_name
 
