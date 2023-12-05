@@ -1,0 +1,44 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ci-gcc11-x64",
+      "generator": "Unix Makefiles",
+      "binaryDir": "/opt/builds/bvh",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc-11",
+        "CMAKE_CXX_COMPILER": "g++-11",
+        "CMAKE_PREFIX_PATH": "/opt/view",
+        "CMAKE_BUILD_TYPE": "Release",
+        "BVH_DISABLE_TESTS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci-gcc11-x64",
+      "configurePreset": "ci-gcc11-x64"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ci-gcc11-x64",
+      "configurePreset": "ci-gcc11-x64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": false,
+        "noTestsAction": "error"
+      },
+      "environment": {
+        "PATH": "/opt/view/bin:$penv{PATH}"
+      }
+    }
+  ]
+}
