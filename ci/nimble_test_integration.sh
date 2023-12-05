@@ -12,6 +12,9 @@ export PATH=/opt/view/bin:$PATH
 test_name=$1
 trace_out_dir=$TRACE_OUTPUT_DIR/$test_name
 
+# Make parent directory for trace
+mkdir -p $TRACE_OUTPUT_DIR
+
 pushd /opt/builds/NimbleSM/test/contact/$test_name
 mpirun -np 2 /opt/builds/NimbleSM/src/NimbleSM \
   $test_name.in \
