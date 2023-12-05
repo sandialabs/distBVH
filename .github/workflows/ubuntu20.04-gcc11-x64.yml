@@ -20,10 +20,6 @@ jobs:
       image: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
     steps:
       - uses: actions/checkout@v4
-      - name: Activate Spack Environment
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          spack env activate -d /opt/spack-env
       - name: Configure
         run: cmake --preset ci-gcc11-x64
       - name: Build
@@ -44,10 +40,6 @@ jobs:
         with:
           name: build-directory
           path: /opt/builds/bvh
-      - name: Activate Spack Environment
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          spack env activate -d /opt/spack-env
       - name: Run CTest
         run: ctest --preset ci-gcc11-x64
   integration_tests:
@@ -64,10 +56,6 @@ jobs:
         with:
           name: build-directory
           path: /opt/builds/bvh
-      - name: Activate Spack Environment
-        run: |
-          . /opt/spack/share/spack/setup-env.sh
-          spack env activate -d /opt/spack-env
       - name: Build NimbleSM
         run: bash ci/nimble_build_integration.sh
       - name: Sphere/plate contact test
