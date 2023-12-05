@@ -13,6 +13,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc-11",
         "CMAKE_CXX_COMPILER": "g++-11",
+        "CMAKE_PREFIX_PATH": "/opt/view",
         "CMAKE_BUILD_TYPE": "Release",
         "BVH_DISABLE_TESTS": "OFF"
       }
