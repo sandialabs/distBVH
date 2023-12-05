@@ -28,4 +28,4 @@ spack:
     unify: true
   config:
     install_tree: /opt/software
-  view: False
+  view: /opt/view
