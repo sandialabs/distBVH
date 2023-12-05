@@ -34,6 +34,7 @@
 #define INC_BVH_SPLIT_ELEMENT_PERMUTATIONS_HPP
 
 #include <vector>
+#include "../util/kokkos.hpp"
 
 namespace bvh
 {

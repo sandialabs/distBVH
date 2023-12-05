@@ -49,7 +49,12 @@ namespace bvh
   using bphase_kdop = dop_6< float_type >;
 #endif
 
-  enum split_algorithm : char { geom_axis = 0, ml_geom_axis = 1 };
+  enum class split_algorithm
+  {
+    geom_axis,
+    ml_geom_axis,
+    clustering
+  };
 
 }
 

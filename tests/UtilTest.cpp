@@ -44,36 +44,16 @@
 TEST_CASE("kokkos prefix sum yields the correct results", "[utility][kokkos]")
 {
   bvh::host_view< int * > nums{ "Numbers", 8 };
-  
+
   gen_array( nums, 3, 7, 2, 1, 4, 9, 1, 3 );
-  
+
   auto device_nums =  Kokkos::create_mirror_view_and_copy( bvh::primary_execution_space{}, nums );
-  
-  bvh::kokkos::prefix_sum( device_nums );
-  
+
+  bvh::prefix_sum( device_nums );
+
   nums = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, device_nums );
-  
+
   test_array( nums, 0, 3, 10, 12, 13, 17, 26, 27 );
-}
-
-TEST_CASE("kokkos radix sort yields the sorted results", "[utility][kokkos]")
-{
-  bvh::host_view< uint32_t * > nums{ "Numbers", 8 };
-  bvh::host_view< int * > indices{ "Indices", 8 };
-  
-  gen_array( nums, 3, 7, 2, 1, 4, 9, 1, 3 );
-  gen_array( indices, 0, 1, 2, 3, 4, 5, 6, 7 );
-  
-  auto dev_nums = Kokkos::create_mirror_view_and_copy( bvh::primary_execution_space{}, nums );
-  auto dev_indices = Kokkos::create_mirror_view_and_copy( bvh::primary_execution_space{}, indices );
-
-  bvh::kokkos::radix_sort( dev_nums, dev_indices );
-
-  nums = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, dev_nums );
-  indices = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, dev_indices );
-  
-  test_array( nums, 1, 1, 2, 3, 3, 4, 7, 9 );
-  test_array( indices, 3, 6, 2, 0, 7, 4, 1, 5 );
 }
 
 #endif  // BVH_ENABLE_KOKKOS

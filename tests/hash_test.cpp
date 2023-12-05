@@ -38,7 +38,146 @@
 #include <random>
 #include <chrono>
 
-TEST_CASE("benchmark morton", "[!benchmark]")
+TEST_CASE("morton hashing", "[hash]")
+{
+  // Note we can only encode the lower 10 bits in each component
+  // since the final hash is only 32 bits. The upper 22 bits are lost
+  SECTION("32 bit")
+  {
+    SECTION("all bits set")
+    {
+      std::uint32_t x = 0x000003ff;
+      std::uint32_t y = 0x000003ff;
+      std::uint32_t z = 0x000003ff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      REQUIRE( hash == 0x3fffffff );
+    }
+
+    SECTION("only x")
+    {
+      std::uint32_t x = 0x000003ff;
+      std::uint32_t y = 0x00000000;
+      std::uint32_t z = 0x00000000;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      // Pattern is zyxzyxzyx so here we expect (m is mask)
+      // mm00 1001 0010 0100 1001 0010 0100 1001
+      REQUIRE( hash == 0x09249249 );
+    }
+
+    SECTION("only y")
+    {
+      std::uint32_t x = 0x00000000;
+      std::uint32_t y = 0x000003ff;
+      std::uint32_t z = 0x00000000;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      // Pattern is zyxzyxzyx so here we expect (m is mask)
+      // mm01 0010 0100 1001 0010 0100 1001 0010
+      REQUIRE( hash == 0x12492492 );
+    }
+
+    SECTION("only z")
+    {
+      std::uint32_t x = 0x00000000;
+      std::uint32_t y = 0x00000000;
+      std::uint32_t z = 0x000003ff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top 2 bits never set
+      // Pattern is zyxzyxzyx so here we expect (m is mask)
+      // mm10 0100 1001 0010 0100 1001 0010 0100
+      REQUIRE( hash == 0x24924924 );
+    }
+  }
+
+  // Note we can only encode the lower 21 bits in each component
+  // since the final hash is only 64 bits. The upper 43 bits are lost
+  SECTION("64 bit")
+  {
+    SECTION("all bits set")
+    {
+      std::uint64_t x = 0x1fffff;
+      std::uint64_t y = 0x1fffff;
+      std::uint64_t z = 0x1fffff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      REQUIRE( hash == 0x7fffffffffffffff );
+    }
+
+    SECTION("only x")
+    {
+      std::uint64_t x = 0x1fffff;
+      std::uint64_t y = 0x0;
+      std::uint64_t z = 0x0;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      // Pattern is zyxzyxzyx so here we expect
+      // 0010 0100 1001 (0x249) repeating
+      REQUIRE( hash == 0x1249249249249249 );
+    }
+
+    SECTION("only y")
+    {
+      std::uint64_t x = 0x0;
+      std::uint64_t y = 0x1fffff;
+      std::uint64_t z = 0x0;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      // Pattern is zyxzyxzyx so here we expect
+      // 0100 1001 0010 (0x492) repeating
+      REQUIRE( hash == 0x2492492492492492 );
+    }
+
+    SECTION("only z")
+    {
+      std::uint64_t x = 0x0;
+      std::uint64_t y = 0x0;
+      std::uint64_t z = 0x1fffff;
+
+      auto hash = bvh::morton( x, y, z );
+
+      // Top bit never set
+      // Pattern is zyxzyxzyx so here we expect
+      // 1001 0010 0100 (0x924) repeating
+      REQUIRE( hash == 0x4924924924924924 );
+    }
+  }
+}
+
+TEST_CASE("quantization", "[hash]")
+{
+  const bvh::m::vec3d min{ -1.0, 0.0, 3.0 };
+  const bvh::m::vec3d max{ -0.5, 2.0, 4.0 };
+  const auto inv_diag = 1.0 / ( max - min );
+
+  SECTION("32 bit")
+  {
+    using vec_type = bvh::m::vec3< std::uint32_t >;
+    SECTION("bounds")
+    {
+      auto almost_max = max - bvh::m::vec3d::set1( 0.00001 );
+      REQUIRE( bvh::quantize32( min, min, inv_diag ) == vec_type{ 0, 0, 0 } );
+      REQUIRE( bvh::quantize32( almost_max, min, inv_diag ) == vec_type{ 0x3ff, 0x3ff, 0x3ff } );
+    }
+  }
+}
+
+TEST_CASE("benchmark morton", "[hash][!benchmark]")
 {
 #ifdef __BMI2__
   REQUIRE( bvh::detail::morton64( 5, 7, 9 ) == bvh::detail::morton64_intrin( 5, 7, 9 ) );
@@ -82,48 +221,3 @@ TEST_CASE("benchmark morton", "[!benchmark]")
   };
 #endif
 }
-
-#ifdef BVH_ENABLE_KOKKOS
-
-template< typename F >
-void gen_random_points( bvh::host_view< double *[3] > points, unsigned int _num_points, F &&_gen )
-{
-  Kokkos::parallel_for( Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, _num_points ), [points, &_gen]( int i ){
-    points( i, 0 ) = _gen();
-    points( i, 1 ) = _gen();
-    points( i, 2 ) = _gen();
-  } );
-}
-
-TEST_CASE("morton encoding yields the correct values using kokkos", "[hash][kokkos]")
-{
-  auto engine = std::default_random_engine();
-  auto dist = std::uniform_real_distribution< double >( 0.0, 1.0 );
-  auto rand = [&engine, dist]() mutable { return dist( engine ); };
-
-  static constexpr unsigned int num_points = 100000;
-
-  bvh::host_view< double *[3] > points( "Points", num_points );
-
-  gen_random_points( points, num_points, rand );
-
-  auto points_dev = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, points );
-
-  bvh::view< std::uint32_t * > codes( "Codes", num_points );
-
-  auto beg = std::chrono::high_resolution_clock::now();
-  for ( std::size_t i = 0; i < 1; ++i )
-  {
-    bvh::morton( points_dev, bvh::m::vec3d::zeros(), bvh::m::vec3d::ones(), codes );
-    auto codes_host = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, codes );
-  }
-
-  auto en = std::chrono::high_resolution_clock::now();
-
-  auto elapsed = std::chrono::duration_cast< std::chrono::milliseconds >( en - beg ).count();
-
-  std::cout << "Morton encoding took " << elapsed << '\n';
-
-}
-
-#endif

@@ -55,23 +55,23 @@ namespace bvh
   template< typename SplittingMethod >
   struct top_down_builder
   {
-  
+
     template< typename T, typename KDop, typename NodeData >
     class builder
     {
     public:
-      
+
       builder( span< const T > _elements,
                dynarray< bvh_node< T, KDop, NodeData > > &_nodes )
                : m_nodes( _nodes )
       {
         auto kd = KDop( make_transform_iterator( _elements.begin(), element_traits< T >::get_kdop ),
                         make_transform_iterator( _elements.end(), element_traits< T >::get_kdop ) );
-  
+
         // Build the root (always index 0)
         _nodes.emplace_back( std::move( kd ), 0 );
       }
-      
+
       /**
        *  Construct the tree using the bvh_top_down_builder build policy
        *
@@ -83,24 +83,24 @@ namespace bvh
                          std::size_t _entities_per_leaf )
       {
         using kdop_type = KDop;
-  
+
         m_nodes[_node_index].set_patch( _entity_begin, _entity_end );
-    
+
         if (( _entity_end - _entity_begin ) > _entities_per_leaf )
         {
           int split_axis = m_nodes[_node_index].kdop().longest_axis();
-      
+
           const auto begin = _entities + _entity_begin;
           const auto end   = _entities + _entity_end;
-      
+
           auto split        = split_in_place< SplittingMethod >( make_range( begin, end ), split_axis );
           auto split_offset = std::distance( begin, split );
-      
+
           auto get_bounds = []( const auto &_a ) { return _a.kdop(); };
-      
+
           const bool have_left  = ( begin != split );
           const bool have_right = ( split != end );
-      
+
           // Create children first
           if ( have_left )
           {
@@ -110,12 +110,12 @@ namespace bvh
                                                       make_transform_iterator( split, get_bounds ) };
             m_nodes.emplace_back( std::move( left_kdop ), parent_offset );
             m_nodes[_node_index].set_child_offset( 0, left );
-        
+
             // Recurse down the left tree for efficient pre-order traversal
             build( _node_index + left, _entities, _entity_begin, _entity_begin + split_offset,
                    _entities_per_leaf );
           }
-      
+
           if ( have_right )
           {
             std::ptrdiff_t right         = m_nodes.size() - _node_index;
@@ -124,27 +124,27 @@ namespace bvh
                                                       make_transform_iterator( end, get_bounds ) };
             m_nodes.emplace_back( std::move( right_kdop ), parent_offset );
             m_nodes[_node_index].set_child_offset( 1, right );
-        
+
             // Recurse down the right tree for efficient pre-order traversal
             build( _node_index + right, _entities, _entity_begin + split_offset, _entity_end,
                    _entities_per_leaf );
           }
         }
       }
-      
+
     private:
-  
+
       dynarray< bvh_node< T, KDop, NodeData > > &m_nodes;
     };
   };
-  
-  
+
+
   /**
    *  A bottom-up build policy
    */
   struct bottom_up_serial_builder
   {
-  
+
     template< typename T, typename KDop, typename NodeData >
     class builder
     {
@@ -175,15 +175,15 @@ namespace bvh
           // Max in each dimension is the maximum in a 21-bit number (1/3rd of 63 bit morton code)
           ret[i] = static_cast< std::uint64_t >( std::floor( diff * inv_fac * 0x1fffff ) );
         }
-    
+
         return ret;
       }
-  
+
       static bool can_merge_adjacent( std::uint64_t _m64l, std::uint64_t _m64r )
       {
         return ( _m64l == 0UL ) || ( clz( _m64l ) <= clz( _m64r ));
       }
-      
+
       static std::size_t merge_height( std::uint64_t _m1, std::uint64_t _m2 )
       {
         // This is undefined iff _m1 == _m2, so duplicates must be removed before this point
@@ -220,7 +220,7 @@ namespace bvh
 
         std::swap( _treelets, new_treelets );
       }
-  
+
       /**
        *  Construct the tree using the bottom_up_serial_builder build policy
        *
@@ -235,7 +235,7 @@ namespace bvh
             return;
 
           new_treelets.clear();
-          
+
           for ( std::size_t i = 0; i < _treelets.size(); ++i )
           {
             if ( _treelets[i].next_merge_height == h )
@@ -246,11 +246,11 @@ namespace bvh
               new_treelets.emplace_back( std::move( _treelets[i] ) );
             }
           }
-          
+
           std::swap( _treelets, new_treelets );
         }
       }
-  
+
       /**
        *  Construct the tree using the bottom_up_serial_builder build policy
        *
@@ -261,37 +261,37 @@ namespace bvh
                   std::size_t _entity_begin, std::size_t _entity_end,
                   std::size_t _entities_per_leaf )
       {
-    
+
         dynarray< treelet_type > treelets;
         treelets.reserve( _entity_end - _entity_begin );
-    
+
         std::transform( _entities + _entity_begin, _entities + _entity_end, std::back_inserter( treelets ),
                         [this]( auto &_x ) {
                           auto coord = this->discretize_coord( element_traits< T >::get_centroid( _x ) );
                           auto m64 = morton( coord.x(), coord.y(), coord.z() );
                           return treelet_type{ m64, element_traits< T >::get_kdop( _x ), 0, _x };
                         } );
-    
+
         std::sort( treelets.begin(), treelets.end(), []( const auto &_left, const auto &_right ){ return _left.m64 < _right.m64; } );
-    
+
         std::size_t min_height = 0;
         for ( std::size_t i = 0; i < treelets.size() - 1; ++i )
         {
           treelets[i].next_merge_height = merge_height( treelets[i].m64, treelets[i + 1].m64 );
           min_height = std::min( min_height, treelets[i].next_merge_height );
         }
-        
+
         build_treelets( treelets, min_height );
-    
+
         m_nodes = std::move( treelets[0].nodes );
-    
+
         std::move( treelets[0].leafs.begin(), treelets[0].leafs.end(), _entities + _entity_begin );
-    
+
         std::reverse( m_nodes.begin(), m_nodes.end() );
       }
-      
+
     private:
-  
+
       dynarray< bvh_node< T, KDop, NodeData > > &m_nodes;
       KDop m_global_bounds;
     };

@@ -120,6 +120,15 @@ if (BVH_BROADPHASE_6_DOP)
   target_compile_definitions(bvh PUBLIC BVH_BROADPHASE_6_DOP)
 endif()
 
+option(BVH_COPY_ALL_NARROWPHASE_PATCHES "Don't use lazy initialization" OFF)
+if (BVH_COPY_ALL_NARROWPHASE_PATCHES)
+  message(STATUS "Not using lazy narrowphase initialization")
+  message(STATUS "Set BVH_COPY_ALL_NARROWPHASE_PATCHES to \"ON\" to use lazy initialization")
+  target_compile_definitions(bvh PUBLIC BVH_COPY_ALL_NARROWPHASE_PATCHES)
+else()
+  message(STATUS "Using lazy narrowphase initialization")
+endif()
+
 install(TARGETS bvh EXPORT bvhTargets
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib

@@ -33,8 +33,10 @@
 #ifndef INC_TEST_COMMON_HPP
 #define INC_TEST_COMMON_HPP
 
+#include <bvh/types.hpp>
 #include <catch2/catch.hpp>
 
+#include <array>
 #include <bvh/math/vec.hpp>
 #include <bvh/kdop.hpp>
 #include <bvh/patch.hpp>
@@ -48,38 +50,31 @@ class Element
 public:
 
   using kdop_type = bvh::bphase_kdop;
+  static constexpr std::size_t vertex_count = 8;
 
   Element( std::size_t _index = static_cast< std::size_t >( -1 ) ) : m_index( _index ) {};
+
+  Element( const Element &_other ) = default;
+  Element( Element &&_other ) noexcept = default;
+  Element &operator=( const Element &_other ) = default;
+  Element &operator=( Element &&_other ) noexcept = default;
 
   bvh::m::vec3d centroid() const
   {
     return std::accumulate( m_vertices.begin(), m_vertices.end(), bvh::m::vec3d::zeros() ) / static_cast< double >( m_vertices.size() );
   };
 
-  void setVertices( std::initializer_list< bvh::m::vec3d > _verts )
+  template< typename... Args >
+  std::enable_if_t< ( sizeof...( Args ) == vertex_count ) >
+  setVertices( Args &&... _args )
   {
-    setVertices( _verts.begin(), _verts.end() );
-  }
-
-  template< typename Iterator >
-  void setVertices( Iterator _begin, Iterator _end )
-  {
-    m_vertices.reserve( static_cast< std::size_t >( std::distance( _begin, _end ) ) );
-    std::copy( _begin, _end, std::back_inserter( m_vertices ) );
+    m_vertices = std::array< bvh::m::vec3d, vertex_count >{ std::forward< Args >( _args )... };
     m_bounds = kdop_type::from_vertices( m_vertices.begin(), m_vertices.end() );
-  }
-
-  template< typename Iterator >
-  void setVerticesAndBounds( Iterator _begin, Iterator _end, const kdop_type &_bounds )
-  {
-    m_vertices.reserve( static_cast< std::size_t >( std::distance( _begin, _end ) ) );
-    std::copy( _begin, _end, std::back_inserter( m_vertices ) );
-    m_bounds = _bounds;
   }
 
   void setIndex( std::size_t _index ) { m_index = _index; }
 
-  const bvh::dynarray< bvh::m::vec3d > &vertices() const { return m_vertices; }
+  bvh::span< const bvh::m::vec3d > vertices() const { return m_vertices; }
 
   const kdop_type &kdop() const { return m_bounds; }
   std::size_t global_id() const { return m_index; }
@@ -127,7 +122,7 @@ public:
 private:
 
   std::size_t m_index;
-  bvh::dynarray< bvh::m::vec3d > m_vertices;
+  std::array< bvh::m::vec3d, 8 > m_vertices;
   kdop_type m_bounds;
 };
 
@@ -172,18 +167,47 @@ inline bvh::dynarray< Element > buildElementGrid( int _x, int _y, int _z, std::s
         double y = _origin_shift + j * dy;
         double z = _origin_shift + k * dz;
         Element el( index++ );
-        el.setVertices( { bvh::m::vec3d{ x, y, z },
-                                    { x + dx, y, z },
-                                    { x + dx, y + dy, z },
-                                    { x, y + dy, z },
-                                    { x, y, z + dz },
-                                    { x + dx, y, z + dz },
-                                    { x + dx, y + dy, z + dz },
-                                    { x, y + dy, z + dz } } );
+        el.setVertices( bvh::m::vec3d{ x, y, z },
+                        bvh::m::vec3d{ x + dx, y, z },
+                        bvh::m::vec3d{ x + dx, y + dy, z },
+                        bvh::m::vec3d{ x, y + dy, z },
+                        bvh::m::vec3d{ x, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                        bvh::m::vec3d{ x, y + dy, z + dz } );
         ret.emplace_back( std::move( el ) );
       }
     }
   }
+
+  return ret;
+}
+
+inline bvh::view< Element * >
+build_element_grid( int _x, int _y, int _z, std::size_t _base_index = 0, double _origin_shift = 0.0 )
+{
+  bvh::view< Element * > ret( "elements", _x * _y * _z );
+
+  double dx = 1.0 / _x;
+  double dy = 1.0 / _y;
+  double dz = 1.0 / _z;
+
+  std::size_t index = _base_index;
+
+  auto rp = Kokkos::MDRangePolicy<Kokkos::Rank<3>>{{ 0, 0, 0 }, { _x, _y, _z }};
+  Kokkos::parallel_for(rp, KOKKOS_LAMBDA( int _i, int _j, int _k ) {
+    double x = _origin_shift + _i * dx;
+    double y = _origin_shift + _j * dy;
+    double z = _origin_shift + _k * dz;
+
+    const std::size_t index = _i + _j * _x + _k * _x * _y;
+    assert( index < ret.extent( 0 ) );
+    auto &el = ret( index );
+    el.setIndex( _base_index + index );
+    el.setVertices( bvh::m::vec3d{ x, y, z }, bvh::m::vec3d{ x + dx, y, z }, bvh::m::vec3d{ x + dx, y + dy, z },
+                    bvh::m::vec3d{ x, y + dy, z }, bvh::m::vec3d{ x, y, z + dz }, bvh::m::vec3d{ x + dx, y, z + dz },
+                    bvh::m::vec3d{ x + dx, y + dy, z + dz }, bvh::m::vec3d{ x, y + dy, z + dz } );
+  } );
 
   return ret;
 }
@@ -209,14 +233,14 @@ inline bvh::dynarray< bvh::patch<> > buildElementPatchGrid( int _x, int _y, int 
         double y = j * dy;
         double z = k * dz;
         Element el( index++ );
-        el.setVertices( { bvh::m::vec3d{ x, y, z },
-                          { x + dx, y, z },
-                          { x + dx, y + dy, z },
-                          { x, y + dy, z },
-                          { x, y, z + dz },
-                          { x + dx, y, z + dz },
-                          { x + dx, y + dy, z + dz },
-                          { x, y + dy, z + dz } } );
+        el.setVertices( bvh::m::vec3d{ x, y, z },
+                        bvh::m::vec3d{ x + dx, y, z },
+                        bvh::m::vec3d{ x + dx, y + dy, z },
+                        bvh::m::vec3d{ x, y + dy, z },
+                        bvh::m::vec3d{ x, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y, z + dz },
+                        bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                        bvh::m::vec3d{ x, y + dy, z + dz } );
         ret.emplace_back( el.global_id(), bvh::span< const Element >( &el, &el + 1 ) );
       }
     }
@@ -253,14 +277,14 @@ buildElementGridParallel( std::size_t _rank, std::size_t _nranks,
     const double y = j * dy;
     const double z = k * dz;
     ret.emplace_back( idx );
-    ret.back().setVertices( { bvh::m::vec3d{ x, y, z },
-                      { x + dx, y, z },
-                      { x + dx, y + dy, z },
-                      { x, y + dy, z },
-                      { x, y, z + dz },
-                      { x + dx, y, z + dz },
-                      { x + dx, y + dy, z + dz },
-                      { x, y + dy, z + dz }} );
+    ret.back().setVertices( bvh::m::vec3d{ x, y, z },
+                            bvh::m::vec3d{ x + dx, y, z },
+                            bvh::m::vec3d{ x + dx, y + dy, z },
+                            bvh::m::vec3d{ x, y + dy, z },
+                            bvh::m::vec3d{ x, y, z + dz },
+                            bvh::m::vec3d{ x + dx, y, z + dz },
+                            bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                            bvh::m::vec3d{ x, y + dy, z + dz } );
   }
 
   return ret;
@@ -293,23 +317,20 @@ buildElementPatchGridParallel( std::size_t _rank, std::size_t _nranks,
     const double z = k * dz;
 
     Element e( idx );
-    e.setVertices( { bvh::m::vec3d{ x, y, z },
-                     { x + dx, y, z },
-                     { x + dx, y + dy, z },
-                     { x, y + dy, z },
-                     { x, y, z + dz },
-                     { x + dx, y, z + dz },
-                     { x + dx, y + dy, z + dz },
-                     { x, y + dy, z + dz }} );
+    e.setVertices( bvh::m::vec3d{ x, y, z },
+                   bvh::m::vec3d{ x + dx, y, z },
+                   bvh::m::vec3d{ x + dx, y + dy, z },
+                   bvh::m::vec3d{ x, y + dy, z },
+                   bvh::m::vec3d{ x, y, z + dz },
+                   bvh::m::vec3d{ x + dx, y, z + dz },
+                   bvh::m::vec3d{ x + dx, y + dy, z + dz },
+                   bvh::m::vec3d{ x, y + dy, z + dz } );
 
     ret.emplace_back( idx, bvh::span< const Element >( &e, &e + 1 ) );
   }
 
   return ret;
 }
-
-
-#ifdef BVH_ENABLE_KOKKOS
 
 #include <bvh/util/kokkos.hpp>
 
@@ -330,9 +351,10 @@ inline void test_array( bvh::host_view< T > _arr, Args &&... _args )
   using value_type = typename bvh::host_view< T >::value_type;
 
   std::array< value_type, sizeof...( _args ) > expected = {{ static_cast< value_type >( std::forward< Args >( _args ) )... }};
-  Kokkos::parallel_for( Kokkos::RangePolicy< bvh::host_execution_space >( 0, sizeof...( _args ) ), [_arr, expected]( int i ){
+  for ( std::size_t i = 0; i < sizeof...( _args ); ++i )
+  {
     REQUIRE( _arr( i ) == expected[i] );
-  } );
+  }
 }
 
 inline bvh::view< bvh::bphase_kdop * >
@@ -344,14 +366,44 @@ generate_random_kdops( std::default_random_engine &_eng,
 {
   bvh::host_view< bvh::bphase_kdop * > ret( "random_kdops", _count );
 
-  std::uniform_real_distribution xdist( _min.x() + _max_size, _max.x() - _max_size );
-  std::uniform_real_distribution ydist( _min.y() + _max_size, _max.y() - _max_size );
-  std::uniform_real_distribution zdist( _min.z() + _max_size, _max.z() - _max_size );
-  std::uniform_real_distribution rdist( std::numeric_limits< double >::epsilon(), _max_size );
+  std::uniform_real_distribution<> xdist( _min.x() + _max_size, _max.x() - _max_size );
+  std::uniform_real_distribution<> ydist( _min.y() + _max_size, _max.y() - _max_size );
+  std::uniform_real_distribution<> zdist( _min.z() + _max_size, _max.z() - _max_size );
+  std::uniform_real_distribution<> rdist( std::numeric_limits< double >::epsilon(), _max_size );
 
   for ( std::size_t i = 0; i < _count; ++i )
   {
     ret( i ) = bvh::bphase_kdop::from_sphere( bvh::m::vec3d( xdist( _eng ), ydist( _eng ), zdist( _eng ) ), rdist( _eng ) );
+  }
+
+  return Kokkos::create_mirror_view_and_copy( bvh::default_execution_space{}, ret );
+}
+
+inline bvh::view< bvh::bphase_kdop * >
+generate_kdop_grid( std::size_t _count,
+                    const bvh::m::vec3d &_min,
+                    const bvh::m::vec3d &_max,
+                    double _radius )
+{
+  bvh::host_view< bvh::bphase_kdop * > ret( "kdop_grid", _count * _count * _count );
+
+  bvh::m::vec3d pos = _min;
+  bvh::m::vec3d incr = ( _max - _min ) / static_cast< double >( _count );
+  for ( std::size_t z = 0; z < _count; ++z )
+  {
+    for ( std::size_t y = 0; y < _count; ++y )
+    {
+      for ( std::size_t x = 0; x < _count; ++x )
+      {
+        const auto idx = z * _count * _count + y * _count + x;
+        ret( idx ) = bvh::bphase_kdop::from_sphere( pos, _radius );
+        pos.x() += incr.x();
+      }
+      pos.y() += incr.y();
+      pos.x() = _min.x();
+    }
+    pos.z() += incr.z();
+    pos.y() = _min.y();
   }
 
   return Kokkos::create_mirror_view_and_copy( bvh::default_execution_space{}, ret );
@@ -368,6 +420,36 @@ snapshots_from_kdops( bvh::view< const bvh::bphase_kdop * > _kdops )
   return ret;
 }
 
-#endif // BVH_ENABLE_KOKKOS
+static_assert( std::is_same_v< bvh::m::epsilon_type_of_t< bvh::m::vec3d >, double > );
+static_assert( std::is_same_v< bvh::m::epsilon_type_of_t< double >, double > );
+
+template< typename T >
+struct approx
+{
+  explicit approx( const T &_val, bvh::m::epsilon_type_of_t< std::remove_cv_t< std::remove_reference_t< T > > > _eps = bvh::m::epsilon_value< bvh::m::epsilon_type_of_t< T > > )
+    : val( _val ), eps( _eps )
+  {}
+
+  T val;
+  bvh::m::epsilon_type_of_t< T > eps;
+
+  friend bool operator==( const T &_lhs, const approx< T > &_rhs )
+  {
+    using bvh::m::approx_equals;
+    return approx_equals( _lhs, _rhs.val, _rhs.eps );
+  }
+
+  friend bool operator==( const approx< T > &_lhs, const T &_rhs )
+  {
+    using bvh::m::approx_equals;
+    return approx_equals( _lhs.val, _rhs, _lhs.eps );
+  }
+
+  friend std::ostream &operator<<( std::ostream &_oss, const approx< T > &_val )
+  {
+    _oss << "approx( " << _val.val << " )";
+    return _oss;
+  }
+};
 
 #endif  // INC_TEST_COMMON_HPP
