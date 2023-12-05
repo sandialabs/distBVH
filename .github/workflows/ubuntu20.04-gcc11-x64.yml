@@ -40,6 +40,8 @@ jobs:
         with:
           name: build-directory
           path: /opt/builds/bvh
+      - name: Set executable permissions
+        run: chmod +x /opt/builds/bvh/tests/BVHTests
       - name: Run CTest
         run: ctest --preset ci-gcc11-x64
   integration_tests:

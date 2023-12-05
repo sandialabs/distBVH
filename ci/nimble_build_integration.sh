@@ -10,6 +10,7 @@ mkdir -p /opt/builds/NimbleSM
 pushd /opt/builds/NimbleSM
 cmake -DCMAKE_C_COMPILER="gcc-11" \
   -DCMAKE_CXX_COMPILER="g++-11" \
+  -DCMAKE_PREFIX_PATH="/opt/view" \
   -DNimbleSM_ENABLE_KOKKOS="ON" \
   -DNimbleSM_ENABLE_BVH="ON" \
   -DNimbleSM_ENABLE_MPI="ON" \
