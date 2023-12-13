@@ -57,8 +57,9 @@ jobs:
         run: |
           cmake -B builddir \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DVT_BUILD_EXAMPLES=OFF \
-            -DVT_BUILD_TESTS=OFF \
+            -Dvt_build_examples=OFF \
+            -Dvt_build_tests=OFF \
+            -Dvt_build_tools=OFF \
             -Dvt_trace_enabled=ON
 
       - name: Build vt
