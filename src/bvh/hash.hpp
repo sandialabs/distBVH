@@ -36,14 +36,12 @@
 #include <cstdint>
 #include "math/vec.hpp"
 #include "kdop.hpp"
+#include "util/kokkos.hpp"
 
-#if !defined(BVH_ENABLE_KOKKOS) || defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
 #include <immintrin.h>
 #endif
 
-#ifdef BVH_ENABLE_KOKKOS
-#include "util/kokkos.hpp"
-#endif
 
 namespace bvh
 {

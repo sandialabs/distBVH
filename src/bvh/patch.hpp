@@ -41,81 +41,13 @@
 #include <vector>
 #include "snapshot.hpp"
 
-#ifdef BVH_ENABLE_KOKKOS
 #include <Kokkos_Core.hpp>
-#endif
 
 namespace bvh
 {
 #if 0
   namespace detail
   {
-#ifndef BVH_ENABLE_KOKKOS
-    template< typename Element >
-    struct patch_storage
-    {
-      using container_type = std::vector< Element >;
-
-      using iterator = typename container_type::iterator;
-      using const_iterator = typename container_type::const_iterator;
-      using reverse_iterator = typename container_type::reverse_iterator;
-      using const_reverse_iterator = typename container_type::const_reverse_iterator;
-      using size_type = typename container_type::size_type;
-
-      using value_type = typename container_type::value_type;
-
-      container_type m_entities;
-
-      template< typename KDop >
-      void set_elements( span< const Element > _span, KDop &_kdop, m::vec3< float_type > &_centroid ) noexcept
-      {
-        m_entities.insert( m_entities.end(), _span.begin(), _span.end() );
-
-        static auto get_kdop = []( const auto &_a ) { return element_traits< Element >::get_kdop( _a ); };
-        auto kdop_range = make_range( make_transform_iterator( _span.begin(), get_kdop ),
-                                      make_transform_iterator( _span.end(), get_kdop ) );
-
-        _kdop = KDop::from_kdops( kdop_range.begin(), kdop_range.end() );
-
-        static auto get_centroid = []( const auto &_a ) { return element_traits< Element >::get_centroid( _a ); };
-        auto centroid_range = make_range( make_transform_iterator( _span.begin(), get_centroid ),
-                                          make_transform_iterator( _span.end(), get_centroid ) );
-
-        _centroid = std::accumulate( centroid_range.begin(), centroid_range.end(), m::vec3< float_type >() )
-                     / static_cast< float_type >( centroid_range.size() );
-      }
-
-      value_type &operator[]( std::size_t _n )
-      {
-        return m_entities[_n];
-      }
-
-      const value_type &operator[]( std::size_t _n ) const
-      {
-        return m_entities[_n];
-      }
-
-      iterator begin() noexcept { return m_entities.begin(); }
-      const_iterator begin() const noexcept { return m_entities.begin(); }
-      const_iterator cbegin() const noexcept { return m_entities.cbegin(); }
-
-      iterator end() noexcept { return m_entities.end(); }
-      const_iterator end() const noexcept { return m_entities.end(); }
-      const_iterator cend() const noexcept { return m_entities.cend(); }
-
-      size_type size() const noexcept { return m_entities.size(); }
-      bool empty() const noexcept { return m_entities.empty(); }
-      value_type *data() noexcept { return m_entities.data(); }
-      const value_type *data() const noexcept { return m_entities.data(); }
-
-      template< typename Serializer >
-      friend void serialize( Serializer &_s, const patch_storage &_storage )
-      {
-        _s | _storage.m_entities;
-      }
-    };
-#else
-
     template< typename Element >
     struct patch_storage
     {
@@ -189,7 +121,6 @@ namespace bvh
         _s | _storage.entities;
       }
     };
-#endif
   }
 #endif
 

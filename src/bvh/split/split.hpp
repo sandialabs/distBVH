@@ -128,11 +128,7 @@ namespace bvh
       using traits_type = element_traits< bvh::entity_snapshot >;
       using kdop_type = typename traits_type::kdop_type;
 
-#ifdef BVH_ENABLE_KOKKOS
       auto split_point = SplittingMethod::split_point( _elements, _axis );
-#else
-      auto split_point = SplittingMethod::split_point( make_range( _elements.begin(), _elements.end() ), _axis );
-#endif
 
       auto split_combi = std::partition( combi.begin(), combi.end(),
                                 [split_point, _axis]( std::pair< bvh::entity_snapshot, size_t > &entry ) {
@@ -141,7 +137,6 @@ namespace bvh
                                       return kdop_type::project( c, _axis ) < split_point;
                                         } );
 
-#ifdef BVH_ENABLE_KOKKOS
       Kokkos::View< size_t*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > h_perm(_perm.data(), _perm.size());
       Kokkos::View< bvh::entity_snapshot*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > h_elements(_elements.data(), _elements.size());
       Kokkos::parallel_for("CopyLoop", _elements.size(), KOKKOS_LAMBDA (const int& i) {
@@ -149,13 +144,6 @@ namespace bvh
                        h_elements[i] = std::get<0>( tmp_pair );
                        h_perm(i) = std::get<1>( tmp_pair );
                      } );
-#else
-      for (size_t ii = 0; ii < _elements.size(); ++ii) {
-        auto tmp_pair = combi[ii];
-        _elements[ii] = std::get<0>( tmp_pair );
-        _perm[ii] = std::get<1>( tmp_pair );
-      }
-#endif
 
       auto delta = std::distance( combi.begin(), split_combi );
       if ( ( combi.begin() == split_combi ) || ( combi.end() == split_combi ) ) {
@@ -307,16 +295,10 @@ namespace bvh
 
     if ( _depth > 0 ) {
       std::vector< std::pair< Element, size_t > > combi( _elements.size() );
-#ifdef BVH_ENABLE_KOKKOS
       Kokkos::View< std::pair< Element, size_t >*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > h_combi(combi.data(), _elements.size());
       Kokkos::parallel_for("CopyInit", _elements.size(), KOKKOS_LAMBDA (const int& i) {
                      h_combi[i] = std::make_pair( _elements[i], i );
                      } );
-#else
-      for (size_t ii = 0; ii < combi.size(); ++ii) {
-        combi[ii] = std::make_pair( _elements[ii], ii );
-      }
-#endif
       detail::split_permutations_recursive_impl_ml< SplittingMethod, AxisSelector >( _elements, _depth - 1,
                         _permutations->indices.begin(),
                         _permutations->indices, _permutations->splits,

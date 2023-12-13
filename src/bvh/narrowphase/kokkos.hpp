@@ -33,8 +33,6 @@
 #ifndef INC_BVH_NARROWPHASE_KOKKOS_HPP
 #define INC_BVH_NARROWPHASE_KOKKOS_HPP
 
-#ifdef BVH_ENABLE_KOKKOS
-
 #include <limits>
 #include <array>
 #include <Kokkos_Sort.hpp>
@@ -249,6 +247,5 @@ namespace bvh
      */
   }
 }
-#endif  // BVH_ENABLE_KOKKOS
 
 #endif  // INC_BVH_NARROWPHASE_KOKKOS_HPP
