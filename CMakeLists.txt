@@ -109,6 +109,11 @@ endif()
 set_property(TARGET bvh PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(bvh PUBLIC Kokkos::kokkos)
 
+option(BVH_ENABLE_CUDA "Enable CUDA" OFF)
+if (BVH_ENABLE_CUDA)
+  target_compile_definitions(bvh PUBLIC BVH_ENABLE_CUDA)
+endif()
+
 find_package(spdlog 1.13 REQUIRED)
 target_link_libraries(bvh PUBLIC spdlog::spdlog)
 
