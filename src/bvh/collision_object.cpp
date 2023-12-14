@@ -101,10 +101,6 @@ namespace bvh
     m_impl->local_patches.resize( m_impl->overdecomposition );
   }
 
-  collision_object::collision_object( collision_object && ) noexcept = default;
-
-  collision_object &collision_object::operator=( collision_object && ) noexcept = default;
-
   collision_object::~collision_object() = default;
 
   void collision_object::set_entity_data_impl( const void *_data, std::size_t _element_size )

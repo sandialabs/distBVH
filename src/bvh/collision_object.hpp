@@ -60,10 +60,10 @@ namespace bvh
     using tree_function = std::function< void( const snapshot_tree & ) >;
 
     collision_object( const collision_object & ) = delete;
-    collision_object( collision_object && ) noexcept;
+    collision_object( collision_object && ) noexcept = default;
 
     collision_object &operator=( const collision_object & ) = delete;
-    collision_object &operator=( collision_object && ) noexcept;
+    collision_object &operator=( collision_object && ) noexcept = default;
 
     ~collision_object();
 
