@@ -95,7 +95,7 @@ namespace bvh
       };
 
 
-      void set_broadphase_trees( collision_object *_coll_obj, broadphase_tree_msg *_msg )
+      BVH_HOST_DEVICE void set_broadphase_trees( collision_object *_coll_obj, broadphase_tree_msg *_msg )
       {
         _coll_obj->get_impl().tree = _msg->tree;
       }

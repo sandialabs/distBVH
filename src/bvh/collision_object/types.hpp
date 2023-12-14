@@ -196,25 +196,25 @@ namespace bvh
       using function_type = void( collision_object *, Message * );
 
       template< typename Message, function_type< Message > *Fun >
-      void delegate( Message *_msg )
+      BVH_HOST_DEVICE void delegate( Message *_msg )
       {
         ( *Fun )( self, _msg );
       }
 
-      void activate_narrowphase( start_activate_narrowphase_msg *_msg );
-      void setup_narrowphase( setup_narrowphase_msg *_msg );
-      void request_ghosts( start_ghosting_msg *_msg );
-      void start_narrowphase( start_narrowphase_msg *_msg );
-      void clear_narrowphase( clear_narrowphase_msg *_msg );
+      BVH_HOST_DEVICE void activate_narrowphase( start_activate_narrowphase_msg *_msg );
+      BVH_HOST_DEVICE void setup_narrowphase( setup_narrowphase_msg *_msg );
+      BVH_HOST_DEVICE void request_ghosts( start_ghosting_msg *_msg );
+      BVH_HOST_DEVICE void start_narrowphase( start_narrowphase_msg *_msg );
+      BVH_HOST_DEVICE void clear_narrowphase( clear_narrowphase_msg *_msg );
 
-      void insert_active_narrow_local_index( active_narrowphase_local_index_msg *_msg );
+      BVH_HOST_DEVICE void insert_active_narrow_local_index( active_narrowphase_local_index_msg *_msg );
 
-      void cache_patch( ghost_msg *_msg );
+      BVH_HOST_DEVICE void cache_patch( ghost_msg *_msg );
 
-      void set_result( result_msg *_msg );
+      BVH_HOST_DEVICE void set_result( result_msg *_msg );
 
       void begin_narrowphase_modification( messages::modify_msg * );
-      void finish_narrowphase_modification( messages::modify_msg * );
+      BVH_HOST_DEVICE void finish_narrowphase_modification( messages::modify_msg * );
     };
 
     using collision_object_proxy_type = ::vt::objgroup::ObjGroupManager::ProxyType< collision_object_holder >;
