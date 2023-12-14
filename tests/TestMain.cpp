@@ -33,9 +33,7 @@
 #define CATCH_CONFIG_RUNNER
 #include <catch2/catch.hpp>
 
-#ifdef BVH_ENABLE_KOKKOS
 #include <Kokkos_Core.hpp>
-#endif
 
 #include <vt/transport.h>
 
@@ -52,12 +50,9 @@ main( int _argc, char **_argv )
     }
   }
 
-#ifdef BVH_ENABLE_KOKKOS
   Kokkos::initialize( _argc, _argv );
-#endif
-  
   int ret = 0;
-  
+
   {
     ::vt::initialize(_argc, _argv);
 
@@ -73,9 +68,6 @@ main( int _argc, char **_argv )
     ::vt::finalize();
   }
 
-#ifdef BVH_ENABLE_KOKKOS
   Kokkos::finalize();
-#endif
-  
   return ret;
 }

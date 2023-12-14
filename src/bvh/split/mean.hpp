@@ -38,9 +38,7 @@
 #include "../traits.hpp"
 #include <iterator>
 
-#ifdef BVH_ENABLE_KOKKOS
 #include <Kokkos_Core.hpp>
-#endif
 
 namespace bvh
 {
@@ -54,19 +52,18 @@ namespace bvh
         using traits_type = element_traits< typename std::iterator_traits< InputIterator >::value_type >;
         using kdop_type = typename traits_type::kdop_type;
         using arithmetic_type = typename kdop_type::arithmetic_type;
-      
+
         auto centroids_range = transform_range( _elements, traits_type::get_centroid );
-      
+
         auto projected_range = transform_range( centroids_range, [_axis]( auto _c ) {
           return kdop_type::project( _c, _axis );
         } );
-      
+
         auto sum = std::accumulate( projected_range.begin(), projected_range.end(), arithmetic_type{ 0 } );
-      
+
         return sum / static_cast< arithmetic_type >( projected_range.size());
       }
 
-#ifdef BVH_ENABLE_KOKKOS
       template< typename Input >
       static auto split_point( span < Input > _elements, int _axis )
       {
@@ -76,11 +73,10 @@ namespace bvh
         arithmetic_type sum = 0;
         Kokkos::parallel_reduce("LoopMean", _elements.size(), KOKKOS_LAMBDA (const int& i, arithmetic_type& lsum ) {
              const auto &c = _elements[i].centroid();
-             lsum += kdop_type::project( c, _axis ); 
+             lsum += kdop_type::project( c, _axis );
             }, sum);
         return sum / static_cast< arithmetic_type >( _elements.size() );
       }
-#endif
 
     };
   }

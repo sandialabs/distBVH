@@ -33,8 +33,6 @@
 #ifndef INC_BVH_PRIMITIVE_KOKKOS_CLOSEST_POINT_HPP
 #define INC_BVH_PRIMITIVE_KOKKOS_CLOSEST_POINT_HPP
 
-#ifdef BVH_ENABLE_KOKKOS
-
 #include "../util/kokkos.hpp"
 #include "../util/attributes.hpp"
 #include "triangle.hpp"
@@ -53,7 +51,7 @@ namespace bvh
         _dest( _index, 2 ) = _v[2];
       }
     }
-    
+
     template< typename T >
     void
     closest_point( const view< T *[3] > _points,
@@ -63,14 +61,14 @@ namespace bvh
       auto ab = _tri.b - _tri.a;
       auto ac = _tri.c - _tri.a;
       auto bc = _tri.c - _tri.b;
-      
+
       Kokkos::parallel_for( _points.extent( 0 ), [_points, _closest, _tri, ab, ac, bc] KOKKOS_FUNCTION ( int i ){
         auto p = vec{ _points( i, 0 ), _points( i, 1 ), _points( i, 2 ) };
-        
+
         auto ap = p - _tri.a;
         auto bp = p - _tri.b;
         auto cp = p - _tri.c;
-        
+
         // Vertex region a
         auto d1 = m::dot( ab, ap );
         auto d2 = m::dot( ac, ap );
@@ -79,7 +77,7 @@ namespace bvh
           detail::store_vec( _tri.a, _closest, i );
           return; // next iteration
         }
-        
+
         // Vertex region b
         auto d3 = m::dot( ab, bp );
         auto d4 = m::dot( ac, bp );
@@ -88,7 +86,7 @@ namespace bvh
           detail::store_vec( _tri.b, _closest, i );
           return; // next iteration
         }
-        
+
         // Edge region ab
         auto vc = d1 * d4 - d3 * d2;
         if ( vc <= T{ 0 } && d1 >= T{ 0 } && d3 <= T{ 0 } )
@@ -97,17 +95,17 @@ namespace bvh
           detail::store_vec( _tri.a + v * ab, _closest, i );
           return; // next iteration
         }
-        
+
         // Vertex region c
         auto d5 = m::dot( ab, cp );
         auto d6 = m::dot( ac, cp );
-        
+
         if ( d6 >= T{ 0 } && d5 <= d6 )
         {
           detail::store_vec( _tri.c, _closest, i );
           return; // next iteration
         }
-        
+
         // Edge region ac
         auto vb = d5 * d2 - d1 * d6;
         if ( vb <= T{ 0 } && d2 >= T{ 0 } && d6 <= T{ 0 } )
@@ -116,7 +114,7 @@ namespace bvh
           detail::store_vec( _tri.a + w * ac, _closest, i );
           return; // next iteration
         }
-        
+
         // Edge region bc
         auto va = d3 * d6 - d5 * d4;
         if ( va <= T{ 0 } && ( d4 - d3 ) >= T{ 0 } && ( d5 - d6 ) >= T{ 0 } )
@@ -125,7 +123,7 @@ namespace bvh
           detail::store_vec( _tri.b + w * bc, _closest, i );
           return; // next iteration
         }
-        
+
         // Triangle interior
         auto denom = T{ 1 } / ( va + vb + vc );
         auto v = vb * denom;
@@ -135,7 +133,5 @@ namespace bvh
     }
   }
 }
-
-#endif  // BVH_ENABLE_KOKKOS
 
 #endif  // INC_BVH_PRIMITIVE_KOKKOS_CLOSEST_POINT_HPP
