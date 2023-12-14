@@ -55,6 +55,9 @@ namespace bvh
 #ifdef __CUDA_ARCH__
     constexpr double epsilon = DBL_EPSILON;
     constexpr double epsilonf = FLT_EPSILON;
+
+    template< typename T >
+    constexpr T epsilon_value = T{};
 #else
     constexpr double epsilon = std::numeric_limits< double >::epsilon();
     constexpr double epsilonf = std::numeric_limits< float >::epsilon();
