@@ -297,7 +297,9 @@ namespace bvh
       std::vector< std::pair< Element, size_t > > combi( _elements.size() );
       Kokkos::View< std::pair< Element, size_t >*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > h_combi(combi.data(), _elements.size());
       Kokkos::parallel_for("CopyInit", _elements.size(), KOKKOS_LAMBDA (const int& i) {
+#ifndef BVH_ENABLE_CUDA
                      h_combi[i] = std::make_pair( _elements[i], i );
+#endif
                      } );
       detail::split_permutations_recursive_impl_ml< SplittingMethod, AxisSelector >( _elements, _depth - 1,
                         _permutations->indices.begin(),
