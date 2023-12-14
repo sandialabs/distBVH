@@ -18,6 +18,8 @@ that are summarized here:
 
 - :ref:`vt_DIR <cmake-vt-dir>`
 - :ref:`vt_ROOT <cmake-vt-root>`
+- :ref:`Kokkos_DIR <cmake-kokkos-dir>`
+- :ref:`Kokkos_ROOT <cmake-kokkos-root>`
 - :ref:`BVH_VT_INSERTABLE_COLLECTIONS <cmake-bvh-vt-insertable-collections>`
 - :ref:`VTK_ROOT <cmake-vtk-root>`
 - :ref:`BVH_DEBUG_LEVEL <cmake-bvh-debug-level>`
@@ -66,6 +68,29 @@ BVH can optionally use insertable collections. Use the following to turn off ins
 .. code-block:: sh
 
     -DBVH_VT_INSERTABLE_COLLECTIONS=OFF
+
+Locating Kokkos
+-----------------
+
+BVH is dependent on `Kokkos`_ for performance portability.
+Follow the instructions on `Kokkos wiki`_ for Kokkos build and installation.
+
+Use ``Kokkos_DIR`` or ``Kokkos_ROOT`` to point to the installation directory:
+
+.. _cmake-kokkos-dir:
+
+.. code-block:: sh
+
+    -DKokkos_DIR=path/to/kokkos/install/cmake
+
+.. _cmake-kokkos-root:
+
+.. code-block:: sh
+
+    -DKokkos_ROOT=path/to/kokkos/install
+
+.. _Kokkos: https://github.com/kokkos/kokkos
+.. _Kokkos wiki: https://kokkos.github.io/kokkos-core-wiki/building.html
 
 Building with VTK
 -----------------
