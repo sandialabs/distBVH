@@ -13,9 +13,14 @@ jobs:
   build_and_push:
     name: Build and Push Image
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - ubuntu20.04-gcc11-x64
+          - cuda11.4.3-gcc9.4-x64
     env:
-      IMAGE_TAG: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
-      CACHE_TAG: nmm0/distbvh-ubuntu20.04-gcc11-x64:buildcache
+      IMAGE_TAG: nmm0/distbvh-${{ matrix.image }}:ci-images
+      CACHE_TAG: nmm0/distbvh-${{ matrix.image }}:buildcache
     steps:
       - uses: actions/checkout@v4
 
@@ -36,7 +41,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ubuntu20.04-gcc11-x64.dockerfile
+          file: ${{ matrix.image }}.dockerfile
           cache-from: type=registry,ref=docker.io/${{ env.CACHE_TAG }}
           cache-to: type=registry,ref=docker.io/${{ env.CACHE_TAG }},mode=max
           push: ${{ (github.event_name == 'push' || github.ref == 'refs/heads/ci-images') && 'true' || 'false' }}
