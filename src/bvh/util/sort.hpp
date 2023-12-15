@@ -114,8 +114,6 @@ namespace bvh
       }
     }
 
-  private:
-
     void step( view< T * > _hashes, view< IndexType * > _indices, std::uint32_t _shift )
     {
       const auto n = _hashes.extent( 0 );
@@ -136,6 +134,8 @@ namespace bvh
         m_scratch( new_idx ) = _hashes( i );
       } );
     }
+
+  private:
 
     view< T * > m_scratch;
     view< IndexType * > m_index_scratch;

@@ -225,8 +225,6 @@ namespace bvh
     impl &get_impl() noexcept { return *m_impl; }
     const impl &get_impl() const noexcept { return *m_impl; }
 
-  private:
-
     template< typename T, typename... ViewProp >
     void
     update_snapshots( Kokkos::View< const T *, ViewProp... > _data_view )
@@ -253,6 +251,8 @@ namespace bvh
           snap( _idx ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
         } );
     }
+
+  private:
 
     void for_each_tree_impl( tree_function &&_fun );
     void for_each_result_impl( std::function< void(const narrowphase_result &) > &&_fun );
