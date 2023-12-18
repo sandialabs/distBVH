@@ -1,4 +1,4 @@
-name: Build ubuntu20-gcc11-x64 Image
+name: Build Docker Images
 
 on:
   push:

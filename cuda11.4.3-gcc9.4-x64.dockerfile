@@ -42,11 +42,13 @@ RUN cmake -B /vt/builddir -S /vt \
         -Dvt_build_tests=OFF \
         -Dvt_build_tools=OFF \
         -Dvt_trace_enabled=ON \
-    && cmake --build /vt/builddir --target install
+    && cmake --build /vt/builddir --target install -j 2 \
+    && rm -rf /vt/builddir
 
 RUN cmake -B /kokkos/builddir -S /kokkos \
         -DCMAKE_CXX_COMPILER=/kokkos/bin/nvcc_wrapper \
         -DKokkos_ENABLE_CUDA=ON \
         -DKokkos_ENABLE_CUDA_LAMBDA=ON \
         -DKokkos_ARCH_PASCAL61=ON \
-    && cmake --build /kokkos/builddir --target install
+    && cmake --build /kokkos/builddir --target install -j 2 \
+    && rm -rf /kokkos/builddir
