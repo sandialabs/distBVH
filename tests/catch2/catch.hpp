@@ -10958,7 +10958,9 @@ namespace Catch {
         sigaltstack(&sigStack, &oldSigStack);
         struct sigaction sa = { };
 
+#if !defined(__CUDACC__)
         sa.sa_handler = handleSignal;
+#endif
         sa.sa_flags = SA_ONSTACK;
         for (std::size_t i = 0; i < sizeof(signalDefs)/sizeof(SignalDefs); ++i) {
             sigaction(signalDefs[i].id, &sa, &oldSigActions[i]);
