@@ -92,7 +92,17 @@ namespace bvh
 #if !defined(KOKKOS_COMPILER_NVCC)
     return _lzcnt_u32( _val );
 #else
-    return 0u;
+    if (!_val) return 32;
+    const char debruijn32[32] =
+        {0, 31, 9, 30, 3, 8,  13, 29, 2,  5,  7,  21, 12, 24, 28, 19,
+         1, 10, 4, 14, 6, 22, 25, 20, 11, 15, 23, 26, 16, 27, 17, 18};
+    _val |= _val >> 1;
+    _val |= _val >> 2;
+    _val |= _val >> 4;
+    _val |= _val >> 8;
+    _val |= _val >> 16;
+    _val++;
+    return debruijn32[_val * 0x076be629 >> 27];
 #endif
   }
 
