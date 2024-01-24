@@ -37,7 +37,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#if !defined(KOKKOS_COMPILER_NVCC)
+#ifndef __CUDA_ARCH__
 #include <immintrin.h>
 #endif
 
@@ -89,7 +89,7 @@ namespace bvh
 
   inline std::uint32_t clz( std::uint32_t _val )
   {
-#if !defined(KOKKOS_COMPILER_NVCC)
+#ifndef __CUDA_ARCH__
     return _lzcnt_u32( _val );
 #else
     if (!_val) return 32;
@@ -108,7 +108,7 @@ namespace bvh
 
   inline std::uint64_t clz( std::uint64_t _val )
   {
-#if !defined(KOKKOS_COMPILER_NVCC)
+#ifndef __CUDA_ARCH__
     return _lzcnt_u64( _val );
 #else
     if (!_val) return 64;
