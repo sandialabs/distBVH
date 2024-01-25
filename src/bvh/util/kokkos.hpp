@@ -33,7 +33,6 @@
 #ifndef INC_BVH_UTIL_KOKKOS_HPP
 #define INC_BVH_UTIL_KOKKOS_HPP
 
-#ifdef BVH_ENABLE_KOKKOS
 #include <ostream>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
@@ -68,7 +67,5 @@ namespace bvh
   template< typename T >
   using single_host_view = host_view< T >;
 }
-
-#endif  // BVH_ENABLE_KOKKOS
 
 #endif  // INC_BVH_UTIL_KOKKOS_HPP

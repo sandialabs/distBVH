@@ -36,15 +36,13 @@
 #include "TestCommon.hpp"
 #include <array>
 
-#ifdef BVH_ENABLE_KOKKOS
-
 inline void gen_array( bvh::kokkos::host_view< double *[3] > _points )
 {
   Kokkos::parallel_for( Kokkos::RangePolicy< bvh::kokkos::host_execution_space >( 0, 4 ), [_points]( int i ){
     static constexpr std::array< bvh::m::constant_vec3d, 4 > varr = {{
       { 0.0, 2.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, -1.0, 0.0 }
     }};
-    
+
     _points( i, 0 ) = varr[i][0];
     _points( i, 1 ) = varr[i][1];
     _points( i, 2 ) = varr[i][2];
@@ -57,7 +55,7 @@ inline void check_array( bvh::kokkos::host_view< double *[3] >  _closest )
     static constexpr std::array< bvh::m::constant_vec3d, 4 > expected = {{
       { 0.0, 1.0, 0.0 }, { 0.0, 1.0, 0.0 }, { 0.0, 0.0, 0.0 }, { 0.0, 0.0, 0.0 }
     }};
-    
+
     REQUIRE( _closest( i, 0 ) == expected[i][0] );
     REQUIRE( _closest( i, 1 ) == expected[i][1] );
     REQUIRE( _closest( i, 2 ) == expected[i][2] );
@@ -69,20 +67,18 @@ TEST_CASE("the closest point algorithm determines the closest points using kokko
   bvh::triangle< double > t{ {  0.0, 1.0, 0.0 },
                              { -1.0, 0.0, 0.0 },
                              {  1.0, 0.0, 0.0 } };
-  
+
   bvh::kokkos::host_view< double *[3] > points{ "Points", 4 };
-  
+
   gen_array( points );
-  
+
   auto dev_points = bvh::kokkos::transfer_to_device( points );
-  
+
   bvh::kokkos::view< double *[3] > closest( "Closest", 4 );
-  
+
   bvh::kokkos::closest_point( dev_points, t, closest );
-  
+
   auto host_closest = bvh::kokkos::transfer_to_host( closest );
 
   check_array( host_closest );
 }
-
-#endif

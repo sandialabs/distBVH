@@ -106,7 +106,6 @@ if (Kokkos_CXX_STANDARD LESS 17)
 endif()
 set_property(TARGET bvh PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(bvh PUBLIC Kokkos::kokkos)
-target_compile_definitions(bvh PUBLIC BVH_ENABLE_KOKKOS)
 
 option(BVH_ENABLE_TRACING "Enable detailed performance tracing (may have an impact on performance" OFF)
 if (BVH_ENABLE_TRACING)

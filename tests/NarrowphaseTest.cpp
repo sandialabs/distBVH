@@ -39,34 +39,31 @@ TEST_CASE("two objects collide with narrowphase", "[narrowphase]")
 {
   auto obj1 = buildElementGrid( 1, 1, 1 );
   auto obj2 = buildElementGrid( 2, 3, 2 );
-  
+
   bvh::collision_query_result< std::size_t > res;
-  
+
   bvh::narrowphase( obj1, obj2, [&res]( const auto &_e1, const auto &_e2 ){
     res.pairs.emplace_back( _e1.global_id(), _e2.global_id() );
   } );
-  
+
   // obj1 should collide with all of obj2 (12 elements)
   REQUIRE( res.size() == 12 );
 }
 #endif
 
-#ifdef BVH_ENABLE_KOKKOS
 #include <bvh/narrowphase/kokkos.hpp>
 
 TEST_CASE("two objects collide with kokkos narrowphase", "[narrowphase]")
 {
   auto obj1 = buildElementGrid( 1, 1, 1 );
   auto obj2 = buildElementGrid( 2, 3, 2 );
-  
+
   using patch_type = bvh::patch<>;
-  
+
   patch_type a( 0, bvh::span< Element >( obj1.data(), obj1.size() ) );
   patch_type b( 1, bvh::span< Element >( obj2.data(), obj2.size() ) );
-  
+
   auto res = bvh::kokkos::narrowphase( a, b );
   // obj1 should collide with all of obj2 (12 elements)
   REQUIRE( res.size() == 12 );
 }
-
-#endif  // BVH_ENABLE_KOKKOS

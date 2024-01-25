@@ -39,8 +39,6 @@
 #include <array>
 #include <utility>
 
-#ifdef BVH_ENABLE_KOKKOS
-
 TEST_CASE("kokkos prefix sum yields the correct results", "[utility][kokkos]")
 {
   bvh::host_view< int * > nums{ "Numbers", 8 };
@@ -55,5 +53,3 @@ TEST_CASE("kokkos prefix sum yields the correct results", "[utility][kokkos]")
 
   test_array( nums, 0, 3, 10, 12, 13, 17, 26, 27 );
 }
-
-#endif  // BVH_ENABLE_KOKKOS
