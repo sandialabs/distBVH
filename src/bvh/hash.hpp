@@ -38,7 +38,7 @@
 #include "kdop.hpp"
 #include "util/kokkos.hpp"
 
-#if defined(KOKKOS_ACTIVE_EXECUTION_MEMORY_SPACE_HOST)
+#if defined(__GNUC__)
 #include <immintrin.h>
 #endif
 
