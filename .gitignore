@@ -20,3 +20,5 @@ venv/
 CMakeUserPresets.json
 
 *.user
+
+vt_lb_statistics.*

@@ -49,7 +49,7 @@ TEST_CASE("max variant axis works", "[kokkos][search]")
                                  Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
         vec2.data(), vec2.size());
 
-    int axis = bvh::kokkos::max_variant_axis(xview, compview);
+    int axis = bvh::max_variant_axis(xview, compview);
     REQUIRE(axis == 0);
   }
 
@@ -64,7 +64,7 @@ TEST_CASE("max variant axis works", "[kokkos][search]")
         Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
         vec2.data(), vec2.size());
 
-    int axis = bvh::kokkos::max_variant_axis(xview, compview);
+    int axis = bvh::max_variant_axis(xview, compview);
     REQUIRE(axis == 1);
   }
 
@@ -79,7 +79,7 @@ TEST_CASE("max variant axis works", "[kokkos][search]")
         Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
         vec2.data(), vec2.size());
 
-    int axis = bvh::kokkos::max_variant_axis(xview, compview);
+    int axis = bvh::max_variant_axis(xview, compview);
     REQUIRE(axis == 2);
   }
 }
@@ -103,7 +103,7 @@ TEST_CASE("sort_and_sweep_local", "[kokkos][search]")
     bvh::patch<> p2( 1, bvh::span< const Element >( vec2.data(), vec2.size() ) );
 
     std::atomic< int > count{ 0 };
-    bvh::kokkos::sort_and_sweep_local( p1, xview, p2, compview, 0,
+    bvh::sort_and_sweep_local( p1, xview, p2, compview, 0,
                                       [rank, &count]( const Element &_a, const Element &_b ) {
                                         REQUIRE( _b.global_id() == rank );
                                         REQUIRE( _a.global_id() >= rank * 12 );
@@ -128,7 +128,7 @@ TEST_CASE("sort_and_sweep_local", "[kokkos][search]")
     bvh::patch<> p2( 1, bvh::span< const Element >( vec2.data(), vec2.size() ) );
 
     std::atomic< int > count{ 0 };
-    bvh::kokkos::sort_and_sweep_local( p2, compview, p1, xview, 0,
+    bvh::sort_and_sweep_local( p2, compview, p1, xview, 0,
                                        [rank, &count]( const Element &_a, const Element &_b ) {
                                          REQUIRE( _a.global_id() == rank );
                                          REQUIRE( _b.global_id() >= rank * 12 );

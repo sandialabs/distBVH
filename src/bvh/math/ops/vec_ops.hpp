@@ -184,10 +184,14 @@ namespace bvh
 
     template< typename Vec1, typename Vec2,
         typename = std::enable_if_t< ops::is_valid_binary_component_op< Vec1, Vec2 >::value > >
-    constexpr BVH_INLINE bool
-    approx_equals( const Vec1 &_lhs, const Vec2 &_rhs )
+    constexpr BVH_INLINE auto
+    approx_equals( const Vec1 &_lhs, const Vec2 &_rhs,
+      common_component_t< Vec1, Vec2 > _eps = epsilon_value< common_component_t< Vec1, Vec2 > > )
     {
-      return ops::approx_equals_op< Vec1, Vec2 >::execute( _lhs, _rhs );
+      auto ret = vec< bool, vector_traits< Vec1 >::num_components >::zeros();
+      for ( std::size_t i = 0; i < vector_traits< Vec1 >::num_components; ++i )
+        ret[i] = approx_equals( _lhs[i], _rhs[i], _eps );
+      return ret;
     }
 
     template< typename Vec1, typename Vec2,

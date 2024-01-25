@@ -248,6 +248,18 @@ namespace bvh
       return hadd( _lhs * _rhs );
     }
 
+    template< template< typename, unsigned > class Vec, typename T, typename U >
+    constexpr BVH_INLINE auto
+    cross( const Vec< T, 3 > &_lhs, const Vec< U, 3 > &_rhs )
+    {
+      const auto t0 = Vec< T, 3 >{ _lhs[1], _lhs[2], _lhs[0] };
+      const auto t1 = Vec< U, 3 >{ _rhs[2], _rhs[0], _rhs[1] };
+      const auto t2 = t0 * _rhs;
+      const auto lhs = t0 * t1;
+      const auto rhs = decltype( t2 ){ t2[1], t2[2], t2[0] };
+      return lhs - rhs;
+    }
+
     // Unary ops
 
     template< template< typename, unsigned > class Vec, typename T, unsigned N >

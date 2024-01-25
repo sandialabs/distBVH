@@ -60,8 +60,8 @@ namespace bvh
       vt_msg_serialize_required();
 
       broadphase_patch_type patch;
-      ::vt::NodeType origin_node;
-      vt_index local_idx;
+      ::vt::NodeType origin_node = {};
+      vt_index local_idx = {};
 
       template< typename Serializer >
       void serialize( Serializer &_s )

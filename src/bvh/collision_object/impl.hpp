@@ -45,6 +45,20 @@
 
 namespace bvh
 {
+  namespace collision_object_impl
+  {
+    inline void
+    narrowphase_patch_copy( collision_object_impl::narrowphase_patch_collection_type *_patch,
+                            narrowphase_patch_msg *_msg )
+    {
+      _patch->ghost_destinations.clear();
+      _patch->patch_meta = _msg->patch_meta;
+      _patch->bytes.resize(_msg->data_size);
+      std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
+      _patch->origin_node = _msg->origin_node;
+    }
+  }
+
   struct collision_object::impl
   {
     explicit impl( collision_world &_world, std::size_t _idx );
@@ -59,7 +73,51 @@ namespace bvh
     using narrowphase_patch_collection_type = collision_object_impl::narrowphase_patch_collection_type;
 
     using narrowphase_collection_type = collision_object_impl::narrowphase_collection_type;
-    using ghost_table_index = collision_object_impl::narrowphase_index ;
+    using ghost_table_index = collision_object_impl::narrowphase_index;
+
+    /**
+     * @brief Copy the local data pointed to by m_entity_ptr at the offset corresponding to the
+     * permutation for the given local element index
+     *
+     * @param _idx the local element index
+     * @param _rank the current rank, passed in to avoid an extra function call
+     * @return the message containing the narrowphase data
+     */
+    ::vt::MsgPtr< collision_object_impl::narrowphase_patch_msg >
+    prepare_local_patch_for_sending( std::size_t _local_idx, int _rank )
+    {
+      using narrowphase_patch_msg = collision_object_impl::narrowphase_patch_msg;
+
+      const auto idx = _local_idx;
+      const auto sbeg = ( idx == 0 ) ? 0 : splits_h( idx - 1 );
+      const auto send = ( idx == num_splits ) ? split_indices_h.extent( 0 ) : splits_h( idx );
+      const std::size_t nelements = send - sbeg;
+      const std::size_t chunk_data_size = nelements * m_entity_unit_size;
+      const int rank = _rank;
+      debug_assert( m_entity_unit_size > 0, "entity unit size must be > 0" );
+
+      auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( chunk_data_size );
+      send_msg->data_size = chunk_data_size;
+
+      std::size_t offset = 0;
+      ::bvh::vt::debug( "{}: sending narrowphase patch {} for body {} size {}\n", ::vt::theContext()->getNode(),
+                        vt_index{ _local_idx + rank * overdecomposition }, collision_idx, nelements );
+      // Should be replaced with VT serialization
+      for (std::size_t j = sbeg; j < send; ++j)
+      {
+        debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
+        debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
+        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
+        offset += m_entity_unit_size;
+      }
+
+      send_msg->origin_node = rank;
+      send_msg->patch_meta = local_patches[idx];
+
+      return send_msg;
+    }
+
+
 
     collision_world *world;
 
@@ -67,6 +125,7 @@ namespace bvh
     std::size_t collision_idx;
 
     std::vector< broadphase_patch_type > local_patches;
+    std::vector< broadphase_patch_type > last_step_local_patches;
     std::vector< ::vt::MsgPtr< collision_object_impl::narrowphase_patch_msg > > narrowphase_patch_messages;
     std::vector< std::size_t > local_data_indices;
 
@@ -108,6 +167,14 @@ namespace bvh
     };
 
     std::unordered_map< vt_index, narrowphase_patch_cache_entry > narrowphase_patch_cache;
+
+    // Split and clustering views
+    view< bvh::entity_snapshot * > snapshots;
+    view< std::size_t * > split_indices;  ///< Mapping from original element indices to the reordered indices
+    view< std::size_t * > splits; ///< bounds of each split
+    host_view< std::size_t * > split_indices_h;
+    host_view< std::size_t * > splits_h;
+    std::size_t num_splits = 0; ///< The number of actual splits -- may be les than splits.extent( 0 )
   };
 
   namespace collision_object_impl

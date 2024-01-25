@@ -55,26 +55,26 @@ namespace
   struct element
   {
     using centroid_type = bvh::m::vec3d;
-    
+
     element() = default;
-    
+
     element( unsigned _gid, const bvh::m::vec3d &_center )
       : m_kdop( kdop_type::from_sphere( _center, 1.0 ) ),
         m_gid( _gid ),
         m_centroid( _center )
     {
-    
+
     }
-    
+
     element( const element &_other ) = default;
     element &operator=( const element &_other ) = default;
     element( element &&_other ) = default;
     element &operator=( element &&_other ) = default;
-    
+
     kdop_type m_kdop;
     unsigned m_gid;
     bvh::m::vec3d m_centroid;
-    
+
     const kdop_type &kdop() const noexcept{ return m_kdop; }
     const bvh::m::vec3d &centroid() const noexcept { return m_centroid; }
     const unsigned global_id() const noexcept { return m_gid; }
@@ -84,70 +84,70 @@ namespace
 TEST_CASE("in place recursive mean splitting", "[split]")
 {
   using traits_type = bvh::element_traits< element<kd_type> >;
-  
+
   static constexpr std::size_t N = 8;
   std::array< element<kd_type>, N > elements;
   for ( std::size_t i = 0; i < N; ++i )
   {
     elements[i] = element<kd_type>( i, bvh::m::vec3d( static_cast< double >( i ), 0.0, 0.0 ) );
   }
-  
+
   auto range = bvh::make_range( elements.begin(), elements.end() );
   auto kdops = bvh::transform_range( range, traits_type::get_kdop );
-  
+
   SECTION( "longest axis" )
   {
     auto kdop = kd_type::from_kdops( kdops.begin(), kdops.end() );
     REQUIRE( bvh::axis::longest::axis( kdop ) == 0 );
   }
-  
+
   SECTION( "single split" )
   {
     auto sp = bvh::split_in_place< bvh::split::mean >( range, 0 );
-    
+
     REQUIRE( std::distance( range.begin(), sp ) == 4 );
     REQUIRE( std::distance( sp, range.end() ) == 4 );
   }
-  
+
   SECTION( "in place recursive split depth 0" )
   {
     auto sps = bvh::split_in_place_recursive< bvh::split::mean, bvh::axis::longest >( range, 0 );
     REQUIRE( sps.size() == 2 );
   }
-  
+
   SECTION( "in place recursive split depth 1" )
   {
     auto sps = bvh::split_in_place_recursive< bvh::split::mean, bvh::axis::longest >( range, 1 );
     REQUIRE( sps.size() == 3 );
-    
+
     REQUIRE( std::distance( sps[0], sps[1] ) == 4 );
     REQUIRE( std::distance( sps[1], sps[2] ) == 4 );
   }
-  
+
   SECTION( "in place recursive split depth 2" )
   {
     auto sps = bvh::split_in_place_recursive< bvh::split::mean, bvh::axis::longest >( range, 2 );
     REQUIRE( sps.size() == 5 );
-    
+
     for ( std::size_t i = 0; i < sps.size() - 1; ++i )
       REQUIRE( std::distance( sps[i], sps[i + 1] ) == 2 );
   }
-  
+
   SECTION( "in place recursive split depth 3" )
   {
     auto sps = bvh::split_in_place_recursive< bvh::split::mean, bvh::axis::longest >( range, 3 );
     REQUIRE( sps.size() == 9 );
-    
+
     for ( std::size_t i = 0; i < sps.size() - 1; ++i )
       REQUIRE( std::distance( sps[i], sps[i + 1] ) == 1 );
   }
-  
+
   SECTION( "in place recursive split depth 4" )
   {
     // Recursive split generates empty nodes
     auto sps = bvh::split_in_place_recursive< bvh::split::mean, bvh::axis::longest >( range, 4 );
     REQUIRE( sps.size() == 17 );
-    
+
     for ( std::size_t i = 0; i < sps.size() - 1; ++i )
       REQUIRE( std::distance( sps[i], sps[i + 1] ) <= 1 );
   }
@@ -156,7 +156,7 @@ TEST_CASE("in place recursive mean splitting", "[split]")
 TEST_CASE("recursive mean splitting 1D elements", "[split]")
 {
   using traits_type = bvh::element_traits< element<kd_type> >;
-  
+
   static constexpr std::size_t N = 8;
   std::array< element<kd_type>, N > elements;
   for ( std::size_t i = 0; i < N; ++i )
@@ -167,11 +167,11 @@ TEST_CASE("recursive mean splitting 1D elements", "[split]")
   bvh::element_permutations m_permutations;
   m_permutations.indices.resize( N );
   std::iota(m_permutations.indices.begin(), m_permutations.indices.end(), 0);
-  
+
   auto range = bvh::make_range( elements.begin(), elements.end() );
   auto kdops = bvh::transform_range( range, traits_type::get_kdop );
-  
-  auto span_ele = bvh::span< element<kd_type> >{elements.data(), N};
+
+  auto span_ele = bvh::span< const element<kd_type> >{elements.data(), N};
   auto range_perm = bvh::make_range( m_permutations.indices.begin(), m_permutations.indices.end() );
 
   SECTION( "longest axis" )
@@ -179,65 +179,61 @@ TEST_CASE("recursive mean splitting 1D elements", "[split]")
     auto kdop = kd_type::from_kdops( kdops.begin(), kdops.end() );
     REQUIRE( bvh::axis::longest::axis( kdop ) == 0 );
   }
-  
+
   SECTION( "single split" )
   {
     const int axis = 0;
     auto sp = bvh::detail::split_permutation< bvh::split::mean >( span_ele, range_perm, axis );
-    
+
     REQUIRE( std::distance( range_perm.begin(), sp ) == 4 );
     REQUIRE( std::distance( sp, range_perm.end() ) == 4 );
   }
-  
+
   SECTION( "recursive split depth 0" )
   {
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 0, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 2 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N );
+    REQUIRE( m_permutations.splits.size() == 0 );
   }
-  
+
   SECTION( "recursive split depth 1" )
   {
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 1, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 3 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N/2 );
-    REQUIRE( m_permutations.splits[2] == N );
+    REQUIRE( m_permutations.splits.size() == 1 );
+    REQUIRE( m_permutations.splits[0] == N/2 );
   }
-  
+
   SECTION( "recursive split depth 2" )
   {
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 2, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 5 );
-    
+    REQUIRE( m_permutations.splits.size() == 3 );
+
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i] );
       REQUIRE( ( m_permutations.splits[i+1] - m_permutations.splits[i] ) == 2 );
     }
   }
- 
+
   SECTION( "recursive split depth 3" )
   {
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 3, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 9 );
-    
+    REQUIRE( m_permutations.splits.size() == 7 );
+
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i] );
       REQUIRE( ( m_permutations.splits[i+1] - m_permutations.splits[i] ) == 1 );
     }
   }
-  
+
   SECTION( "recursive split depth 4" )
   {
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 4, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 17 );
-    
+    REQUIRE( m_permutations.splits.size() == 15 );
+
     // Recursive split generates empty nodes
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i] );
@@ -250,7 +246,7 @@ TEST_CASE("recursive mean splitting 1D elements", "[split]")
 TEST_CASE("recursive mean splitting 2D elements", "[split]")
 {
   using traits_type = bvh::element_traits< element< kd06_type > >;
-  
+
   static constexpr std::size_t Nx = 4, Ny = 3;
   static constexpr std::size_t N = Nx * Ny;
   std::array< element< kd06_type >, N > elements;
@@ -261,18 +257,18 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
   }
 
   bvh::element_permutations m_permutations;
-  
+
   auto range = bvh::make_range( elements.begin(), elements.end() );
   auto kdops = bvh::transform_range( range, traits_type::get_kdop );
-  
-  auto span_ele = bvh::span< element<kd06_type> >{elements.data(), N};
+
+  auto span_ele = bvh::span< const element<kd06_type> >{elements.data(), N};
 
   SECTION( "longest axis" )
   {
     auto kdop = kd06_type::from_kdops( kdops.begin(), kdops.end() );
     REQUIRE( bvh::axis::longest::axis( kdop ) == 0 );
   }
-  
+
   SECTION( "single split" )
   {
     m_permutations.indices.resize( N );
@@ -281,7 +277,7 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
     //
     const int axis = 0;
     auto sp = bvh::detail::split_permutation< bvh::split::mean >( span_ele, range_perm, axis );
-    // 
+    //
     REQUIRE( std::distance( range_perm.begin(), sp ) == N/2 );
     REQUIRE( std::distance( sp, range_perm.end() ) == N/2 );
   }
@@ -293,11 +289,9 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 0, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 2 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N );
+    REQUIRE( m_permutations.splits.size() == 0 );
   }
- 
+
   SECTION( "recursive split depth 1" )
   {
     m_permutations.indices.resize( N );
@@ -305,10 +299,8 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 1, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 3 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N/2 );
-    REQUIRE( m_permutations.splits[2] == N );
+    REQUIRE( m_permutations.splits.size() == 1 );
+    REQUIRE( m_permutations.splits[0] == N/2 );
     //
     for (size_t ii = m_permutations.splits[0]; ii < m_permutations.splits[1]; ++ii) {
       const auto point = elements[m_permutations.indices[ii]].centroid();
@@ -323,7 +315,7 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations< bvh::split::mean, bvh::axis::longest >( span_ele, 2, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 5 );
+    REQUIRE( m_permutations.splits.size() == 3 );
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i] );
       REQUIRE( ( m_permutations.splits[i+1] - m_permutations.splits[i] ) == 3 );
@@ -336,13 +328,13 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
     // 2022-06-15 We should test the permutation indices
     //
   }
- 
+
 }
 
 TEST_CASE("new recursive mean splitting 2D elements", "[split]")
 {
   using traits_type = bvh::element_traits< element< bvh::bphase_kdop > >;
-  
+
   static constexpr std::size_t Nx = 4, Ny = 3;
   static constexpr std::size_t N = Nx * Ny;
   std::array< bvh::entity_snapshot, N > elements;
@@ -355,7 +347,7 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
   }
 
   bvh::element_permutations m_permutations;
-  
+
   auto span_ele = bvh::span< bvh::entity_snapshot >{elements.data(), N};
 
   SECTION( "single split" )
@@ -382,11 +374,9 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 0, &m_permutations);
     //
-    REQUIRE( m_permutations.splits.size() == 2 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N );
+    REQUIRE( m_permutations.splits.size() == 0 );
   }
- 
+
   SECTION( "recursive split depth 1" )
   {
     m_permutations.indices.resize( N );
@@ -394,10 +384,8 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 1, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 3 );
-    REQUIRE( m_permutations.splits[0] == 0 );
-    REQUIRE( m_permutations.splits[1] == N/2 );
-    REQUIRE( m_permutations.splits[2] == N );
+    REQUIRE( m_permutations.splits.size() == 1 );
+    REQUIRE( m_permutations.splits[0] == N/2 );
     //
   }
 
@@ -409,18 +397,18 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 2, &m_permutations);
     //
-    REQUIRE( m_permutations.splits.size() == 5 );
+    REQUIRE( m_permutations.splits.size() == 3 );
     //
-    REQUIRE( m_permutations.splits[2] - m_permutations.splits[0] == 6);
-    REQUIRE( m_permutations.splits[4] - m_permutations.splits[2] == 6);
+    REQUIRE( m_permutations.splits[1] - 0 == 6);
+    REQUIRE( N - m_permutations.splits[1] == 6);
     //
+    REQUIRE( m_permutations.splits[0] - 0 >= 2 );
     REQUIRE( m_permutations.splits[1] - m_permutations.splits[0] >= 2 );
     REQUIRE( m_permutations.splits[2] - m_permutations.splits[1] >= 2 );
-    REQUIRE( m_permutations.splits[3] - m_permutations.splits[2] >= 2 );
-    REQUIRE( m_permutations.splits[4] - m_permutations.splits[3] >= 2 );
+    REQUIRE( N - m_permutations.splits[2] >= 2 );
     //
   }
- 
+
   SECTION( "recursive split depth 3" )
   {
     m_permutations.indices.resize( N );
@@ -428,14 +416,14 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 3, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 9 );
+    REQUIRE( m_permutations.splits.size() == 7 );
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i+1] );
       REQUIRE( ( m_permutations.splits[i+1] - m_permutations.splits[i] ) <= 4 );
     }
     //
   }
- 
+
   SECTION( "recursive split depth 4" )
   {
     m_permutations.indices.resize( N );
@@ -443,13 +431,13 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     //
     m_permutations.splits.clear();
     bvh::split_permutations_ml< bvh::split::mean, bvh::axis::longest >( span_ele, 4, &m_permutations);
-    REQUIRE( m_permutations.splits.size() == 17 );
+    REQUIRE( m_permutations.splits.size() == 15 );
     for ( std::size_t i = 0; i < m_permutations.splits.size() - 1; ++i ) {
       REQUIRE( m_permutations.splits[i] <= m_permutations.splits[i + 1] );
       REQUIRE( ( m_permutations.splits[i+1] - m_permutations.splits[i] ) <= 2 );
     }
     //
   }
- 
+
 }
 

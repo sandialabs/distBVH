@@ -34,6 +34,7 @@
 #include "../vt/helpers.hpp"
 #include "../tree_build.hpp"
 #include "impl.hpp"
+#include "types.hpp"
 
 namespace bvh
 {
@@ -48,25 +49,49 @@ namespace bvh
 
       using reduce_vec = vt::reducable_vector< entity_snapshot >;
 
-      struct tree_reduce_msg : ::vt::collective::ReduceTMsg< reduce_vec >
+      class tree_reduction
       {
-        vt_msg_serialize_required();
+      public:
 
-        tree_reduce_msg() = default;
-        tree_reduce_msg( entity_snapshot _snap, collision_object_proxy_type _coll_obj )
-          : coll_obj( _coll_obj )
+        tree_reduction() = default;
+
+        tree_reduction( collision_object_proxy_type _collision_object )
+          : m_collision_object_proxy( _collision_object ),
+            m_snapshots{}
+        {}
+
+        tree_reduction( entity_snapshot _initial, collision_object_proxy_type _collision_object )
+          : m_collision_object_proxy( _collision_object ),
+            m_snapshots{ _initial }
+        {}
+
+        tree_reduction &operator+=( const tree_reduction &_other )
         {
-          this->getVal() = reduce_vec{ _snap };
+          // The collision object proxies should be the same so no need to reduce those
+          debug_assert( m_collision_object_proxy.getProxy() == _other.m_collision_object_proxy.getProxy(), "collision objects must match" );
+          m_snapshots += _other.m_snapshots;
+          return *this;
         }
+
+        friend tree_reduction operator+( tree_reduction _lhs, const tree_reduction &_rhs )
+        {
+          return _lhs += _rhs;
+        }
+
+        span< const entity_snapshot > snapshots() const noexcept { return m_snapshots.vec; }
+
+        collision_object_proxy_type collision_object_proxy() const noexcept { return m_collision_object_proxy; }
 
         template< typename Serializer >
         void serialize( Serializer &_s )
         {
-          ::vt::collective::ReduceTMsg< reduce_vec >::serialize( _s );
-          _s | coll_obj;
+          _s | m_collision_object_proxy | m_snapshots;
         }
 
-        collision_object_proxy_type coll_obj;
+      private:
+
+        collision_object_proxy_type m_collision_object_proxy;
+        reduce_vec m_snapshots;
       };
 
 
@@ -75,29 +100,30 @@ namespace bvh
         _coll_obj->get_impl().tree = _msg->tree;
       }
 
-      struct tree_build_reduce
+      void tree_build_reduce( const tree_reduction &_reduc )
       {
-        void operator()( tree_reduce_msg *_msg )
-        {
-          // Build the tree
-          auto msg = ::vt::makeMessage< broadphase_tree_msg >();
-          msg->tree = build_tree_top_down< tree_type >( _msg->getConstVal().vec );
+        // Build the tree
+        auto msg = ::vt::makeMessage< broadphase_tree_msg >();
+        msg->tree = build_tree_top_down< tree_type >( _reduc.snapshots() );
 
-          // Broadcast to every element of the collision object objgroup
-          _msg->coll_obj.broadcastMsg< broadphase_tree_msg, &collision_object_holder::delegate< broadphase_tree_msg, &set_broadphase_trees > >( msg );
-        }
-      };
+        // Broadcast to every element of the collision object objgroup
+        _reduc.collision_object_proxy().broadcastMsg< broadphase_tree_msg, &collision_object_holder::delegate< broadphase_tree_msg, &set_broadphase_trees > >( msg );
+      }
 
       void tree_build_broadcast( broadphase_patch_collection_type *_patch, tree_build_broadcast_msg *_msg )
       {
-        auto msg = ::vt::makeMessage< tree_reduce_msg >( make_snapshot( _patch->patch, static_cast< std::size_t >( _patch->getIndex().x() ) ),
-                                                            _msg->coll_obj );
-
         using ::vt::collective::reduce::makeStamp;
         using ::vt::collective::reduce::StrongUserID;
         auto stamp = makeStamp<StrongUserID>(static_cast<uint64_t>(::vt::thePhase()->getCurrentPhase()));
 
-        _patch->getCollectionProxy().reduce< reduce_vec::opt, tree_build_reduce, tree_reduce_msg >( msg.get(), stamp );
+        // Don't build a snapshot of an empty patch
+        if ( !_patch->patch.empty() )
+        {
+          auto snap = make_snapshot( _patch->patch, static_cast< std::size_t >( _patch->getIndex().x() ) );
+          _patch->getCollectionProxy().reduce< tree_build_reduce, ::vt::collective::PlusOp >( 0, tree_reduction{ snap, _msg->coll_obj }, stamp );
+        } else {
+          _patch->getCollectionProxy().reduce< tree_build_reduce, ::vt::collective::PlusOp >( 0, tree_reduction{ _msg->coll_obj }, stamp );
+        }
       }
     }
 

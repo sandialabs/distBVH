@@ -31,89 +31,240 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "TestCommon.hpp"
+#include "bvh/types.hpp"
+#include <bvh/vt/helpers.hpp>
 #include <bvh/collision_object.hpp>
 #include <bvh/collision_world.hpp>
 #include <bvh/util/epoch.hpp>
 #include <bvh/vt/print.hpp>
+#include <numeric>
+#include <type_traits>
+#include <vt/collective/collective_alg.h>
+#include <vt/collective/reduce/operators/functors/plus_op.h>
+#include <vt/context/context.h>
+#include <vt/scheduler/scheduler.h>
 #include <vt/termination/epoch_guard.h>
 
-void test_trees( const bvh::snapshot_tree &_tree )
-{
-  auto nranks = ::vt::theContext()->getNumNodes();
-  REQUIRE( _tree.count() == 2 * nranks );
-}
 
-void test_sing_trees( const bvh::snapshot_tree &_tree )
+struct test_trees
 {
-  auto nranks = ::vt::theContext()->getNumNodes();
-  REQUIRE( _tree.count() == 2 * nranks );
-
-  for ( auto &&l : _tree.leafs() )
+  void operator()( const bvh::snapshot_tree &_tree )
   {
-    REQUIRE( l.kdop().centroid() == bvh::m::vec3d::zeros() );
+    auto nranks = ::vt::theContext()->getNumNodes();
+    REQUIRE( _tree.count() == od_factor * nranks );
   }
-}
+
+  std::size_t od_factor;
+};
+
+
+struct test_sing_trees
+{
+  void operator()( const bvh::snapshot_tree &_tree )
+  {
+    auto nranks = ::vt::theContext()->getNumNodes();
+    REQUIRE( _tree.count() == od_factor * nranks );
+  }
+
+  std::size_t od_factor;
+};
+
+struct test_empty_trees
+{
+  void operator()( const bvh::snapshot_tree &_tree )
+  {
+    auto nranks = ::vt::theContext()->getNumNodes();
+    REQUIRE( _tree.count() == 0 );
+  }
+
+  std::size_t od_factor;
+};
+
+std::size_t test_od_factor = 0;
+
+void verify_num_elements( std::size_t _count )
+{
+  bvh::vt::debug("{}: count: {}\n", ::vt::theContext()->getNode(), _count );
+  // Cube test_od_factor because each dimension is multiplied...
+  REQUIRE( _count == 12 * ::vt::theContext()->getNumNodes() * test_od_factor * test_od_factor * test_od_factor );
+};
+
+void
+verify_empty_elements( std::size_t _count )
+{
+  bvh::vt::debug( "{}: count: {}\n", ::vt::theContext()->getNode(), _count );
+  REQUIRE( _count == 0 );
+};
 
 TEST_CASE( "collision_object init", "[vt]")
 {
-  bvh::collision_world world( 2 );
+  std::size_t od_factor = GENERATE( 1, 2, 4, 32, 64 );
+  test_od_factor = od_factor;
+  bvh::collision_world world( od_factor );
 
   auto &obj = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
-    auto rank = ::vt::theContext()->getNode();
+  auto rank = ::vt::theContext()->getNode();
+  auto elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor );
+  const std::array bound_vers{ bvh::m::vec3d{ 0.0, 0.0, 0.0 },
+                               bvh::m::vec3d{ 0.0, 0.0, 1.0 },
+                               bvh::m::vec3d{ 0.0, 1.0, 0.0 },
+                               bvh::m::vec3d{ 0.0, 1.0, 1.0 },
+                               bvh::m::vec3d{ 1.0, 0.0, 0.0 },
+                               bvh::m::vec3d{ 1.0, 0.0, 1.0 },
+                               bvh::m::vec3d{ 1.0, 1.0, 0.0 },
+                               bvh::m::vec3d{ 1.0, 1.0, 1.0 } };
+  const auto bounds = Element::kdop_type::from_vertices( bound_vers.begin(), bound_vers.end() );
+  const std::array update_bounds_vers{ bvh::m::vec3d{ 10.0, 10.0, 10.0 },
+                                       bvh::m::vec3d{ 10.0, 10.0, 11.0 },
+                                       bvh::m::vec3d{ 10.0, 11.0, 10.0 },
+                                       bvh::m::vec3d{ 10.0, 11.0, 11.0 },
+                                       bvh::m::vec3d{ 11.0, 10.0, 10.0 },
+                                       bvh::m::vec3d{ 11.0, 10.0, 11.0 },
+                                       bvh::m::vec3d{ 11.0, 11.0, 10.0 },
+                                       bvh::m::vec3d{ 11.0, 11.0, 11.0 } };
+  const auto update_bounds = Element::kdop_type::from_vertices( update_bounds_vers.begin(), update_bounds_vers.end() );
+  bvh::vt::debug( "{}: bounds: {}\n", ::vt::theContext()->getNode(), bounds );
+  auto update_elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor, 10.0 );
 
-    // We should be able to set the data correctly
-    SECTION( "set_data" )
-    {
-      vt::runInEpochCollective( [&]() {
-        auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
 
-        obj.set_entity_data( bvh::make_const_span( vec ));
+  bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
+
+  // We should be able to set the data correctly
+  SECTION( "set_data" )
+  {
+    ::vt::runInEpochCollective(
+      "set_data", [&]() {
+        vt::runInEpochCollective( "set_data.init", [&]() {
+          obj.set_entity_data( elements, split_method );
+          obj.init_broadphase();
+
+          obj.for_each_tree( test_trees{ od_factor } );
+        } );
+
+        vt::runInEpochCollective( "set_data.init.check", [&]() {
+          auto local_patches = obj.local_patches();
+          REQUIRE( local_patches.size() == od_factor );
+          std::size_t total_num_elements
+            = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
+                                     []( const auto &_patch ) { return _patch.size(); } );
+          bvh::patch<>::kdop_type k;
+          for ( auto &&p : local_patches )
+          {
+            bvh::vt::debug( "{}: patch {}: {} (centroid={})\n", ::vt::theContext()->getNode(), p.global_id(), p.kdop(),
+                            p.centroid() );
+            CHECK( !std::isnan( p.centroid().x() ) );
+            CHECK( !std::isnan( p.centroid().y() ) );
+            CHECK( !std::isnan( p.centroid().z() ) );
+            k.union_with( p.kdop() );
+          }
+
+          REQUIRE( k == approx( bounds, 0.00001 ) );
+
+          auto r = ::vt::theCollective()->global();
+          r->reduce< verify_num_elements, ::vt::collective::PlusOp >( ::vt::Node{0}, total_num_elements );
+        } );
+
+        // Data should be updateable
+        vt::runInEpochCollective( "set_data.update", [&]() {
+          obj.set_entity_data( update_elements, split_method );
+          obj.init_broadphase();
+
+          obj.for_each_tree( test_sing_trees{ od_factor } );
+        } );
+
+        vt::runInEpochCollective( "set_data.update.check", [&]() {
+          auto local_patches = obj.local_patches();
+          std::size_t total_num_elements
+            = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
+                                     []( const auto &_patch ) { return _patch.size(); } );
+          bvh::patch<>::kdop_type k;
+          for ( auto &&p : local_patches )
+          {
+            bvh::vt::debug( "{}: patch {}: {} (centroid={})\n", ::vt::theContext()->getNode(), p.global_id(), p.kdop(),
+                            p.centroid() );
+            CHECK( !std::isnan( p.centroid().x() ) );
+            CHECK( !std::isnan( p.centroid().y() ) );
+            CHECK( !std::isnan( p.centroid().z() ) );
+            k.union_with( p.kdop() );
+          }
+
+          REQUIRE( k == approx( update_bounds, 0.00001 ) );
+
+          auto r = ::vt::theCollective()->global();
+          r->reduce< verify_num_elements, ::vt::collective::PlusOp >( ::vt::Node{0}, total_num_elements );
+        } );
+
+        obj.end_phase();
+      } );
+  }
+
+  bvh::view< Element * > empty_elements( "empty_elements", 0 );
+  // Handle empt elements
+  SECTION( "set_empty_data" )
+  {
+    ::vt::runInEpochCollective( "set_empty_data", [&]() {
+      vt::runInEpochCollective( "set_empty_data.init", [&]() {
+        obj.set_entity_data( empty_elements, split_method );
         obj.init_broadphase();
 
-        obj.for_each_tree( &test_trees );
+        obj.for_each_tree( test_empty_trees{ od_factor } );
       } );
-    }
+
+      vt::runInEpochCollective( "set_data.init.check", [&]() {
+        auto local_patches = obj.local_patches();
+        REQUIRE( local_patches.size() == od_factor );
+        std::size_t total_num_elements
+          = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
+                                   []( const auto &_patch ) { return _patch.size(); } );
+
+        auto r = ::vt::theCollective()->global();
+        r->reduce< verify_empty_elements, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, total_num_elements );
+      } );
 
       // Data should be updateable
-    SECTION( "update_data" )
-    {
-      vt::runInEpochCollective( [&]() {
-        auto sing_vec = std::vector< Element >{};
-        sing_vec.reserve( 12 );
-        for ( std::size_t i = 0; i < 12; ++i ) {
-          sing_vec.emplace_back( i );
-          sing_vec.back().setVertices( { bvh::m::vec3d::zeros() } );
-        }
-
-        obj.set_entity_data( bvh::make_const_span( sing_vec ));
+      vt::runInEpochCollective( "set_data.update", [&]() {
+        obj.set_entity_data( empty_elements, split_method );
         obj.init_broadphase();
 
-        obj.for_each_tree( &test_sing_trees );
+        obj.for_each_tree( test_empty_trees{ od_factor } );
       } );
-    }
 
-    obj.end_phase();
-  } );
+      vt::runInEpochCollective( "set_data.update.check", [&]() {
+        auto local_patches = obj.local_patches();
+        std::size_t total_num_elements
+          = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
+                                   []( const auto &_patch ) { return _patch.size(); } );
+
+        auto r = ::vt::theCollective()->global();
+        r->reduce< verify_empty_elements, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, total_num_elements );
+      } );
+
+      obj.end_phase();
+    } );
+  }
 }
 
 TEST_CASE( "collision_object broadphase", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
+  ::vt::runInEpochCollective( "collision_object.broadphase", [&]() {
     auto rank = ::vt::theContext()->getNode();
 
-    auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
-    obj.set_entity_data( bvh::make_const_span( vec ));
+    auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+    obj.set_entity_data( elements, split_method );
     obj.init_broadphase();
 
-    auto vec2 = buildElementGrid( 1, 1, 1, rank );
-    obj2.set_entity_data( bvh::make_const_span( vec2 ));
+    auto elements2 = build_element_grid( 1, 1, 1, rank );
+    obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
     obj.broadphase( obj2 );
@@ -125,20 +276,21 @@ TEST_CASE( "collision_object broadphase", "[vt]")
 
 TEST_CASE( "collision_object multiple broadphase", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
-    auto rank = ::vt::theContext()->getNode();
+  auto rank = ::vt::theContext()->getNode();
+  auto elements = build_element_grid( 2, 3, 2, rank * 12 );
+  auto elements2 = build_element_grid( 1, 1, 1, rank );
+  obj2.set_entity_data( elements2, split_method );
 
-    auto vec = buildElementGrid( 2, 3, 2, rank * 12 );
-    obj.set_entity_data( bvh::make_const_span( vec ));
+  ::vt::runInEpochCollective( "collision_object.multiple_broadphase", [&]() {
+    obj.set_entity_data( elements, split_method );
     obj.init_broadphase();
-
-    auto vec2 = buildElementGrid( 1, 1, 1, rank );
-    obj2.set_entity_data( bvh::make_const_span( vec2 ));
     obj2.init_broadphase();
 
     obj.broadphase( obj2 );
@@ -163,33 +315,94 @@ bool operator<( const narrowphase_result &_lhs, const narrowphase_result &_rhs )
   return _lhs.idx < _rhs.idx;
 }
 
+struct detailed_narrowphase_result
+{
+  std::size_t patch_p = 0;
+  std::size_t element_p = 0;
+  std::size_t patch_q = 0;
+  std::size_t element_q = 0;
+};
+
+template<>
+struct checkpoint::ByteCopyNonIntrusive< detailed_narrowphase_result >
+{
+  using isByteCopyable = std::true_type;
+};
+
+bool operator<( const detailed_narrowphase_result &_lhs, const detailed_narrowphase_result &_rhs )
+{
+  if ( _lhs.patch_p != _rhs.patch_p )
+    return _lhs.patch_p < _rhs.patch_p;
+  if ( _lhs.element_p != _rhs.element_p )
+    return _lhs.element_p < _rhs.element_p;
+  if ( _lhs.patch_q != _rhs.patch_q )
+    return _lhs.patch_q < _rhs.patch_q;
+
+  return _lhs.element_q < _rhs.element_q;
+}
+
+void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrowphase_result > &_res )
+{
+  auto results = _res.vec;
+  std::vector< std::size_t > ref_rhs_element_ids( ::vt::theContext()->getNumNodes() * 12 );
+  std::iota( ref_rhs_element_ids.begin(), ref_rhs_element_ids.end(), 0UL );
+
+  // Sort ignoring patch id, we only care about element global ids
+  // That way, we can compare to our reference collision vector
+  std::sort( results.begin(), results.end(),
+             []( const detailed_narrowphase_result &_lhs, const detailed_narrowphase_result &_rhs ) {
+    if ( _lhs.element_p != _rhs.element_p )
+      return _lhs.element_p < _rhs.element_p;
+
+    return _lhs.element_q < _rhs.element_q;
+  } );
+
+  for ( auto &&res : results )
+  {
+    bvh::vt::debug("{}: isect ({}, {}) with ({}, {})\n", ::vt::theContext()->getNode(),
+      res.patch_p, res.element_p, res.patch_q, res.element_q );
+  }
+
+  CHECK( results.size() == 12 * ::vt::theContext()->getNumNodes() );
+  for ( std::size_t i = 0; i < std::min( results.size(), ref_rhs_element_ids.size() ); ++i )
+  {
+    CHECK( results[i].element_q == ref_rhs_element_ids[i] );
+  }
+}
+
 TEST_CASE( "collision_object narrowphase", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+
+  bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
+
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
+  bvh::vt::reducable_vector< detailed_narrowphase_result > results;
 
-  ::vt::runInEpochCollective( [&]() {
+  ::vt::runInEpochCollective( "collision_object.narrowphase", [&]() {
     world.start_iteration();
 
     auto rank = ::vt::theContext()->getNode();
 
-    auto vec = buildElementGrid( 1, 1, 1, rank );
-    obj.set_entity_data( bvh::make_const_span( vec ));
+    auto elements = build_element_grid( 1, 1, 1, rank );
+    obj.set_entity_data( elements, split_method );
     obj.init_broadphase();
 
-    auto vec2 = buildElementGrid( 2, 3, 2, rank * 12 );
-    obj2.set_entity_data( bvh::make_const_span( vec2 ));
+    auto elements2 = build_element_grid( 2, 3, 2, rank * 12 );
+    obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                   const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
-      auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
-      auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
+      auto &resb = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.b );
 
       REQUIRE( _a.object.id() == 0 );
       REQUIRE( _b.object.id() == 1 );
@@ -202,8 +415,8 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 
       for ( auto &&e: _b.elements ) {
         REQUIRE( e.global_id() < ::vt::theContext()->getNumNodes() * 12 );
-        resa.emplace_back( e.global_id());
-        resb.emplace_back( _a.elements[0].global_id());
+        resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
+                                                        _b.meta.global_id(), e.global_id() } );
       }
 
       return res;
@@ -211,38 +424,53 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 
     obj.broadphase( obj2 );
 
-    obj.for_each_result< narrowphase_result >( []( const narrowphase_result &_res ) {
-      //std::cout << "collision with " << _res.idx << '\n';
+    results.vec.clear();
+    obj.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
+      results.vec.emplace_back( _res );
     } );
 
     world.finish_iteration();
+  } );
+
+  static_assert( std::is_default_constructible_v< detailed_narrowphase_result > );
+
+  ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
+    auto r = ::vt::theCollective()->global();
+    r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
   } );
 }
 
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+
+  bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
+
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
-    std::vector< narrowphase_result > old_results, old_results2;
+  std::vector< narrowphase_result > new_results;
+  std::vector< narrowphase_result > new_results2;
+  std::vector< narrowphase_result > old_results, old_results2;
 
-    for ( std::size_t i = 0; i < 1000; ++i ) {
+  ::vt::runInEpochCollective( "collision_object.multiple_narrowphase", [&]() {
+    for ( std::size_t i = 0; i < 8; ++i ) {
       world.start_iteration();
 
       auto rank = ::vt::theContext()->getNode();
 
-      auto vec = buildElementGrid( 1, 1, 1, rank );
-      obj.set_entity_data( bvh::make_const_span( vec ));
+      auto elements = build_element_grid( 1, 1, 1, rank );
+      obj.set_entity_data( elements, split_method );
       obj.init_broadphase();
 
-      auto vec2 = buildElementGrid( 2, 3, 2, rank * 12 );
-      obj2.set_entity_data( bvh::make_const_span( vec2 ));
+      auto elements2 = build_element_grid( 2, 3, 2, rank * 12 );
+      obj2.set_entity_data( elements2, split_method );
       obj2.init_broadphase();
 
-      world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
+      world.set_narrowphase_functor< Element >( [rank]( const bvh::broadphase_collision< Element > &_a,
                                                     const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
         res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
@@ -258,9 +486,17 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
         // Global id of the first patch should be the node from whence it came
         REQUIRE( _a.elements[0].global_id() < ::vt::theContext()->getNumNodes());
+        bvh::vt::debug("{}: intersect patch ({}, {}) with ({}, {})\n",
+                        ::vt::theContext()->getNode(),
+                        _a.object.id(), _a.patch_id,
+                        _b.object.id(), _b.patch_id );
 
         for ( auto &&e: _b.elements ) {
           CHECK( e.global_id() < ::vt::theContext()->getNumNodes() * 12 );
+          bvh::vt::debug("{}: intersect result ({}, {}, {}) with ({}, {}, {})\n",
+                         ::vt::theContext()->getNode(),
+                         _a.object.id(), _a.patch_id, _a.elements[0].global_id(),
+                         _b.object.id(), _b.patch_id, e.global_id() );
           resa.emplace_back( e.global_id());
           resb.emplace_back( _a.elements[0].global_id());
         }
@@ -270,15 +506,16 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
       obj.broadphase( obj2 );
 
-      std::vector< narrowphase_result > new_results;
-      obj.for_each_result< narrowphase_result >( [rank, i, &new_results]( const narrowphase_result &_res ) {
+      // results for obj
+      new_results.clear();
+      obj.for_each_result< narrowphase_result >( [rank, &new_results]( const narrowphase_result &_res ) {
         new_results.emplace_back( _res );
         bvh::vt::debug("{}: got result {}\n", rank, _res.idx );
       } );
 
-      std::vector< narrowphase_result > new_results2;
-      obj2.for_each_result< narrowphase_result >( [i, &new_results2]( const narrowphase_result &_res ) {
-        std::cout << "got a result!!!\n";
+      // results for obj2
+      new_results2.clear();
+      obj2.for_each_result< narrowphase_result >( [&new_results2]( const narrowphase_result &_res ) {
         new_results2.emplace_back( _res );
       } );
 
@@ -305,19 +542,21 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
       std::cout << "new results2 size " << new_results2.size() << '\n';
       old_results2 = new_results2;
-
     }
   } );
+  std::cout << "========== Done, ready for next gen!\n";
 }
 
 TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 {
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( [&]() {
+  ::vt::runInEpochCollective( "collision_object.multiple_narrowphase_no_overlap", [&]() {
     std::vector< narrowphase_result > old_results, old_results2;
 
     for ( std::size_t i = 0; i < 8; ++i ) {
@@ -325,12 +564,12 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 
       auto rank = ::vt::theContext()->getNode();
 
-      auto vec = buildElementGrid( 1, 1, 1, rank );
-      obj.set_entity_data( bvh::make_const_span( vec ));
+      auto elements = build_element_grid( 1, 1, 1, rank );
+      obj.set_entity_data( elements, split_method );
       obj.init_broadphase();
 
-      auto vec2 = buildElementGrid( 2, 3, 2, rank * 12 , 16.0);
-      obj2.set_entity_data( bvh::make_const_span( vec2 ));
+      auto elements2 = build_element_grid( 2, 3, 2, rank * 12 , 16.0);
+      obj2.set_entity_data( elements2, split_method );
       obj2.init_broadphase();
 
       world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
@@ -396,25 +635,61 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
   } );
 }
 
-TEST_CASE( "set entity data benchmark", "[vt]")
+TEST_CASE( "set entity data benchmark", "[vt][!benchmark]")
 {
-  bvh::collision_world world( 2 );
+  std::size_t od_factor = GENERATE(1, 2, 4, 8, 16, 32, 64, 128, 256);
+  CAPTURE(od_factor);
+
+  bvh::collision_world world( od_factor );
 
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
-  auto vec = buildElementGrid( 128, 128, 128, rank );
+  auto elements = build_element_grid( 256, 64, 64, rank );
 
-  BENCHMARK("bench")
+  SECTION( "geom_axis" )
   {
-    ::vt::runInEpochCollective( [&]() {
-      world.start_iteration();
+    BENCHMARK( "geom_axis" )
+    {
+      ::vt::runInEpochCollective( "set_entity_data_benchmark.splitting", [&]() {
+        world.start_iteration();
 
-      obj.set_entity_data( bvh::make_const_span( vec ));
-      obj.init_broadphase();
+        obj.set_entity_data( elements, bvh::split_algorithm::geom_axis );
+        obj.init_broadphase();
 
-      world.finish_iteration();
-    } );
-  };
+        world.finish_iteration();
+      } );
+    };
+  }
+
+  SECTION( "ml_geom_axis" )
+  {
+    BENCHMARK( "ml_geom_axis" )
+    {
+      ::vt::runInEpochCollective( "set_entity_data_benchmark.splitting", [&]() {
+        world.start_iteration();
+
+        obj.set_entity_data( elements, bvh::split_algorithm::ml_geom_axis );
+        obj.init_broadphase();
+
+        world.finish_iteration();
+      } );
+    };
+  }
+
+  SECTION("clustering")
+  {
+
+    BENCHMARK("clustering")
+    {
+      ::vt::runInEpochCollective( "set_entity_data_benchmark.clustering", [&]() {
+        world.start_iteration();
+
+        obj.set_entity_data( elements, bvh::split_algorithm::clustering );
+        obj.init_broadphase();
+
+        world.finish_iteration();
+      } );
+    };
+  }
 }
-

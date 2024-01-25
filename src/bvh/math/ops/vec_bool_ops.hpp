@@ -82,18 +82,6 @@ namespace bvh
       };
 
       template< typename Vec1, typename Vec2 >
-      struct approx_equals_op : binary_comparison_op< approx_equals_op< Vec1, Vec2 >, Vec1, Vec2 >
-      {
-        using base = binary_comparison_op< approx_equals_op, Vec1, Vec2 >;
-
-        BVH_INLINE static constexpr bool
-        component_comparison( typename base::type1 _l, typename base::type2 _r )
-        {
-          return approx_equals( _l, _r );
-        }
-      };
-
-      template< typename Vec1, typename Vec2 >
       struct not_equals_op : binary_comparison_op< not_equals_op< Vec1, Vec2 >, Vec1, Vec2 >
       {
         using base = binary_comparison_op< not_equals_op, Vec1, Vec2 >;
