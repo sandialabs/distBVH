@@ -4,7 +4,7 @@ spack:
     - mpis:
       - mpich@3.4.2
     - core-packages:
-      - kokkos@4.0 +openmp +serial
+      - kokkos@4.1 +openmp +serial
     - packages:
       - p3a@main
       - seacas@2022-10-14 -x11 ^hdf5@1.14.1 ^fmt@9.1.0
