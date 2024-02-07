@@ -58,7 +58,7 @@ if (NOT BVH_DISABLE_TESTS)
   endif()
 
   target_compile_definitions(BVHTests PRIVATE CATCH_CONFIG_ENABLE_BENCHMARKING)
-  target_compile_options(BVHTests PRIVATE -Werror -mlzcnt)
+  target_compile_options(BVHTests PRIVATE -Werror)
 
   target_include_directories(BVHTests PRIVATE ${CMAKE_CURRENT_LIST_DIR})
   target_link_libraries(BVHTests PRIVATE bvh::bvh)

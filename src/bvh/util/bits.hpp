@@ -37,9 +37,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#if !defined(KOKKOS_COMPILER_NVCC)
-#include <immintrin.h>
-#endif
+#include <Kokkos_BitManipulation.hpp>
 
 namespace bvh
 {
@@ -87,48 +85,11 @@ namespace bvh
 #endif
   }
 
-  inline std::uint32_t clz( std::uint32_t _val )
+  // TODO: consider `Experimental::countl_zero_builtin` (it has fallback mechanism)
+  template <typename T >
+  inline T clz( T _val )
   {
-#if !defined(KOKKOS_COMPILER_NVCC)
-    return _lzcnt_u32( _val );
-#else
-    if (!_val) return 32;
-    const char debruijn32[32] =
-        {0, 31, 9, 30, 3, 8,  13, 29, 2,  5,  7,  21, 12, 24, 28, 19,
-         1, 10, 4, 14, 6, 22, 25, 20, 11, 15, 23, 26, 16, 27, 17, 18};
-    _val |= _val >> 1;
-    _val |= _val >> 2;
-    _val |= _val >> 4;
-    _val |= _val >> 8;
-    _val |= _val >> 16;
-    _val++;
-    return debruijn32[_val * 0x076be629 >> 27];
-#endif
-  }
-
-  inline std::uint64_t clz( std::uint64_t _val )
-  {
-#if !defined(KOKKOS_COMPILER_NVCC)
-    return _lzcnt_u64( _val );
-#else
-    if (!_val) return 64;
-    const char debruijn64[64] =
-        {0, 47, 1 , 56, 48, 27, 2 , 60,
-        57, 49, 41, 37, 28, 16, 3 , 61,
-        54, 58, 35, 52, 50, 42, 21, 44,
-        38, 32, 29, 23, 17, 11, 4 , 62,
-        46, 55, 26, 59, 40, 36, 15, 53,
-        34, 51, 20, 43, 31, 22, 10, 45,
-        25, 39, 14, 33, 19, 30, 9 , 24,
-        13, 18, 8 , 12, 7 , 6 , 5 , 63};
-    _val |= _val >> 1;
-    _val |= _val >> 2;
-    _val |= _val >> 4;
-    _val |= _val >> 8;
-    _val |= _val >> 16;
-    _val |= _val >> 32;
-    return debruijn64[_val * 0x03f79d71b4cb0a89 >> 58];
-#endif
+    return Kokkos::countl_zero(_val);
   }
 
   inline int bsr( unsigned long _val )
