@@ -43,7 +43,7 @@ RUN apt-get update \
 RUN pip install clingo
 
 # Now we install spack and find compilers/externals
-RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.20.1" https://github.com/spack/spack.git
+RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.21.1" https://github.com/spack/spack.git
 
 # Add current source dir into the image
 COPY . /opt/src/ci-images
