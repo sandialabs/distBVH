@@ -51,9 +51,6 @@ COPY . /opt/src/ci-images
 # Get the latest version of the darma-vt repo
 RUN cd /opt/src/ci-images/spack-repos && git clone https://github.com/DARMA-tasking/spack-package.git vt
 
-# Apply our patch to get more up-to-date packages
-RUN cd /opt/spack && git apply /opt/src/ci-images/arborx_spack_package.patch
-
 # Add our new repos
 RUN . /opt/spack/share/spack/setup-env.sh \
   && spack repo add /opt/src/ci-images/spack-repos/p3a \
