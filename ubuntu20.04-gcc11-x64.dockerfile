@@ -43,16 +43,13 @@ RUN apt-get update \
 RUN pip install clingo
 
 # Now we install spack and find compilers/externals
-RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.20.1" https://github.com/spack/spack.git
+RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.21.1" https://github.com/spack/spack.git
 
 # Add current source dir into the image
 COPY . /opt/src/ci-images
 
 # Get the latest version of the darma-vt repo
 RUN cd /opt/src/ci-images/spack-repos && git clone https://github.com/DARMA-tasking/spack-package.git vt
-
-# Apply our patch to get more up-to-date packages
-RUN cd /opt/spack && git apply /opt/src/ci-images/arborx_spack_package.patch
 
 # Add our new repos
 RUN . /opt/spack/share/spack/setup-env.sh \
