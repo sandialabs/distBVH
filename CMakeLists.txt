@@ -99,7 +99,7 @@ else()
   message(STATUS "Not using VT insertable collections")
 endif()
 
-find_package(Kokkos 4.0 REQUIRED)
+find_package(Kokkos 4.1 REQUIRED)
 
 if (Kokkos_CXX_STANDARD LESS 17)
   message(FATAL_ERROR "distBVH requires Kokkos built with C++17 or later")
