@@ -24,7 +24,7 @@ jobs:
         run: cmake --preset ci-gcc11-x64
       - name: Build
         run: cmake --build --preset ci-gcc11-x64 --parallel $(nproc)
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: build-directory
           path: /opt/builds/bvh
@@ -36,7 +36,7 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: build-directory
           path: /opt/builds/bvh
@@ -54,7 +54,7 @@ jobs:
       TRACE_OUTPUT_DIR: /opt/runs/NimbleSM/trace
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: build-directory
           path: /opt/builds/bvh
@@ -62,7 +62,7 @@ jobs:
         run: bash ci/nimble_build_integration.sh
       - name: Sphere/plate contact test
         run: bash ci/nimble_test_integration.sh sphere_plate_contact
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: traces
           path: ${{ env.TRACE_OUTPUT_DIR }}
