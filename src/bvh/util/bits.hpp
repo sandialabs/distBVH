@@ -85,11 +85,10 @@ namespace bvh
 #endif
   }
 
-  // TODO: consider `Experimental::countl_zero_builtin` (it has fallback mechanism)
-  template <typename T >
+  template < typename T >
   inline T clz( T _val )
   {
-    return Kokkos::countl_zero(_val);
+    return Kokkos::countl_zero( _val );
   }
 
   inline int bsr( unsigned long _val )
