@@ -132,6 +132,7 @@ namespace bvh
       const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
       ::bvh::vt::debug( "{}: creating broadphase patch for body {} size {} from offset {}\n", ::vt::theContext()->getNode(), m_impl->collision_idx, nelements, sbeg );
+      // FIXME_CUDA
       m_impl->local_patches[i] = broadphase_patch_type(
         i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
     }
