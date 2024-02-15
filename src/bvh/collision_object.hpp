@@ -126,6 +126,7 @@ namespace bvh
       // This assumes _data_view is on host for now... at the moment we can't do much better
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
+        // FIXME_CUDA
         set_entity_data_impl( _data_view.data(), sizeof( T ) );
       }
     }
@@ -235,6 +236,7 @@ namespace bvh
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
+      // FIXME_CUDA
       auto &ind = get_split_indices_h();
       Kokkos::parallel_for(
         ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
