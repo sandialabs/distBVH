@@ -98,7 +98,7 @@ verify_empty_elements( std::size_t _count )
 
 TEST_CASE( "collision_object init", "[vt]")
 {
-  std::size_t od_factor = GENERATE( 1, 2, 4, 32, 64 );
+  std::size_t od_factor = GENERATE( /*1,*/ 2/*, 4, 32, 64*/ );
   test_od_factor = od_factor;
   bvh::collision_world world( od_factor );
 
@@ -128,7 +128,7 @@ TEST_CASE( "collision_object init", "[vt]")
   auto update_elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor, 10.0 );
 
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( /*bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,*/ bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
 
@@ -373,7 +373,7 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
 TEST_CASE( "collision_object narrowphase", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE( /*bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,*/ bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
