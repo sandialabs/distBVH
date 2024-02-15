@@ -140,7 +140,9 @@ namespace bvh
     Kokkos::parallel_reduce( "compute_bounds_min_diag", _elements.extent( 0 ),
                              detail::min_diag_bounds_union< Entity >{ _elements },
                              _bounds );
-    ::bvh::vt::debug( "bounds: inc_diag {}, min {}\n", _bounds().inv_diag, _bounds().min );
+    if (_bounds.is_hostspace)
+      ::bvh::vt::debug( "bounds: inc_diag {}, min {}\n",
+                        _bounds().inv_diag, _bounds().min );
     Kokkos::parallel_for( 1, KOKKOS_LAMBDA( int ) {
       auto width = _bounds().inv_diag - _bounds().min;
       _bounds().inv_diag = 1.0 / width;
