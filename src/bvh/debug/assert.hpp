@@ -45,19 +45,19 @@ namespace bvh
 #else
   constexpr int assert_debug_level = 0;
 #endif
-  
+
   namespace detail
   {
     template< bool Enable >
     struct debug_assert_impl
     {
       template< typename... Args >
-      static void debug_assert( bool, const std::string &, Args &&... _args )
+      static void debug_assert( bool, const std::string &, Args &&... )
       {
         // Do nothing
       }
     };
-    
+
     template<>
     struct debug_assert_impl< true >
     {
@@ -72,7 +72,7 @@ namespace bvh
       }
     };
   }
-  
+
   template< int DebugLevel, typename... Args >
   void debug_assert_level( bool _val, const std::string &_msg, Args &&... _args )
   {

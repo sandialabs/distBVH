@@ -43,19 +43,19 @@ namespace bvh
   {
     void (*narrowphase_patch_collection_type::migrate_hook)( narrowphase_patch_collection_type * ) = nullptr;
 
-    pending_send activate_narrowphase( vt_index _local_idx, collision_object_proxy_type _this_obj )
+    pending_send activate_narrowphase( vt_index , collision_object_proxy_type _this_obj )
     {
       auto msg = ::vt::makeMessage< start_activate_narrowphase_msg >();
       return _this_obj[::vt::theContext()->getNode()].sendMsg< start_activate_narrowphase_msg, &collision_object_impl::collision_object_holder::activate_narrowphase >( msg );
     }
 
-    pending_send clear_narrowphase( vt_index _local_idx, collision_object_proxy_type _this_obj )
+    pending_send clear_narrowphase( vt_index , collision_object_proxy_type _this_obj )
     {
       auto msg = ::vt::makeMessage< clear_narrowphase_msg >();
       return _this_obj[::vt::theContext()->getNode()].sendMsg< clear_narrowphase_msg, &collision_object_impl::collision_object_holder::clear_narrowphase >( msg );
     }
 
-    pending_send narrowphase( vt_index _local_idx, collision_object_proxy_type _this_obj )
+    pending_send narrowphase( vt_index , collision_object_proxy_type _this_obj )
     {
       auto msg = ::vt::makeMessage< start_narrowphase_msg >();
       return _this_obj[::vt::theContext()->getNode()].sendMsg< start_narrowphase_msg, &collision_object_impl::collision_object_holder::start_narrowphase >( msg );
@@ -89,7 +89,7 @@ namespace bvh
       return _patches[_global_idx].sendMsg< narrowphase_patch_msg, &details::copy_narrowphase_patch >( this_msg );
     }
 
-    pending_send request_ghosts( vt_index _local_idx,
+    pending_send request_ghosts( vt_index,
                                  collision_object_proxy_type _this_obj,
                                  collision_object_proxy_type _other_obj )
     {
