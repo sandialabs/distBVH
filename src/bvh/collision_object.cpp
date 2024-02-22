@@ -83,7 +83,7 @@ namespace bvh
     bvh_clustering_ = ::vt::theTrace()->registerUserEventColl("bvh_clustering_");
     bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl("bvh_build_trees_");
 
-    m_impl->overdecomposition = static_cast< int >( _overdecomposition );
+    m_impl->overdecomposition = _overdecomposition;
 
     for ( std::size_t i = 0; i < m_impl->overdecomposition; ++i )
     {

@@ -134,7 +134,7 @@ namespace bvh
     std::vector< narrowphase_result > local_results;
 
     ::vt::messaging::CollectionChainSet< vt_index > chainset;
-    int overdecomposition = 1;
+    std::size_t overdecomposition = 1;
     bool build_trees = true;
 
     // 1D collection of patch metadata, each index in the collection corresponds to the same index in narrowphase_patch_collection_proxy
