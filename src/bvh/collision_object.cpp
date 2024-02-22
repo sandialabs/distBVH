@@ -88,7 +88,7 @@ namespace bvh
     bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl( "bvh_build_trees_" );
     m_impl->logger->trace( "obj={} registered user tracing event bvh_build_trees_", m_impl->collision_idx );
 
-    m_impl->overdecomposition = static_cast< int >( _overdecomposition );
+    m_impl->overdecomposition = _overdecomposition;
 
     for ( std::size_t i = 0; i < m_impl->overdecomposition; ++i )
     {
