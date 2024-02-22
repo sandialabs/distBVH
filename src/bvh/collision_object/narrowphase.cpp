@@ -33,7 +33,6 @@
 #include "narrowphase.hpp"
 #include "../collision_object.hpp"
 #include "impl.hpp"
-#include "../debug/assert.hpp"
 
 #include <vt/trace/trace_user.h>
 
