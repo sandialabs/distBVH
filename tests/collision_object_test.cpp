@@ -73,7 +73,6 @@ struct test_empty_trees
 {
   void operator()( const bvh::snapshot_tree &_tree )
   {
-    auto nranks = ::vt::theContext()->getNumNodes();
     REQUIRE( _tree.count() == 0 );
   }
 
@@ -402,7 +401,6 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
-      auto &resb = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.b );
 
       REQUIRE( _a.object.id() == 0 );
       REQUIRE( _b.object.id() == 1 );
@@ -470,7 +468,7 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
       obj2.set_entity_data( elements2, split_method );
       obj2.init_broadphase();
 
-      world.set_narrowphase_functor< Element >( [rank]( const bvh::broadphase_collision< Element > &_a,
+      world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                     const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
         res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
@@ -601,12 +599,12 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
       obj.broadphase( obj2 );
 
       std::vector< narrowphase_result > new_results;
-      obj.for_each_result< narrowphase_result >( [&old_results, i, &new_results]( const narrowphase_result &_res ) {
+      obj.for_each_result< narrowphase_result >( [&new_results]( const narrowphase_result &_res ) {
         new_results.emplace_back( _res );
       } );
 
       std::vector< narrowphase_result > new_results2;
-      obj2.for_each_result< narrowphase_result >( [&old_results2, i, &new_results2]( const narrowphase_result &_res ) {
+      obj2.for_each_result< narrowphase_result >( [&new_results2]( const narrowphase_result &_res ) {
         std::cout << "got a result!!!\n";
         new_results2.emplace_back( _res );
       } );

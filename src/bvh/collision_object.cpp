@@ -119,7 +119,6 @@ namespace bvh
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
-    auto range_policy = Kokkos::RangePolicy< Kokkos::Serial >( 0, od_factor );
 
     m_impl->m_entity_ptr = static_cast< const unsigned char * >( _data );
     m_impl->m_entity_unit_size = _element_size;
@@ -303,8 +302,6 @@ namespace bvh
   void
   collision_object::set_active_narrow_patches(){
     int rank = static_cast< int >( ::vt::theContext()->getNode() );
-    const auto od_factor = m_impl->overdecomposition;
-    const std::size_t offset = rank * od_factor;
 
     m_impl->chainset.nextStepCollective( "set_narrowphase_patches", [this, rank]( vt_index _idx ) {
       if ( _idx.x() == 0 ) {
