@@ -113,7 +113,7 @@ namespace bvh
       {
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
         debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
-        // use subviews, deep_copy to host
+        // FIXME_CUDA: use subviews, deep_copy to host
         std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
         offset += m_entity_unit_size;
       }
