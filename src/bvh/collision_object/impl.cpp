@@ -58,7 +58,7 @@ namespace bvh
     }
 
     void
-    collision_object_holder::setup_narrowphase(setup_narrowphase_msg *_msg )
+    collision_object_holder::setup_narrowphase(setup_narrowphase_msg * )
     {
       auto &impl = self->get_impl();
       auto rank = static_cast< int >( ::vt::theContext()->getNode() );
@@ -75,7 +75,7 @@ namespace bvh
 
     void
     collision_object_holder::activate_narrowphase(
-        start_activate_narrowphase_msg *_msg )
+        start_activate_narrowphase_msg * )
     {
       auto &impl = self->get_impl();
       for ( auto &&idx : impl.active_narrowphase_indices )
@@ -101,7 +101,7 @@ namespace bvh
 
     void
     collision_object_holder::start_narrowphase(
-        start_narrowphase_msg *_msg )
+        start_narrowphase_msg * )
     {
       auto &impl = self->get_impl();
       for ( auto &&idx : impl.active_narrowphase_indices )
@@ -113,7 +113,7 @@ namespace bvh
 
     void
     collision_object_holder::clear_narrowphase(
-        clear_narrowphase_msg *_msg )
+        clear_narrowphase_msg * )
     {
       auto &impl = self->get_impl();
       for ( auto &&idx : impl.active_narrowphase_indices )

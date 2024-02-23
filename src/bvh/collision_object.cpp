@@ -31,12 +31,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "collision_object.hpp"
-#include "kdop.hpp"
 #include "tree.hpp"
-#include "util/bits.hpp"
-#include "split/split.hpp"
-#include "split/mean.hpp"
-#include "split/axis.hpp"
 #include "debug/assert.hpp"
 #include "collision_object/types.hpp"
 #include "collision_object/impl.hpp"
@@ -83,7 +78,7 @@ namespace bvh
     bvh_clustering_ = ::vt::theTrace()->registerUserEventColl("bvh_clustering_");
     bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl("bvh_build_trees_");
 
-    m_impl->overdecomposition = static_cast< int >( _overdecomposition );
+    m_impl->overdecomposition = _overdecomposition;
 
     for ( std::size_t i = 0; i < m_impl->overdecomposition; ++i )
     {
@@ -119,7 +114,6 @@ namespace bvh
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
-    auto range_policy = Kokkos::RangePolicy< Kokkos::Serial >( 0, od_factor );
 
     m_impl->m_entity_ptr = static_cast< const unsigned char * >( _data );
     m_impl->m_entity_unit_size = _element_size;
@@ -132,6 +126,7 @@ namespace bvh
       const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
       ::bvh::vt::debug( "{}: creating broadphase patch for body {} size {} from offset {}\n", ::vt::theContext()->getNode(), m_impl->collision_idx, nelements, sbeg );
+      // FIXME_CUDA
       m_impl->local_patches[i] = broadphase_patch_type(
         i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
     }
@@ -302,8 +297,6 @@ namespace bvh
   void
   collision_object::set_active_narrow_patches(){
     int rank = static_cast< int >( ::vt::theContext()->getNode() );
-    const auto od_factor = m_impl->overdecomposition;
-    const std::size_t offset = rank * od_factor;
 
     m_impl->chainset.nextStepCollective( "set_narrowphase_patches", [this, rank]( vt_index _idx ) {
       if ( _idx.x() == 0 ) {

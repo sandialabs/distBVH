@@ -192,8 +192,6 @@ build_element_grid( int _x, int _y, int _z, std::size_t _base_index = 0, double 
   double dy = 1.0 / _y;
   double dz = 1.0 / _z;
 
-  std::size_t index = _base_index;
-
   auto rp = Kokkos::MDRangePolicy<Kokkos::Rank<3>>{{ 0, 0, 0 }, { _x, _y, _z }};
   Kokkos::parallel_for(rp, KOKKOS_LAMBDA( int _i, int _j, int _k ) {
     double x = _origin_shift + _i * dx;
@@ -201,7 +199,7 @@ build_element_grid( int _x, int _y, int _z, std::size_t _base_index = 0, double 
     double z = _origin_shift + _k * dz;
 
     const std::size_t index = _i + _j * _x + _k * _x * _y;
-    assert( index < ret.extent( 0 ) );
+    // assert( index < ret.extent( 0 ) );
     auto &el = ret( index );
     el.setIndex( _base_index + index );
     el.setVertices( bvh::m::vec3d{ x, y, z }, bvh::m::vec3d{ x + dx, y, z }, bvh::m::vec3d{ x + dx, y + dy, z },
