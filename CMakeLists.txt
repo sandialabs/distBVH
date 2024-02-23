@@ -99,13 +99,18 @@ else()
   message(STATUS "Not using VT insertable collections")
 endif()
 
-find_package(Kokkos 4.0 REQUIRED)
+find_package(Kokkos 4.1 REQUIRED)
 
 if (Kokkos_CXX_STANDARD LESS 17)
   message(FATAL_ERROR "distBVH requires Kokkos built with C++17 or later")
 endif()
 set_property(TARGET bvh PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(bvh PUBLIC Kokkos::kokkos)
+
+if (Kokkos_ENABLE_CUDA)
+  message(STATUS "Enabling CUDA support")
+  target_compile_definitions(bvh PUBLIC BVH_ENABLE_CUDA)
+endif()
 
 option(BVH_ENABLE_TRACING "Enable detailed performance tracing (may have an impact on performance" OFF)
 if (BVH_ENABLE_TRACING)
