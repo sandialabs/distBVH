@@ -109,8 +109,8 @@ endif()
 set_property(TARGET bvh PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(bvh PUBLIC Kokkos::kokkos)
 
-option(BVH_ENABLE_CUDA "Enable CUDA" OFF)
-if (BVH_ENABLE_CUDA)
+if (Kokkos_ENABLE_CUDA)
+  message(STATUS "Enabling CUDA support")
   target_compile_definitions(bvh PUBLIC BVH_ENABLE_CUDA)
 endif()
 
