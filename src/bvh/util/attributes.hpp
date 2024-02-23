@@ -33,13 +33,10 @@
 #ifndef INC_BVH_UTIL_ATTRIBUTES_HPP
 #define INC_BVH_UTIL_ATTRIBUTES_HPP
 
-#ifdef BVH_ENABLE_CUDA
-#define BVH_INLINE inline __host__ __device__
-#define BVH_HOST_DEVICE __host__ __device__
-#else
-#define BVH_INLINE inline
-#define BVH_HOST_DEVICE
-#endif
+#include <Kokkos_Macros.hpp>
+
+#define BVH_INLINE KOKKOS_INLINE_FUNCTION
+#define BVH_HOST_DEVICE KOKKOS_FUNCTION
 
 // SIMD not allowed in CUDA contexts
 #if defined( __GNUC__ ) && defined( BVH_SIMD ) && !defined( __CUDA_ARCH__ )
