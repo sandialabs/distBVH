@@ -35,44 +35,12 @@
 
 #include "attributes.hpp"
 
-#ifndef BVH_ENABLE_CUDA
 #include <array>
-#endif
 
 namespace bvh
 {
-#ifndef BVH_ENABLE_CUDA
   template< typename T, std::size_t N >
   using array = std::array< T, N >;
-#else
-  template< typename T, std::size_t N >
-  struct array
-  {
-    using pointer = T *;
-    using iterator = pointer;
-    using const_iterator = const T *;
-    
-    constexpr BVH_INLINE T operator[]( std::size_t _n ) const noexcept
-    {
-      return m_data[_n];
-    }
-    
-    BVH_INLINE T &operator[]( std::size_t _n )
-    {
-      return m_data[_n];
-    }
-    
-    iterator begin() { return &m_data[0]; }
-    const_iterator begin() const { return &m_data[0]; }
-    const_iterator cbegin() const { return &m_data[0]; }
-  
-    iterator end() { return &m_data[0] + N; }
-    const_iterator end() const { return &m_data[0] + N; }
-    const_iterator cend() const { return &m_data[0] + N; }
-    
-    T m_data[N];
-  };
-#endif
 }
 
 #endif  // INC_BVH_UTIL_ARRAY_HPP
