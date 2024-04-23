@@ -43,6 +43,7 @@
 #include "util/attributes.hpp"
 #include "util/kokkos.hpp"
 #include "iterators/transform_iterator.hpp"
+#include <fmt/format.h>
 
 namespace bvh
 {
@@ -713,5 +714,46 @@ namespace bvh
     using type = typename KDop::arithmetic_type;
   };
 }
+
+template< typename T >
+struct fmt::formatter< bvh::extent< T > > : nested_formatter< T >
+{
+  auto format( bvh::extent< T > _ext, format_context &_ctx ) const
+  {
+    return this->write_padded( _ctx, [=]( auto out ) {
+      return format_to( out, "[{}, {}]", this->nested( _ext.min ), this->nested( _ext.max ) );
+    } );
+  }
+};
+
+template< typename T, int K, typename D >
+struct fmt::formatter< bvh::kdop_base< T, K, D > > : nested_formatter< bvh::extent< T > >
+{
+  auto format( const bvh::kdop_base< T, K, D > &_kd, format_context &_ctx ) const
+  {
+    return this->write_padded( _ctx, [=]( auto out ) {
+      if constexpr ( K <= 0 )
+        return format_to( out, "{}-dop: <empty>", K );
+
+      auto pos = format_to( out, "{}-dop: {}", K, this->nested( _kd.extents[0] ) );
+      for ( int i = 1; i < K / 2; ++i )
+        pos = format_to( pos, ", {}", this->nested( _kd.extents[i] ) );
+
+      return pos;
+      } );
+  }
+};
+
+template< typename T >
+struct fmt::formatter< bvh::dop_6< T > > : fmt::formatter< bvh::kdop_base< T, 6, bvh::dop_6< T > > >
+{};
+
+template< typename T >
+struct fmt::formatter< bvh::dop_18< T > > : fmt::formatter< bvh::kdop_base< T, 18, bvh::dop_18< T > > >
+{};
+
+template< typename T >
+struct fmt::formatter< bvh::dop_26< T > > : fmt::formatter< bvh::kdop_base< T, 26, bvh::dop_26< T > > >
+{};
 
 #endif  // INC_BVH_KDOP_HPP
