@@ -99,7 +99,7 @@ namespace bvh
 
     // Initialize objgroup for per-node data
     ::vt::runInEpochCollective( "collision_object.make_objgroup", [&](){
-      m_impl->objgroup = ::vt::theObjGroup()->makeCollective<collision_object_holder>( fmt::vt::format( "collision_object {}", _idx ) );
+      m_impl->objgroup = ::vt::theObjGroup()->makeCollective<collision_object_holder>( fmt::format( "collision_object {}", _idx ) );
       m_impl->objgroup.get()->self = this;
 
       m_impl->logger->debug( "obj={} objgroup make_collective {:x}", m_impl->collision_idx, m_impl->objgroup.getProxy() );

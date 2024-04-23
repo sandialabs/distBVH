@@ -46,6 +46,7 @@
 #include "../util/kokkos.hpp"
 #include "named_access.hpp"
 #include "ops/vec_ops.hpp"
+#include <fmt/format.h>
 
 namespace bvh
 {
@@ -341,5 +342,23 @@ namespace bvh
     } // namespace detail
   } // namespace m
 } // namespace bvh
+
+template< typename T, unsigned N >
+struct fmt::formatter< bvh::m::vec< T, N > > : nested_formatter< T >
+{
+  auto format( bvh::m::vec< T, N > _vec, format_context &_ctx ) const
+  {
+    return this->write_padded( _ctx, [=]( auto out ) {
+      if constexpr ( N == 0 )
+        return format_to( out, "<>" );
+
+      auto pos = format_to( out, "< {}", this->nested( _vec[0] ) );
+      for ( unsigned i = 1; i < N; ++i )
+        pos = format_to( pos, ", {}", this->nested( _vec[i] ) );
+
+      return format_to( pos, " >" );
+      } );
+  }
+};
 
 #endif // INC_BVH_MATH_VEC_HPP
