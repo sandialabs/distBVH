@@ -7,7 +7,8 @@ spack:
       - kokkos@4.1 +openmp +serial
     - packages:
       - p3a@main
-      - seacas@2022-10-14 -x11 ^hdf5@1.14.1 ^fmt@9.1.0
+      - fmt@10.2.1
+      - seacas@2022-10-14 -x11 ^hdf5@1.14.1 ^fmt@10.2.1
       - arborx@1.4.1 +openmp +mpi
       - darma-vt +trace_enabled@develop
   specs:
