@@ -5,10 +5,10 @@ spack:
       - mpich@3.4.2
     - core-packages:
       - kokkos@4.1 +openmp +serial
+      - fmt@10.2.1
     - packages:
       - p3a@main
-      - fmt@10.2.1
-      - seacas@2022-10-14 -x11 ^hdf5@1.14.1 ^fmt@10.2.1
+      - seacas@2024-04-03 -x11 ^hdf5@1.14.1 ^fmt@10.2.1
       - arborx@1.4.1 +openmp +mpi
       - darma-vt +trace_enabled@develop
   specs:
