@@ -121,7 +121,7 @@ namespace bvh
   BVH_INLINE constexpr bool overlap( const extent< T > &_lhs,
                                  const extent< T > &_rhs ) noexcept
   {
-    return _lhs.min < _rhs.max && _rhs.min < _lhs.max;
+    return _lhs.min <= _rhs.max && _rhs.min <= _lhs.max;
   }
 
   /**
