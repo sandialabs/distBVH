@@ -31,8 +31,8 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
-macro(add_example name sources)
-  add_executable(${name} ${sources})
+macro(add_example name)
+  add_executable(${name} ${ARGN})
   target_link_libraries(${name} bvh::bvh)
   target_compile_options(${name} PRIVATE
                          $<$<CONFIG:Debug>:-g3 -ggdb -O0>)
