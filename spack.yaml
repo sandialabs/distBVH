@@ -6,6 +6,7 @@ spack:
     - core-packages:
       - kokkos@4.1 +openmp +serial
       - fmt@10.2.1
+      - spdlog@1.13.0
     - packages:
       - p3a@main
       - seacas@2024-04-03 -x11 ^hdf5@1.14.1 ^fmt@10.2.1
