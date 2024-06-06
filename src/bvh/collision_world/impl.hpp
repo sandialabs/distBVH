@@ -37,7 +37,6 @@
 #include <vt/transport.h>
 #include <vt/trace/trace_common.h>
 
-#define SPDLOG_HEADER_ONLY
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
