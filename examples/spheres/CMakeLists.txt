@@ -31,22 +31,10 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ]]
 
-macro(add_example name)
-  add_executable(${name} ${ARGN})
-  target_link_libraries(${name} bvh::bvh)
-  target_compile_options(${name} PRIVATE
-                         $<$<CONFIG:Debug>:-g3 -ggdb -O0>)
-
-  target_compile_options(${name} PRIVATE
-                         $<$<CONFIG:Release>:-O3 -ffast-math>)
-  target_compile_options(${name} PRIVATE -Werror)
-endmacro()
-
-# Visualization examples
-
-if (VTK_FOUND)
-  add_example(vis_kdop vis_kdop.cpp)
-  add_example(vis_bvh vis_bvh.cpp)
-endif()
-
-add_subdirectory(spheres)
+add_example(granular_object_test
+  sphere.hpp
+  collision_sphere.hpp
+  granular_object.hpp
+  granular_object.cpp
+  granular_object_test.cpp
+)
