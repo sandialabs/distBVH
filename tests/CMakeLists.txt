@@ -42,6 +42,7 @@ if (NOT BVH_DISABLE_TESTS)
       SerializerTest.cpp
       #PatchTest.cpp
       #PrimitiveTest.cpp
+      bits_test.cpp
       hash_test.cpp
       sort_test.cpp
       SplitTest.cpp
