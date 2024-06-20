@@ -41,8 +41,6 @@ namespace bvh
 {
   namespace collision_object_impl
   {
-    void (*narrowphase_patch_collection_type::migrate_hook)( narrowphase_patch_collection_type * ) = nullptr;
-
     pending_send activate_narrowphase( vt_index _local_idx, collision_object_proxy_type _this_obj )
     {
       auto msg = ::vt::makeMessage< start_activate_narrowphase_msg >();
@@ -95,9 +93,11 @@ namespace bvh
     {
       auto &this_obj = _this_obj.get()->self;
       auto &other_obj = _other_obj.get()->self;
+      auto &logger = this_obj->narrowphase_logger();
       auto msg = ::vt::makeMessage< start_ghosting_msg >();
       msg->this_obj = this_obj->get_impl().objgroup;
       msg->other_obj = other_obj->get_impl().objgroup;
+      logger.debug( "<send=local> requesting ghosts for objects {} and {} in potential collision", this_obj->id(), other_obj->id() );
       return _this_obj[::vt::theContext()->getNode()].sendMsg< start_ghosting_msg, &collision_object_impl::collision_object_holder::request_ghosts >( msg );
     }
 
@@ -111,10 +111,12 @@ namespace bvh
       void
       send_ghost( collision_object_impl::narrowphase_patch_collection_type *_patch, send_ghost_msg *_msg )
       {
-        ::bvh::vt::debug( "{}: index {} has {} destinations\n", ::vt::theContext()->getNode(), _patch->getIndex(), _patch->ghost_destinations.size() );
+        const auto &obj = *_patch->collision_object.get()->self;
+        auto &logger = obj.narrowphase_logger();
+        logger.debug( "obj={} index {} has {} destinations", obj.id(), _patch->getIndex(), _patch->ghost_destinations.size() );
         for ( auto &&d : _patch->ghost_destinations )
         {
-          ::bvh::vt::debug( "{}: sending ghost for idx {} to node {}\n", ::vt::theContext()->getNode(), _patch->getIndex(), d );
+          logger.debug( "<send={}> obj={} sending ghost for idx {}", d, obj.id(), _patch->getIndex() );
           auto msg = ::vt::makeMessage< ghost_msg >();
           msg->meta = _patch->patch_meta;
           msg->patch_data = _patch->bytes;

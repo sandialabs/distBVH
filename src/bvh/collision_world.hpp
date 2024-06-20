@@ -39,10 +39,17 @@
 #include "snapshot.hpp"
 #include "util/functional.hpp"
 #include "tree_build.hpp"
+#include <spdlog/spdlog.h>
 
 namespace bvh
 {
   class collision_object;
+
+  struct world_config
+  {
+    spdlog::level::level_enum log_levels = spdlog::level::trace;
+    spdlog::level::level_enum flush_level = spdlog::level::trace;
+  };
 
   class collision_world
   {
@@ -51,7 +58,7 @@ namespace bvh
     template< typename T >
     using narrowphase_functor = std::function< narrowphase_result_pair( const broadphase_collision< T > &, const broadphase_collision< T > & ) >;
 
-    explicit collision_world( std::size_t _overdecomposition_factor );
+    explicit collision_world( std::size_t _overdecomposition_factor, const world_config &_cfg = {} );
     ~collision_world();
 
     collision_world( const collision_world & ) = delete;
@@ -88,6 +95,10 @@ namespace bvh
 
     void start_iteration();
     void finish_iteration();
+
+    std::shared_ptr< spdlog::logger > collision_object_logger() const;
+    std::shared_ptr< spdlog::logger > collision_object_broadphase_logger() const;
+    std::shared_ptr< spdlog::logger > collision_object_narrowphase_logger() const;
 
   private:
 

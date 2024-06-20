@@ -7,15 +7,14 @@ if (@VTK_FOUND@)
   find_dependency(VTK REQUIRED HINTS @VTK_DIR@)
 endif()
 
-# VT optional dependency
-if (@vt_FOUND@)
-  find_dependency(vt REQUIRED HINTS @vt_DIR@)
-endif()
+# VT
+find_dependency(vt REQUIRED HINTS @vt_DIR@)
 
-# Kokkos optional dependency
-if (@Kokkos_FOUND@)
-    find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
-endif()
+# Kokkos
+find_dependency(Kokkos REQUIRED NO_CMAKE_PACKAGE_REGISTRY HINTS @Kokkos_DIR@)
+
+# spdlog
+find_dependency(spdlog REQUIRED)
 
 if (@perf_FOUND@)
   find_dependency(perf REQUIRED HINTS @perf_DIR@)

@@ -37,6 +37,7 @@
 #include <string>
 #include <iostream>
 #include "../vt/print.hpp"
+#include <spdlog/spdlog.h>
 
 namespace bvh
 {
@@ -45,7 +46,7 @@ namespace bvh
 #else
   constexpr int assert_debug_level = 0;
 #endif
-  
+
   namespace detail
   {
     template< bool Enable >
@@ -57,7 +58,7 @@ namespace bvh
         // Do nothing
       }
     };
-    
+
     template<>
     struct debug_assert_impl< true >
     {
@@ -72,7 +73,7 @@ namespace bvh
       }
     };
   }
-  
+
   template< int DebugLevel, typename... Args >
   void debug_assert_level( bool _val, const std::string &_msg, Args &&... _args )
   {
@@ -97,7 +98,25 @@ namespace bvh
   {
     always_assert( false, _msg, std::forward< Args >( _args )... );
   }
+
+  namespace detail
+  {
+    inline void assert_die( spdlog::logger &_logger, const char *_file, unsigned int _line, const char *_assertion,
+                            const std::string &_msg )
+    {
+      _logger.critical( "assertion failed at {}:{}: {} ({})", _file, _line, _assertion, _msg );
+      std::terminate();
+    }
+
+    inline void assert_die( std::shared_ptr< spdlog::logger > _logger, const char *_file, unsigned int _line,
+                            const char *_assertion, const std::string &_msg )
+    {
+      assert_die( *_logger, _file, _line, _assertion, _msg );
+    }
+  }  // namespace detail
 }
 
+#define BVH_ASSERT_ALWAYS( expr, logger, ... )                                                                         \
+  ( static_cast< bool >( expr ) ? void( 0 ) : ::bvh::detail::assert_die( logger, __FILE__, __LINE__, #expr, fmt::format( __VA_ARGS__ ) ) )
 
 #endif  // INC_BVH_DEBUG_ASSERT_HPP

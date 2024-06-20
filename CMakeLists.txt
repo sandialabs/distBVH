@@ -57,6 +57,8 @@ target_include_directories(bvh INTERFACE
         $<INSTALL_INTERFACE:include>
         )
 
+add_subdirectory(tpl)
+
 # Various default compiler options
 
 target_compile_options(bvh PUBLIC $<$<CONFIG:DEBUG>:-O0 -ggdb3 -fno-inline>)
@@ -106,6 +108,9 @@ if (Kokkos_CXX_STANDARD LESS 17)
 endif()
 set_property(TARGET bvh PROPERTY CXX_STANDARD ${Kokkos_CXX_STANDARD})
 target_link_libraries(bvh PUBLIC Kokkos::kokkos)
+
+find_package(spdlog 1.13 REQUIRED)
+target_link_libraries(bvh PUBLIC spdlog::spdlog)
 
 option(BVH_ENABLE_TRACING "Enable detailed performance tracing (may have an impact on performance" OFF)
 if (BVH_ENABLE_TRACING)
