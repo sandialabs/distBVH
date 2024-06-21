@@ -38,3 +38,11 @@ add_example(granular_object_test
   granular_object.cpp
   granular_object_test.cpp
 )
+
+add_example(collide_two_blocks
+  sphere.hpp
+  collision_sphere.hpp
+  granular_object.hpp
+  granular_object.cpp
+  collide_two_blocks.cpp
+)
