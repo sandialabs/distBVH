@@ -27,3 +27,12 @@ spack:
   config:
     install_tree: /opt/software
   view: /opt/view
+packages:
+  all:
+    variants:
+    - cuda_arch=61
+  cuda:
+    buildable: false
+    externals:
+    - spec: cuda@11.4.3
+      prefix: /usr/local/cuda
