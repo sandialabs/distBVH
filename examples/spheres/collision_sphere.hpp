@@ -56,7 +56,8 @@ public:
       : global_id_(s.global_id()),
         radius_(s.radius()),
         centroid_(s.position()),
-        bounds_(bvh::bphase_kdop::from_sphere(s.position(), s.radius())) {}
+        bounds_(bvh::bphase_kdop::from_sphere(s.position(),
+                                              (1.0 + buffer_) * s.radius())) {}
 
   KOKKOS_INLINE_FUNCTION CollisionSphere &
   operator=(const CollisionSphere &) = default;
@@ -69,7 +70,8 @@ public:
     global_id_ = s.global_id();
     radius_ = s.radius();
     centroid_ = s.position();
-    bounds_ = bvh::bphase_kdop::from_sphere(s.position(), s.radius());
+    bounds_ = bvh::bphase_kdop::from_sphere(s.position(),
+                                            (1.0 + buffer_) * s.radius());
     return *this;
   }
 
@@ -91,7 +93,7 @@ public:
   bool
   is_colliding_with(const CollisionSphere &other) const {
     return bvh::m::length(centroid_ - other.centroid_) <=
-           radius_ + other.radius_;
+           (1 + buffer_) * (radius_ + other.radius_);
   }
 
 private:
@@ -99,6 +101,9 @@ private:
   double radius_;
   bvh::m::vec3d centroid_;
   bvh::bphase_kdop bounds_;
+
+private:
+  static constexpr double buffer_ = 0.01;
 };
 
 #endif
