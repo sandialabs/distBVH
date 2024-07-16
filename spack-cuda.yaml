@@ -1,0 +1,38 @@
+spack:
+  definitions:
+    - mpis:
+      - mpich@3.4.2
+    - core-packages:
+      - kokkos@4.1 +cuda +wrapper +cuda_lambda cuda_arch=61
+      - fmt@10.2.1
+      - spdlog@1.13.0
+    - packages:
+      - p3a@main
+      - seacas@2024-04-03 -x11 ^hdf5@1.14.1 ^fmt@10.2.1
+      - arborx@1.4.1 +openmp +mpi
+      - darma-vt +trace_enabled@develop
+  specs:
+    - matrix:
+      - [$mpis]
+      - [arch=linux-ubuntu20.04-x86_64_v3]
+    - matrix:
+      - [$core-packages]
+      - [arch=linux-ubuntu20.04-x86_64_v3]
+    - matrix:
+      - [$packages]
+      - [$^mpis]
+      - [arch=linux-ubuntu20.04-x86_64_v3]
+  concretizer:
+    unify: true
+  config:
+    install_tree: /opt/software
+  view: /opt/view
+  packages:
+    all:
+      variants:
+      - cuda_arch=61
+    cuda:
+      buildable: false
+      externals:
+      - spec: cuda@11.4.3
+        prefix: /usr/local/cuda

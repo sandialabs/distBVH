@@ -30,25 +30,26 @@ RUN apt update \
         cmake=3.26.4-0kitware1ubuntu20.04.1 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch develop --depth 1 https://github.com/kokkos/kokkos.git \
-    && git clone --branch develop --depth 1 https://github.com/DARMA-tasking/vt.git \
-    && git clone --branch develop --depth 1 https://github.com/DARMA-tasking/magistrate.git vt/lib/checkpoint \
-    && git config --global --add safe.directory /kokkos \
-    && git config --global --add safe.directory /vt
+RUN pip install clingo
 
-RUN cmake -B /vt/builddir -S /vt \
-        -DCMAKE_CXX_COMPILER=/kokkos/bin/nvcc_wrapper \
-        -Dvt_build_examples=OFF \
-        -Dvt_build_tests=OFF \
-        -Dvt_build_tools=OFF \
-        -Dvt_trace_enabled=ON \
-    && cmake --build /vt/builddir --target install -j 2 \
-    && rm -rf /vt/builddir
+# Now we install spack and find compilers/externals
+RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "v0.22.0" https://github.com/spack/spack.git
 
-RUN cmake -B /kokkos/builddir -S /kokkos \
-        -DCMAKE_CXX_COMPILER=/kokkos/bin/nvcc_wrapper \
-        -DKokkos_ENABLE_CUDA=ON \
-        -DKokkos_ENABLE_CUDA_LAMBDA=ON \
-        -DKokkos_ARCH_PASCAL61=ON \
-    && cmake --build /kokkos/builddir --target install -j 2 \
-    && rm -rf /kokkos/builddir
+# Add current source dir into the image
+COPY . /opt/src/ci-images
+
+# Get the latest version of the darma-vt repo
+RUN cd /opt/src/ci-images/spack-repos && git clone --depth 1 --branch "16-external-fmt" https://github.com/DARMA-tasking/spack-package.git vt
+
+# Add our new repos
+RUN . /opt/spack/share/spack/setup-env.sh \
+  && spack repo add /opt/src/ci-images/spack-repos/p3a \
+  && spack repo add /opt/src/ci-images/spack-repos/vt
+
+# Setup our environment
+RUN mkdir -p /opt/spack-env && mv /opt/src/ci-images/spack-cuda.yaml /opt/spack-env/spack.yaml
+RUN . /opt/spack/share/spack/setup-env.sh \
+  && spack --env-dir /opt/spack-env concretize
+RUN . /opt/spack/share/spack/setup-env.sh \
+  && spack --env-dir /opt/spack-env install --fail-fast \
+  && spack --env-dir /opt/spack-env gc -y
