@@ -42,7 +42,6 @@ namespace bvh
       snapshots( fmt::format( "contact entity {} snapshot", _idx ), 0 ),
       split_indices( fmt::format( "contact entity {} split indices", _idx ), 0 ),
       splits( fmt::format( "contact entity {} splits", _idx ), 0 ),
-      split_indices_h( fmt::format( "contact entity host {} split indices", _idx ), 0 ),
       splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 ),
       logger( _world.collision_object_logger() ),
       broadphase_logger( _world.collision_object_broadphase_logger() ),

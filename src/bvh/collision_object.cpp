@@ -132,7 +132,7 @@ namespace bvh
 
     for ( std::size_t i = 0; i < od_factor; ++i ) {
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
-      const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
+      const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
       logger().debug( "creating broadphase patch for body {} size {} from offset {}", m_impl->collision_idx, nelements, sbeg );
       // FIXME_CUDA
@@ -433,12 +433,6 @@ namespace bvh
   }
 
   host_view< std::size_t * > &
-  collision_object::get_split_indices_h()
-  {
-    return m_impl->split_indices_h;
-  }
-
-  host_view< std::size_t * > &
   collision_object::get_splits_h()
   {
     return m_impl->splits_h;
@@ -454,7 +448,6 @@ namespace bvh
   collision_object::initialize_split_indices( const element_permutations &_splits )
   {
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->split_indices, _splits.indices.size() );
-    Kokkos::resize( Kokkos::WithoutInitializing, m_impl->split_indices_h, _splits.indices.size() );
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->splits, _splits.splits.size() );
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->splits_h, _splits.splits.size() );
 
@@ -462,7 +455,7 @@ namespace bvh
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > splits_view( _splits.splits.data(), _splits.splits.size() );
 
     Kokkos::deep_copy( m_impl->splits_h, splits_view );
-    Kokkos::deep_copy( m_impl->split_indices_h, indices_view );
+    Kokkos::deep_copy( m_impl->split_indices, indices_view );
   }
 
   spdlog::logger &

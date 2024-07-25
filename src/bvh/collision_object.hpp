@@ -36,6 +36,7 @@
 #include <cstddef>
 #include <memory>
 #include <functional>
+#include <Kokkos_Core.hpp>
 #include <vt/context/context.h>
 #include <spdlog/spdlog.h>
 
@@ -103,7 +104,6 @@ namespace bvh
           m_clusterer.resize( n );
         }
         Kokkos::resize( Kokkos::WithoutInitializing, get_split_indices(), n );
-        Kokkos::resize( Kokkos::WithoutInitializing, get_split_indices_h(), n );
 
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits(), num_splits );
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits_h(), num_splits );
@@ -115,7 +115,6 @@ namespace bvh
         m_clusterer( _data_view, get_split_indices(), get_splits() );
 
         Kokkos::deep_copy( get_splits_h(), get_splits() );
-        Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
 
         // Now split_indices/_h is reordered according to the morton encoding
         // It provides a mapping from original indices to the new reordered elements that
@@ -236,8 +235,7 @@ namespace bvh
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
-      // FIXME_CUDA
-      auto &ind = get_split_indices_h();
+      auto &ind = get_split_indices();
       Kokkos::parallel_for(
         ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
           snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
@@ -265,7 +263,6 @@ namespace bvh
     view< bvh::entity_snapshot * > &get_snapshots();
     view< std::size_t * > &get_split_indices();
     view< std::size_t * > &get_splits();
-    host_view< std::size_t * > &get_split_indices_h();
     host_view< std::size_t * > &get_splits_h();
 
     void initialize_split_indices( const element_permutations &_splits );
