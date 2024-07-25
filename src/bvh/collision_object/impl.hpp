@@ -96,7 +96,7 @@ namespace bvh
 
       const auto idx = _local_idx;
       const auto sbeg = ( idx == 0 ) ? 0 : splits_h( idx - 1 );
-      const auto send = ( idx == num_splits ) ? split_indices_h.extent( 0 ) : splits_h( idx );
+      const auto send = ( idx == num_splits ) ? split_indices.extent( 0 ) : splits_h( idx );
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_entity_unit_size;
       const int rank = _rank;
@@ -112,9 +112,9 @@ namespace bvh
       for (std::size_t j = sbeg; j < send; ++j)
       {
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
+        debug_assert( split_indices( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
         // FIXME_CUDA: use subviews, deep_copy to host
-        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
+        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices( j ) * m_entity_unit_size), m_entity_unit_size);
         offset += m_entity_unit_size;
       }
 
@@ -179,7 +179,6 @@ namespace bvh
     view< bvh::entity_snapshot * > snapshots;
     view< std::size_t * > split_indices;  ///< Mapping from original element indices to the reordered indices
     view< std::size_t * > splits; ///< bounds of each split
-    host_view< std::size_t * > split_indices_h;
     host_view< std::size_t * > splits_h;
     std::size_t num_splits = 0; ///< The number of actual splits -- may be les than splits.extent( 0 )
 
