@@ -13,7 +13,7 @@ Building is done via CMake (version 3.15 required). Detailed instructions can be
 BVH requires a compiler that supports C++17. This includes at least clang 5 or gcc version 7.0.
 
 BVH uses [DARMA/vt](https://github.com/DARMA-tasking/vt) for asynchronous tasking. For more information about DARMA/vt
-please consult the [documentation](https://darma-tasking.github.io/docs/html/index.html). 
+please consult the [documentation](https://darma-tasking.github.io/docs/html/index.html).
 
 VTK can also be used for visualizing the the tree data structure.
 
@@ -24,9 +24,10 @@ cd bvh
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Debug \
-      -Dvt_DIR=/path/to/vt/build-debug/install/cmake \
-      -DVTK_DIR=/path/to/vtk/8.2.0/lib/cmake/vtk-8.2 \
-      -DBVH_DEBUG_LEVEL=5 \
+      -DKokkos_ROOT=/path/to/Kokkos/build-debug/install \
+      -Dvt_DIR=/path/to/vt/build-debug/install/cmake    \
+      -DVTK_DIR=/path/to/vtk/8.2.0/lib/cmake/vtk-8.2    \
+      -DBVH_DEBUG_LEVEL=5                               \
       ..
 make -j8
 ```
@@ -36,9 +37,10 @@ In order to build the doxygen documentation:
 ```{.bash}
 cmake -DCMAKE_PROGRAM_PATH=/path/to/doxygen/bin         \
       -DSphinx_ROOT=/path/to/python/install/or/venv     \
-      -DCMAKE_BUILD_TYPE=Debug \
-      -Dvt_DIR=/path/to/vt/build-debug/install/cmake \
-      -DVTK_DIR=/path/to/vtk/8.2.0/lib/cmake/vtk-8.2 \
+      -DCMAKE_BUILD_TYPE=Debug                          \
+      -DKokkos_ROOT=/path/to/Kokkos/build-debug/install \
+      -Dvt_DIR=/path/to/vt/build-debug/install/cmake    \
+      -DVTK_DIR=/path/to/vtk/8.2.0/lib/cmake/vtk-8.2    \
       -DBVH_DEBUG_LEVEL=5 \
       ..
 make doc
