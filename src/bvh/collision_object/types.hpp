@@ -193,7 +193,7 @@ namespace bvh
       {}
 
       patch<> patch_meta;
-      std::vector< unsigned char > bytes;
+      view< unsigned char * > bytes;
       ::vt::NodeType origin_node = ::vt::uninitialized_destination;
       std::unordered_set< ::vt::NodeType > ghost_destinations;
       collision_object_proxy_type collision_object;
@@ -281,7 +281,7 @@ namespace bvh
       vt_msg_serialize_required();
 
       patch<> meta;
-      std::vector< unsigned char > patch_data;
+      view< unsigned char * > patch_data;
       ::vt::NodeType origin_node;
       vt_index idx;
 

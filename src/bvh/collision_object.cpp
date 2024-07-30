@@ -55,7 +55,7 @@ namespace bvh
     {
       // Set data
       _coll->patch_meta = _msg->patch_meta;
-      _coll->bytes.resize( _msg->data_size );
+      Kokkos::resize( _coll->bytes, _msg->data_size );
 
       // Guard the memcpy because it's UB even if size is zero if the pointers are invalid
       if ( _msg->data_size > 0 )
