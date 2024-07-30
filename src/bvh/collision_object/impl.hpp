@@ -57,7 +57,7 @@ namespace bvh
       logger.debug( "late initializing narrowphase patch {} with {} bytes", idx.x(), _msg->data_size );
       _patch->ghost_destinations.clear();
       _patch->patch_meta = _msg->patch_meta;
-      _patch->bytes.resize(_msg->data_size);
+      Kokkos::resize( _patch->bytes, _msg->data_size );
       std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
       _patch->origin_node = _msg->origin_node;
     }
@@ -169,7 +169,7 @@ namespace bvh
     struct narrowphase_patch_cache_entry
     {
       patch<> meta;
-      std::vector< unsigned char > patch_data;
+      view< unsigned char * > patch_data;
       ::vt::NodeType origin_node;
     };
 
