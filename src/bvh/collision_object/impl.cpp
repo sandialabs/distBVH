@@ -40,6 +40,7 @@ namespace bvh
     : world( &_world ),
       collision_idx( _idx ),
       snapshots( fmt::format( "contact entity {} snapshot", _idx ), 0 ),
+      snapshots_h( fmt::format( "contact entity host {} snapshot", _idx ), 0 ),
       split_indices( fmt::format( "contact entity {} split indices", _idx ), 0 ),
       splits( fmt::format( "contact entity {} splits", _idx ), 0 ),
       splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 ),

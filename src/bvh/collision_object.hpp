@@ -236,7 +236,9 @@ namespace bvh
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
+      auto &snap_h = get_snapshots_h();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
+      Kokkos::resize( Kokkos::WithoutInitializing, snap_h, _data_view.extent( 0 ) );
       auto &ind = get_split_indices();
       Kokkos::parallel_for(
         ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
@@ -250,7 +252,9 @@ namespace bvh
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
+      auto &snap_h = get_snapshots_h();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
+      Kokkos::resize( Kokkos::WithoutInitializing, snap_h, _data_view.extent( 0 ) );
       Kokkos::parallel_for(
         _data_view.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
           snap( _idx ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
@@ -263,6 +267,7 @@ namespace bvh
     void for_each_result_impl( std::function< void(const narrowphase_result &) > &&_fun );
 
     view< bvh::entity_snapshot * > &get_snapshots();
+    host_view< bvh::entity_snapshot * > &get_snapshots_h();
     view< std::size_t * > &get_split_indices();
     view< std::size_t * > &get_splits();
     host_view< std::size_t * > &get_splits_h();
