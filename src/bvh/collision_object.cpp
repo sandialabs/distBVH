@@ -31,7 +31,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "collision_object.hpp"
-#include "tree.hpp"
 #include "debug/assert.hpp"
 #include "collision_object/types.hpp"
 #include "collision_object/impl.hpp"
@@ -39,7 +38,6 @@
 #include "collision_object/broadphase.hpp"
 #include "collision_object/narrowphase.hpp"
 #include <unordered_map>
-#include <typeinfo>
 
 namespace bvh
 {
@@ -127,6 +125,7 @@ namespace bvh
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
 
+    // FIXME_CUDA
     m_impl->m_entity_ptr = _data.data();
     m_impl->m_entity_unit_size = _element_size;
 
@@ -138,9 +137,10 @@ namespace bvh
       const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
       logger().debug( "creating broadphase patch for body {} size {} from offset {}", m_impl->collision_idx, nelements, sbeg );
-      // FIXME_CUDA
+      // FIXME_CUDA: should `span` be reworked to use Kokkos::View underneath?
+      Kokkos::deep_copy( m_impl->snapshots_h, m_impl->snapshots );
       m_impl->local_patches[i] = broadphase_patch_type(
-        i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
+        i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots_h.data() + sbeg, nelements ) );
     }
 
     BVH_ASSERT_ALWAYS( m_impl->local_patches.size() == od_factor,
@@ -421,6 +421,11 @@ namespace bvh
   collision_object::get_snapshots()
   {
     return m_impl->snapshots;
+  }
+
+  host_view< bvh::entity_snapshot * > &collision_object::get_snapshots_h()
+  {
+    return m_impl->snapshots_h;
   }
 
   view< std::size_t * > &

@@ -177,6 +177,7 @@ namespace bvh
 
     // Split and clustering views
     view< bvh::entity_snapshot * > snapshots;
+    host_view< bvh::entity_snapshot * > snapshots_h;
     view< std::size_t * > split_indices;  ///< Mapping from original element indices to the reordered indices
     view< std::size_t * > splits; ///< bounds of each split
     host_view< std::size_t * > splits_h;
