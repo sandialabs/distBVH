@@ -114,7 +114,8 @@ namespace bvh
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
         debug_assert( split_indices( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
         // FIXME_CUDA: use subviews, deep_copy to host
-        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices( j ) * m_entity_unit_size), m_entity_unit_size);
+        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr.data() + ( split_indices( j ) * m_entity_unit_size ),
+                     m_entity_unit_size );
         offset += m_entity_unit_size;
       }
 
@@ -162,7 +163,7 @@ namespace bvh
     std::vector< collision_object_impl::narrowphase_index > active_narrowphase_indices;
     std::unordered_set< size_t > active_narrowphase_local_index;
 
-    const unsigned char *m_entity_ptr;
+    bvh::view< const unsigned char * > m_entity_ptr;
     std::size_t m_entity_unit_size = 0;
     element_permutations m_latest_permutations;
 
