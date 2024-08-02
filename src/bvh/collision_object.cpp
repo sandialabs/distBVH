@@ -124,8 +124,7 @@ namespace bvh
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
 
-    // FIXME_CUDA
-    m_impl->m_entity_ptr = _data.data();
+    m_impl->m_entity_ptr = _data;
     m_impl->m_entity_unit_size = _element_size;
 
     // Ensure that our update of m_impl->snapshots has finished before reading it here
