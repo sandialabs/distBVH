@@ -47,7 +47,7 @@ namespace bvh
 {
   namespace detail
   {
-    inline std::uint32_t expand32( std::uint32_t _num )
+    KOKKOS_INLINE_FUNCTION std::uint32_t expand32( std::uint32_t _num )
     {
       _num = ( _num * 0x00010001u ) & 0xff0000ffu;
       _num = ( _num * 0x00000101u ) & 0x0f00f00fu;
