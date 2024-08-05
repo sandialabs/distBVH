@@ -138,7 +138,7 @@ TEST_CASE("ghost_msg serialization", "[serializer][collision_object][narrowphase
         for ( std::size_t i = 0; i < 4096; ++i )
           vals.push_back( static_cast< double >( i + 1 ) );
         msg->origin_node = 13;
-        msg->patch_data.resize( vals.size() * sizeof( double ) );
+        Kokkos::resize( msg->patch_data, vals.size() * sizeof( double ) );
         std::memcpy( msg->patch_data.data(), vals.data(), msg->patch_data.size() );
 
         auto han = ::vt::auto_registry::makeAutoHandler< bvh::collision_object_impl::ghost_msg, check_ghost_msg >();
@@ -193,7 +193,7 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
     ::vt::theMsg()->pushEpoch( ep );
 
     auto collection = ::vt::theCollection()->constructCollective< narrowphase_patch_collection_type >(
-      coll_size, []( [[maybe_unused]] vt_index _idx ) {
+      coll_size, []( vt_index _idx ) {
       auto ret = std::make_unique< narrowphase_patch_collection_type >();
       auto k = bvh::bphase_kdop::from_sphere( bvh::m::vec3d{ 17.53, 21.9, 36.0 }, 2.7 );
       bvh::patch<> p( 13, 4096, k, bvh::m::vec3d{ 17.3, 20.6, 33.31 } );
@@ -203,7 +203,7 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
       vals.reserve( 4096 );
       for ( std::size_t i = 0; i < 4096; ++i )
         vals.push_back( static_cast< double >( i + 1 ) );
-      ret->bytes.resize( 4096 * sizeof( double ) );
+      Kokkos::resize( ret->bytes, 4096 * sizeof( double ) );
       std::memcpy( ret->bytes.data(), vals.data(), ret->bytes.size() );
       return ret;
     } );
