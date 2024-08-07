@@ -112,6 +112,8 @@ target_link_libraries(bvh PUBLIC Kokkos::kokkos)
 if (Kokkos_ENABLE_CUDA)
   message(STATUS "Enabling CUDA support")
   target_compile_definitions(bvh PUBLIC BVH_ENABLE_CUDA)
+  # FIXME_CUDA: this could silence a lot of warnings, but causes build failure
+  # target_compile_options(bvh PUBLIC --expt-relaxed-constexpr)
 endif()
 
 find_package(spdlog 1.13 REQUIRED)

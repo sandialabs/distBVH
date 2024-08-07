@@ -57,7 +57,7 @@ namespace bvh
       logger.debug( "late initializing narrowphase patch {} with {} bytes", idx.x(), _msg->data_size );
       _patch->ghost_destinations.clear();
       _patch->patch_meta = _msg->patch_meta;
-      _patch->bytes.resize(_msg->data_size);
+      Kokkos::resize( Kokkos::WithoutInitializing, _patch->bytes, _msg->data_size );
       std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
       _patch->origin_node = _msg->origin_node;
     }
@@ -96,7 +96,7 @@ namespace bvh
 
       const auto idx = _local_idx;
       const auto sbeg = ( idx == 0 ) ? 0 : splits_h( idx - 1 );
-      const auto send = ( idx == num_splits ) ? split_indices_h.extent( 0 ) : splits_h( idx );
+      const auto send = ( idx == num_splits ) ? split_indices.extent( 0 ) : splits_h( idx );
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_entity_unit_size;
       const int rank = _rank;
@@ -112,8 +112,10 @@ namespace bvh
       for (std::size_t j = sbeg; j < send; ++j)
       {
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
-        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
+        debug_assert( split_indices( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
+        // FIXME_CUDA: use subviews, deep_copy to host
+        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr.data() + ( split_indices( j ) * m_entity_unit_size ),
+                     m_entity_unit_size );
         offset += m_entity_unit_size;
       }
 
@@ -139,7 +141,7 @@ namespace bvh
     std::vector< narrowphase_result > local_results;
 
     ::vt::messaging::CollectionChainSet< vt_index > chainset;
-    int overdecomposition = 1;
+    std::size_t overdecomposition = 1;
     bool build_trees = true;
 
     // 1D collection of patch metadata, each index in the collection corresponds to the same index in narrowphase_patch_collection_proxy
@@ -161,14 +163,14 @@ namespace bvh
     std::vector< collision_object_impl::narrowphase_index > active_narrowphase_indices;
     std::unordered_set< size_t > active_narrowphase_local_index;
 
-    const unsigned char *m_entity_ptr;
+    bvh::view< const unsigned char * > m_entity_ptr;
     std::size_t m_entity_unit_size = 0;
     element_permutations m_latest_permutations;
 
     struct narrowphase_patch_cache_entry
     {
       patch<> meta;
-      std::vector< unsigned char > patch_data;
+      view< unsigned char * > patch_data;
       ::vt::NodeType origin_node;
     };
 
@@ -176,9 +178,9 @@ namespace bvh
 
     // Split and clustering views
     view< bvh::entity_snapshot * > snapshots;
+    host_view< bvh::entity_snapshot * > snapshots_h;
     view< std::size_t * > split_indices;  ///< Mapping from original element indices to the reordered indices
     view< std::size_t * > splits; ///< bounds of each split
-    host_view< std::size_t * > split_indices_h;
     host_view< std::size_t * > splits_h;
     std::size_t num_splits = 0; ///< The number of actual splits -- may be les than splits.extent( 0 )
 

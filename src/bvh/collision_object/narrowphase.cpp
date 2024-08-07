@@ -33,7 +33,6 @@
 #include "narrowphase.hpp"
 #include "../collision_object.hpp"
 #include "impl.hpp"
-#include "../debug/assert.hpp"
 
 #include <vt/trace/trace_user.h>
 
@@ -47,13 +46,13 @@ namespace bvh
       return _this_obj[::vt::theContext()->getNode()].sendMsg< start_activate_narrowphase_msg, &collision_object_impl::collision_object_holder::activate_narrowphase >( msg );
     }
 
-    pending_send clear_narrowphase( vt_index _local_idx, collision_object_proxy_type _this_obj )
+    pending_send clear_narrowphase( vt_index , collision_object_proxy_type _this_obj )
     {
       auto msg = ::vt::makeMessage< clear_narrowphase_msg >();
       return _this_obj[::vt::theContext()->getNode()].sendMsg< clear_narrowphase_msg, &collision_object_impl::collision_object_holder::clear_narrowphase >( msg );
     }
 
-    pending_send narrowphase( vt_index _local_idx, collision_object_proxy_type _this_obj )
+    pending_send narrowphase( vt_index , collision_object_proxy_type _this_obj )
     {
       auto msg = ::vt::makeMessage< start_narrowphase_msg >();
       return _this_obj[::vt::theContext()->getNode()].sendMsg< start_narrowphase_msg, &collision_object_impl::collision_object_holder::start_narrowphase >( msg );
@@ -67,7 +66,7 @@ namespace bvh
       {
         _patch->ghost_destinations.clear();
         _patch->patch_meta = _msg->patch_meta;
-        _patch->bytes.resize(_msg->data_size);
+        Kokkos::resize( Kokkos::WithoutInitializing, _patch->bytes, _msg->data_size );
         std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
         _patch->origin_node = _msg->origin_node;
       }
@@ -87,7 +86,7 @@ namespace bvh
       return _patches[_global_idx].sendMsg< narrowphase_patch_msg, &details::copy_narrowphase_patch >( this_msg );
     }
 
-    pending_send request_ghosts( vt_index _local_idx,
+    pending_send request_ghosts( vt_index,
                                  collision_object_proxy_type _this_obj,
                                  collision_object_proxy_type _other_obj )
     {

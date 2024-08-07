@@ -31,12 +31,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "collision_object.hpp"
-#include "kdop.hpp"
-#include "tree.hpp"
-#include "util/bits.hpp"
-#include "split/split.hpp"
-#include "split/mean.hpp"
-#include "split/axis.hpp"
 #include "debug/assert.hpp"
 #include "collision_object/types.hpp"
 #include "collision_object/impl.hpp"
@@ -44,7 +38,6 @@
 #include "collision_object/broadphase.hpp"
 #include "collision_object/narrowphase.hpp"
 #include <unordered_map>
-#include <typeinfo>
 
 namespace bvh
 {
@@ -62,7 +55,7 @@ namespace bvh
     {
       // Set data
       _coll->patch_meta = _msg->patch_meta;
-      _coll->bytes.resize( _msg->data_size );
+      Kokkos::resize( Kokkos::WithoutInitializing, _coll->bytes, _msg->data_size );
 
       // Guard the memcpy because it's UB even if size is zero if the pointers are invalid
       if ( _msg->data_size > 0 )
@@ -88,7 +81,7 @@ namespace bvh
     bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl( "bvh_build_trees_" );
     m_impl->logger->trace( "obj={} registered user tracing event bvh_build_trees_", m_impl->collision_idx );
 
-    m_impl->overdecomposition = static_cast< int >( _overdecomposition );
+    m_impl->overdecomposition = _overdecomposition;
 
     for ( std::size_t i = 0; i < m_impl->overdecomposition; ++i )
     {
@@ -112,7 +105,7 @@ namespace bvh
 
   collision_object::~collision_object() = default;
 
-  void collision_object::set_entity_data_impl( const void *_data, std::size_t _element_size )
+  void collision_object::set_entity_data_impl( bvh::view< const unsigned char * > _data, std::size_t _element_size )
   {
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
@@ -131,9 +124,8 @@ namespace bvh
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
-    auto range_policy = Kokkos::RangePolicy< Kokkos::Serial >( 0, od_factor );
 
-    m_impl->m_entity_ptr = static_cast< const unsigned char * >( _data );
+    m_impl->m_entity_ptr = _data;
     m_impl->m_entity_unit_size = _element_size;
 
     // Ensure that our update of m_impl->snapshots has finished before reading it here
@@ -141,11 +133,13 @@ namespace bvh
 
     for ( std::size_t i = 0; i < od_factor; ++i ) {
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
-      const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
+      const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
       logger().debug( "creating broadphase patch for body {} size {} from offset {}", m_impl->collision_idx, nelements, sbeg );
+      // FIXME_CUDA: should `span` be reworked to use Kokkos::View underneath?
+      Kokkos::deep_copy( m_impl->snapshots_h, m_impl->snapshots );
       m_impl->local_patches[i] = broadphase_patch_type(
-        i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
+        i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots_h.data() + sbeg, nelements ) );
     }
 
     BVH_ASSERT_ALWAYS( m_impl->local_patches.size() == od_factor,
@@ -333,8 +327,6 @@ namespace bvh
   void
   collision_object::set_active_narrow_patches(){
     int rank = static_cast< int >( ::vt::theContext()->getNode() );
-    const auto od_factor = m_impl->overdecomposition;
-    const std::size_t offset = rank * od_factor;
 
     m_impl->chainset.nextStepCollective( "set_narrowphase_patches", [this, rank]( vt_index _idx ) {
       if ( _idx.x() == 0 ) {
@@ -430,6 +422,11 @@ namespace bvh
     return m_impl->snapshots;
   }
 
+  host_view< bvh::entity_snapshot * > &collision_object::get_snapshots_h()
+  {
+    return m_impl->snapshots_h;
+  }
+
   view< std::size_t * > &
   collision_object::get_split_indices()
   {
@@ -440,12 +437,6 @@ namespace bvh
   collision_object::get_splits()
   {
     return m_impl->splits;
-  }
-
-  host_view< std::size_t * > &
-  collision_object::get_split_indices_h()
-  {
-    return m_impl->split_indices_h;
   }
 
   host_view< std::size_t * > &
@@ -464,7 +455,6 @@ namespace bvh
   collision_object::initialize_split_indices( const element_permutations &_splits )
   {
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->split_indices, _splits.indices.size() );
-    Kokkos::resize( Kokkos::WithoutInitializing, m_impl->split_indices_h, _splits.indices.size() );
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->splits, _splits.splits.size() );
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->splits_h, _splits.splits.size() );
 
@@ -472,7 +462,7 @@ namespace bvh
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > splits_view( _splits.splits.data(), _splits.splits.size() );
 
     Kokkos::deep_copy( m_impl->splits_h, splits_view );
-    Kokkos::deep_copy( m_impl->split_indices_h, indices_view );
+    Kokkos::deep_copy( m_impl->split_indices, indices_view );
   }
 
   spdlog::logger &

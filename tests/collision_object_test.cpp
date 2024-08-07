@@ -73,7 +73,6 @@ struct test_empty_trees
 {
   void operator()( const bvh::snapshot_tree &_tree )
   {
-    auto nranks = ::vt::theContext()->getNumNodes();
     REQUIRE( _tree.count() == 0 );
   }
 
@@ -103,6 +102,7 @@ TEST_CASE( "collision_object init", "[vt]")
   bvh::collision_world world( od_factor );
 
   auto &obj = world.create_collision_object();
+  using index_type = decltype(obj.local_patches())::index_type;
 
   auto rank = ::vt::theContext()->getNode();
   auto elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor );
@@ -146,7 +146,7 @@ TEST_CASE( "collision_object init", "[vt]")
 
         vt::runInEpochCollective( "set_data.init.check", [&]() {
           auto local_patches = obj.local_patches();
-          REQUIRE( local_patches.size() == od_factor );
+          REQUIRE( local_patches.size() == static_cast<index_type>(od_factor) );
           std::size_t total_num_elements
             = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
                                      []( const auto &_patch ) { return _patch.size(); } );
@@ -215,7 +215,7 @@ TEST_CASE( "collision_object init", "[vt]")
 
       vt::runInEpochCollective( "set_data.init.check", [&]() {
         auto local_patches = obj.local_patches();
-        REQUIRE( local_patches.size() == od_factor );
+        REQUIRE( local_patches.size() == static_cast<index_type>(od_factor) );
         std::size_t total_num_elements
           = std::transform_reduce( local_patches.begin(), local_patches.end(), 0UL, std::plus{},
                                    []( const auto &_patch ) { return _patch.size(); } );
@@ -363,7 +363,7 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
       res.patch_p, res.element_p, res.patch_q, res.element_q );
   }
 
-  CHECK( results.size() == 12 * ::vt::theContext()->getNumNodes() );
+  CHECK( results.size() == static_cast<std::size_t>(12 * ::vt::theContext()->getNumNodes()) );
   for ( std::size_t i = 0; i < std::min( results.size(), ref_rhs_element_ids.size() ); ++i )
   {
     CHECK( results[i].element_q == ref_rhs_element_ids[i] );
@@ -402,7 +402,6 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
-      auto &resb = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.b );
 
       REQUIRE( _a.object.id() == 0 );
       REQUIRE( _b.object.id() == 1 );
@@ -411,10 +410,10 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       // Second patch number of elements depends on the split algorithm, so not tested
 
       // Global id of the first patch should be the node from whence it came
-      REQUIRE( _a.elements[0].global_id() < ::vt::theContext()->getNumNodes());
+      REQUIRE( _a.elements[0].global_id() < static_cast<std::size_t>(::vt::theContext()->getNumNodes()));
 
       for ( auto &&e: _b.elements ) {
-        REQUIRE( e.global_id() < ::vt::theContext()->getNumNodes() * 12 );
+        REQUIRE( e.global_id() < static_cast<std::size_t>(::vt::theContext()->getNumNodes() * 12) );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
                                                         _b.meta.global_id(), e.global_id() } );
       }
@@ -470,7 +469,7 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
       obj2.set_entity_data( elements2, split_method );
       obj2.init_broadphase();
 
-      world.set_narrowphase_functor< Element >( [rank]( const bvh::broadphase_collision< Element > &_a,
+      world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                     const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
         res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
@@ -485,14 +484,14 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
         // Second patch number of elements depends on the split algorithm, so not tested
 
         // Global id of the first patch should be the node from whence it came
-        REQUIRE( _a.elements[0].global_id() < ::vt::theContext()->getNumNodes());
+        REQUIRE( _a.elements[0].global_id() < static_cast<std::size_t>(::vt::theContext()->getNumNodes()));
         bvh::vt::debug("{}: intersect patch ({}, {}) with ({}, {})\n",
                         ::vt::theContext()->getNode(),
                         _a.object.id(), _a.patch_id,
                         _b.object.id(), _b.patch_id );
 
         for ( auto &&e: _b.elements ) {
-          CHECK( e.global_id() < ::vt::theContext()->getNumNodes() * 12 );
+          CHECK( e.global_id() < static_cast<std::size_t>(::vt::theContext()->getNumNodes() * 12) );
           bvh::vt::debug("{}: intersect result ({}, {}, {}) with ({}, {}, {})\n",
                          ::vt::theContext()->getNode(),
                          _a.object.id(), _a.patch_id, _a.elements[0].global_id(),
@@ -587,10 +586,10 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
         // Second patch number of elements depends on the split algorithm, so not tested
 
         // Global id of the first patch should be the node from whence it came
-        REQUIRE( _a.elements[0].global_id() < ::vt::theContext()->getNumNodes());
+        REQUIRE( _a.elements[0].global_id() < static_cast<std::size_t>(::vt::theContext()->getNumNodes()));
 
         for ( auto &&e: _b.elements ) {
-          CHECK( e.global_id() < ::vt::theContext()->getNumNodes() * 12 );
+          CHECK( e.global_id() < static_cast<std::size_t>(::vt::theContext()->getNumNodes() * 12) );
           resa.emplace_back( e.global_id());
           resb.emplace_back( _a.elements[0].global_id());
         }
@@ -601,12 +600,12 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
       obj.broadphase( obj2 );
 
       std::vector< narrowphase_result > new_results;
-      obj.for_each_result< narrowphase_result >( [&old_results, i, &new_results]( const narrowphase_result &_res ) {
+      obj.for_each_result< narrowphase_result >( [&new_results]( const narrowphase_result &_res ) {
         new_results.emplace_back( _res );
       } );
 
       std::vector< narrowphase_result > new_results2;
-      obj2.for_each_result< narrowphase_result >( [&old_results2, i, &new_results2]( const narrowphase_result &_res ) {
+      obj2.for_each_result< narrowphase_result >( [&new_results2]( const narrowphase_result &_res ) {
         std::cout << "got a result!!!\n";
         new_results2.emplace_back( _res );
       } );
