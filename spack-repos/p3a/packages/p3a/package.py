@@ -15,4 +15,10 @@ class P3a(CMakePackage):
     def cmake_args(self):
         args = ["-Dmpicpp_ROOT={}".format(self.spec["mpicpp"].prefix),
                 "-Dkokkos_ROOT={}".format(self.spec["kokkos"].prefix)]
+
+        if spec.satisfies("^kokkos+rocm"):
+            args.append("-DCMAKE_CXX_COMPILER={}".format(spec["hip"].hipcc))
+        else:
+            # Compiler weirdness due to nvcc_wrapper
+            args.append("-DCMAKE_CXX_COMPILER={}" .format(spec["kokkos"].kokkos_cxx))
         return args
