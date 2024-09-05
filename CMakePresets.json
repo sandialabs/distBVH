@@ -47,8 +47,13 @@
       "configurePreset": "ci-gcc11-x64"
     },
     {
-      "name": "ci-cuda11_4-x64",
-      "configurePreset": "ci-cuda11_4-x64",
+      "name": "ci-cuda11_4-x64-Release",
+      "configurePreset": "ci-cuda11_4-x64-Release",
+      "jobs": 2
+    },
+    {
+      "name": "ci-cuda11_4-x64-Debug",
+      "configurePreset": "ci-cuda11_4-x64-Debug",
       "jobs": 2
     }
   ],
@@ -68,8 +73,22 @@
       }
     },
     {
-      "name": "ci-cuda11_4-x64",
-      "configurePreset": "ci-cuda11_4-x64",
+      "name": "ci-cuda11_4-x64-Release",
+      "configurePreset": "ci-cuda11_4-x64-Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": false,
+        "noTestsAction": "error"
+      },
+      "environment": {
+        "PATH": "/opt/view/bin:$penv{PATH}"
+      }
+    },
+    {
+      "name": "ci-cuda11_4-x64-Debug",
+      "configurePreset": "ci-cuda11_4-x64-Debug",
       "output": {
         "outputOnFailure": true
       },
