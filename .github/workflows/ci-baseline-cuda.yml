@@ -33,9 +33,8 @@ jobs:
 
       - name: Configure distBVH
         run: |
-          cmake -B builddir \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake --preset ci-cuda11_4-x64-${{ matrix.build_type }}
 
       - name: Build distBVH
         run: |
-          cmake --build builddir --target install -j 2
+          cmake --build --preset ci-cuda11_4-x64-${{ matrix.build_type }}
