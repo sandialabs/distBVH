@@ -30,23 +30,26 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef INC_BVH_UTIL_ATTRIBUTES_HPP
-#define INC_BVH_UTIL_ATTRIBUTES_HPP
+#include <catch2/catch.hpp>
 
-#include <Kokkos_Macros.hpp>
+#include <cstdint>
 
-#define BVH_INLINE KOKKOS_INLINE_FUNCTION
-#define BVH_HOST_DEVICE KOKKOS_FUNCTION
+#include <bvh/util/bits.hpp>
 
-// SIMD not allowed in CUDA contexts
-#if defined( __GNUC__ ) && defined( BVH_SIMD ) && !defined( __CUDA_ARCH__ )
-#define BVH_SIMD_ENABLED
-#endif
+TEST_CASE("clz 32bit", "[clz]")
+{
+  REQUIRE( 32 == bvh::clz(std::uint32_t {0}) );
+  for (int i = 0; i < 32; i++) {
+    std::uint32_t val = 1u << i;
+    REQUIRE( 31 - i == bvh::clz(val) );
+  }
+}
 
-#if defined( __GNUC__ )
-#define BVH_MAY_ALIAS __attribute__( ( __may_alias__ ) )
-#else
-#define BVH_MAY_ALIAS
-#endif
-
-#endif  // INC_BVH_UTIL_ATTRIBUTES_HPP
+TEST_CASE("clz 64bit", "[clz]")
+{
+  REQUIRE( 64 == bvh::clz(std::uint64_t {0}) );
+  for (int i = 0; i < 64; i++) {
+    std::uint64_t val = 1ull << i;
+    REQUIRE( 63 - i == bvh::clz(val) );
+  }
+}

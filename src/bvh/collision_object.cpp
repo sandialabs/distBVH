@@ -110,10 +110,6 @@ namespace bvh
     m_impl->logger->info( "initialized collision object {}", m_impl->collision_idx );
   }
 
-  collision_object::collision_object( collision_object && ) noexcept = default;
-
-  collision_object &collision_object::operator=( collision_object && ) noexcept = default;
-
   collision_object::~collision_object() = default;
 
   void collision_object::set_entity_data_impl( const void *_data, std::size_t _element_size )

@@ -37,7 +37,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#include <immintrin.h>
+#include <Kokkos_BitManipulation.hpp>
 
 namespace bvh
 {
@@ -75,7 +75,7 @@ namespace bvh
 #error "unsupported compiler for find first set"
 #endif
   }
-  
+
   inline std::uint64_t ffs( std::uint64_t _val )
   {
 #ifdef __GNUC__
@@ -84,17 +84,13 @@ namespace bvh
 #error "unsupported compiler for find first set"
 #endif
   }
-  
-  inline std::uint32_t clz( std::uint32_t _val )
+
+  template < typename T >
+  inline T clz( T _val )
   {
-    return _lzcnt_u32( _val );
+    return Kokkos::countl_zero( _val );
   }
-  
-  inline std::uint64_t clz( std::uint64_t _val )
-  {
-    return _lzcnt_u64( _val );
-  }
-  
+
   inline int bsr( unsigned long _val )
   {
 #ifdef __GNUC__
@@ -109,7 +105,7 @@ namespace bvh
   {
     return bsr( _val );
   }
-  
+
   inline bool is_pow2( unsigned _val )
   {
     return _val & ( _val - 1 );

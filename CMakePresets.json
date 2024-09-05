@@ -17,18 +17,78 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BVH_DISABLE_TESTS": "OFF"
       }
+    },
+    {
+      "name": "ci-cuda11_4-x64-Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "/opt/builds/bvh/release",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "/opt/view/bin/nvcc_wrapper",
+        "CMAKE_PREFIX_PATH": "/opt/view",
+        "CMAKE_BUILD_TYPE": "Release",
+        "BVH_DISABLE_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "ci-cuda11_4-x64-Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "/opt/builds/bvh/debug",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "/opt/view/bin/nvcc_wrapper",
+        "CMAKE_PREFIX_PATH": "/opt/view",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BVH_DISABLE_TESTS": "OFF"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "ci-gcc11-x64",
       "configurePreset": "ci-gcc11-x64"
+    },
+    {
+      "name": "ci-cuda11_4-x64-Release",
+      "configurePreset": "ci-cuda11_4-x64-Release",
+      "jobs": 2
+    },
+    {
+      "name": "ci-cuda11_4-x64-Debug",
+      "configurePreset": "ci-cuda11_4-x64-Debug",
+      "jobs": 2
     }
   ],
   "testPresets": [
     {
       "name": "ci-gcc11-x64",
       "configurePreset": "ci-gcc11-x64",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": false,
+        "noTestsAction": "error"
+      },
+      "environment": {
+        "PATH": "/opt/view/bin:$penv{PATH}"
+      }
+    },
+    {
+      "name": "ci-cuda11_4-x64-Release",
+      "configurePreset": "ci-cuda11_4-x64-Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "stopOnFailure": false,
+        "noTestsAction": "error"
+      },
+      "environment": {
+        "PATH": "/opt/view/bin:$penv{PATH}"
+      }
+    },
+    {
+      "name": "ci-cuda11_4-x64-Debug",
+      "configurePreset": "ci-cuda11_4-x64-Debug",
       "output": {
         "outputOnFailure": true
       },

@@ -1,0 +1,40 @@
+name: ci-baseline-cuda
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+  push:
+    branches:
+      - 'main'
+
+concurrency:
+  group: ${{ github.event_name }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  CI:
+    name: baseline
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - nmm0/distbvh-cuda11.4.3-gcc9.4-x64:ci-images
+        build_type:
+          - Release
+          - Debug
+
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure distBVH
+        run: |
+          cmake --preset ci-cuda11_4-x64-${{ matrix.build_type }}
+
+      - name: Build distBVH
+        run: |
+          cmake --build --preset ci-cuda11_4-x64-${{ matrix.build_type }}

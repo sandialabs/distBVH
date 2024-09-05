@@ -38,7 +38,7 @@
 #include "kdop.hpp"
 #include "util/kokkos.hpp"
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(KOKKOS_COMPILER_NVCC)
 #include <immintrin.h>
 #endif
 
@@ -83,7 +83,11 @@ namespace bvh
 #ifdef __BMI2__
     inline std::uint64_t expand64intrin( std::uint64_t _21bit )
     {
+#if defined(KOKKOS_COMPILER_NVCC)
+      return expand64(_21bit);
+#else
       return _pdep_u64( _21bit, 0x1249249249249249u );
+#endif
     }
 
     inline std::uint64_t morton64_intrin( std::uint64_t _x21, std::uint64_t _y21, std::uint64_t _z21 )
