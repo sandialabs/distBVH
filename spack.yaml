@@ -11,7 +11,7 @@ spack:
       - p3a@main
       - seacas@2024-04-03 -x11 ^hdf5@1.14.1 ^fmt@10.2.1
       - arborx@1.4.1 +openmp +mpi
-      - darma-vt +trace_enabled@develop
+      - darma-vt ^kokkos +trace_enabled@develop
   specs:
     - matrix:
       - [$mpis]
