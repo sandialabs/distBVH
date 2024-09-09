@@ -1,13 +1,9 @@
 #ifndef INC_BVH_CLUSTER_HPP
 #define INC_BVH_CLUSTER_HPP
 
-#include "../util/span.hpp"
-#include "../vt/print.hpp"
 #include "../util/kokkos.hpp"
 #include "../util/sort.hpp"
-#include "../snapshot.hpp"
 #include "../contact_entity.hpp"
-#include "split.hpp"
 
 namespace bvh
 {

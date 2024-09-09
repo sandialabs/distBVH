@@ -31,21 +31,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "collision_object.hpp"
-#include "kdop.hpp"
-#include "tree.hpp"
-#include "util/bits.hpp"
-#include "split/split.hpp"
-#include "split/mean.hpp"
-#include "split/axis.hpp"
 #include "debug/assert.hpp"
 #include "collision_object/types.hpp"
 #include "collision_object/impl.hpp"
 #include "collision_object/top_down.hpp"
 #include "collision_object/broadphase.hpp"
 #include "collision_object/narrowphase.hpp"
-#include <cstddef>
 #include <unordered_map>
-#include <typeinfo>
 
 namespace bvh
 {
