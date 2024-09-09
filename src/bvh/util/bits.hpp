@@ -59,7 +59,7 @@ namespace bvh
   T fill()
   {
 #ifdef __GNUC__
-    T t = t;
+    T t;
     __builtin_memset( &t, V, sizeof( T ) );
 #else
 #error "unsupported compiler for find first set"

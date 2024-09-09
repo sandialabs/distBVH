@@ -35,7 +35,6 @@
 
 #include <cstdlib>
 #include <string>
-#include <iostream>
 #include "../vt/print.hpp"
 #include <spdlog/spdlog.h>
 
