@@ -56,15 +56,15 @@ namespace bvh
   {
     auto &leafs = _tree.m_leafs;
     auto &nodes = _tree.m_nodes;
-    
+
     leafs.clear();
     nodes.clear();
-    
+
     if ( !_elements.empty() )
     {
       // Store indices to collision objects
       leafs.assign( _elements.begin(), _elements.end() );
-    
+
       auto b = typename TreeBuildPolicy::template builder< T, KDop, NodeData >( span< const T >( leafs.data(), leafs.size() ), nodes );
       b.build( 0, leafs.data(), 0, leafs.size(), 1 );
     }
@@ -84,7 +84,7 @@ namespace bvh
   {
     Tree ret;
     rebuild_tree< TreeBuildPolicy >( ret, _elements );
-    
+
     return ret;
   }
 

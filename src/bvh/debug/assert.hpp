@@ -53,7 +53,7 @@ namespace bvh
     struct debug_assert_impl
     {
       template< typename... Args >
-      static void debug_assert( bool, const std::string &, Args &&... _args )
+      static void debug_assert( bool, const std::string &, [[maybe_unused]] Args &&..._args )
       {
         // Do nothing
       }

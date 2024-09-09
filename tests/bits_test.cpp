@@ -39,7 +39,8 @@
 TEST_CASE("clz 32bit", "[clz]")
 {
   REQUIRE( 32 == bvh::clz(std::uint32_t {0}) );
-  for (int i = 0; i < 32; i++) {
+  for ( std::uint32_t i = 0; i < 32; i++ )
+  {
     std::uint32_t val = 1u << i;
     REQUIRE( 31 - i == bvh::clz(val) );
   }
@@ -48,7 +49,8 @@ TEST_CASE("clz 32bit", "[clz]")
 TEST_CASE("clz 64bit", "[clz]")
 {
   REQUIRE( 64 == bvh::clz(std::uint64_t {0}) );
-  for (int i = 0; i < 64; i++) {
+  for ( std::uint32_t i = 0; i < 64; i++ )
+  {
     std::uint64_t val = 1ull << i;
     REQUIRE( 63 - i == bvh::clz(val) );
   }

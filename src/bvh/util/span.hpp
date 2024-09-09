@@ -80,7 +80,7 @@ namespace bvh
 
     using element_type = T;
     using value_type = std::remove_reference_t< std::remove_const_t< T > >;
-    using index_type = std::ptrdiff_t;
+    using index_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using pointer = T *;
     using reference = T &;

@@ -77,7 +77,7 @@ namespace
 
     const kdop_type &kdop() const noexcept{ return m_kdop; }
     const bvh::m::vec3d &centroid() const noexcept { return m_centroid; }
-    const unsigned global_id() const noexcept { return m_gid; }
+    unsigned global_id() const noexcept { return m_gid; }
   };
 }
 
@@ -333,8 +333,6 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
 
 TEST_CASE("new recursive mean splitting 2D elements", "[split]")
 {
-  using traits_type = bvh::element_traits< element< bvh::bphase_kdop > >;
-
   static constexpr std::size_t Nx = 4, Ny = 3;
   static constexpr std::size_t N = Nx * Ny;
   std::array< bvh::entity_snapshot, N > elements;
@@ -438,6 +436,4 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     }
     //
   }
-
 }
-

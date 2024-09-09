@@ -61,9 +61,7 @@ main( int _argc, char **_argv )
     if ( argret != 0 )
       return argret;
 
-    vt::runInEpochCollective( "main test", [_argc, _argv, &ret, &sesh](){
-      ret = sesh.run();
-    } );
+    vt::runInEpochCollective( "main test", [&ret, &sesh]() { ret = sesh.run(); } );
 
     ::vt::finalize();
   }
