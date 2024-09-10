@@ -158,16 +158,16 @@ namespace bvh
       {
         m_global_bounds = KDop( make_transform_iterator( _elements.begin(), element_traits< T >::get_kdop ),
                         make_transform_iterator( _elements.end(), element_traits< T >::get_kdop ) );
-        
+
         // A single element will cause divide-by-zeros if we don't do this
         m_global_bounds.inflate( m::epsilon );
       }
-  
+
       template< typename Vec >
       m::vec3< std::uint64_t > discretize_coord( Vec &&_coord )
       {
         m::vec3< std::uint64_t > ret;
-    
+
         for ( int i = 0; i < 3; ++i )
         {
           auto inv_fac = typename KDop::arithmetic_type{ 1 } / m_global_bounds.extents[i].length();
@@ -256,10 +256,8 @@ namespace bvh
        *
        *  \tparam InputIterator   The iterator type for collision entities.
        */
-      void build( std::size_t _node_index,
-                  T *_entities,
-                  std::size_t _entity_begin, std::size_t _entity_end,
-                  std::size_t _entities_per_leaf )
+      void build( [[maybe_unused]] std::size_t _node_index, T *_entities, std::size_t _entity_begin,
+                  std::size_t _entity_end, [[maybe_unused]] std::size_t _entities_per_leaf )
       {
 
         dynarray< treelet_type > treelets;

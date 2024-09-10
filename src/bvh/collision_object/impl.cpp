@@ -62,7 +62,7 @@ namespace bvh
       self->get_impl().active_narrowphase_local_index.insert( _msg->idx.x() );
     }
 
-    void collision_object_holder::setup_narrowphase( setup_narrowphase_msg *_msg )
+    void collision_object_holder::setup_narrowphase( [[maybe_unused]] setup_narrowphase_msg *_msg )
     {
       auto &logger = self->broadphase_logger();
       auto &impl = self->get_impl();
@@ -82,7 +82,7 @@ namespace bvh
       }
     }
 
-    void collision_object_holder::activate_narrowphase( start_activate_narrowphase_msg *_msg )
+    void collision_object_holder::activate_narrowphase( [[maybe_unused]] start_activate_narrowphase_msg *_msg )
     {
       auto &logger = self->narrowphase_logger();
       auto &impl = self->get_impl();
@@ -114,7 +114,7 @@ namespace bvh
       }
     }
 
-    void collision_object_holder::start_narrowphase( start_narrowphase_msg *_msg )
+    void collision_object_holder::start_narrowphase( [[maybe_unused]] start_narrowphase_msg *_msg )
     {
       auto &impl = self->get_impl();
       for ( auto &&idx : impl.active_narrowphase_indices )
@@ -125,7 +125,7 @@ namespace bvh
       }
     }
 
-    void collision_object_holder::clear_narrowphase( clear_narrowphase_msg *_msg )
+    void collision_object_holder::clear_narrowphase( [[maybe_unused]] clear_narrowphase_msg *_msg )
     {
       auto &impl = self->get_impl();
       for ( auto &&idx : impl.active_narrowphase_indices )

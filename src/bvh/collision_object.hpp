@@ -36,7 +36,6 @@
 #include <cstddef>
 #include <memory>
 #include <functional>
-#include <optional>
 #include <vt/context/context.h>
 #include <spdlog/spdlog.h>
 
@@ -48,7 +47,6 @@
 #include "types.hpp"
 #include "util/span.hpp"
 #include "split/cluster.hpp"
-#include "contact_entity.hpp"
 
 namespace bvh
 {

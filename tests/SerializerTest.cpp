@@ -164,7 +164,7 @@ namespace
     _coll->migrate( dest );
   }
 
-  void narrowphase_patch_check( bvh::collision_object_impl::narrowphase_patch_collection_type *_coll )
+  [[maybe_unused]] void narrowphase_patch_check( bvh::collision_object_impl::narrowphase_patch_collection_type *_coll )
   {
     auto k = bvh::bphase_kdop::from_sphere( bvh::m::vec3d{ 17.53, 21.9, 36.0 }, 2.7 );
     bvh::patch<> p( 13, 4096, k, bvh::m::vec3d{ 17.3, 20.6, 33.31 } );
@@ -192,23 +192,21 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
     auto ep = ::vt::theTerm()->makeEpochCollective( "narrowphase_patch_test" );
     ::vt::theMsg()->pushEpoch( ep );
 
-
-    auto collection = ::vt::theCollection()
-        ->constructCollective< narrowphase_patch_collection_type >( coll_size,
-            []( vt_index _idx ) {
-              auto ret = std::make_unique< narrowphase_patch_collection_type >();
-              auto k = bvh::bphase_kdop::from_sphere( bvh::m::vec3d{ 17.53, 21.9, 36.0 }, 2.7 );
-              bvh::patch<> p( 13, 4096, k, bvh::m::vec3d{ 17.3, 20.6, 33.31 } );
-              ret->patch_meta = p;
-              ret->origin_node = 17;
-              std::vector< double > vals;
-              vals.reserve( 4096 );
-              for ( std::size_t i = 0; i < 4096; ++i )
-                vals.push_back( static_cast< double >( i + 1 ) );
-              ret->bytes.resize( 4096 * sizeof( double ) );
-              std::memcpy( ret->bytes.data(), vals.data(), ret->bytes.size() );
-              return ret;
-            } );
+    auto collection = ::vt::theCollection()->constructCollective< narrowphase_patch_collection_type >(
+      coll_size, []( [[maybe_unused]] vt_index _idx ) {
+      auto ret = std::make_unique< narrowphase_patch_collection_type >();
+      auto k = bvh::bphase_kdop::from_sphere( bvh::m::vec3d{ 17.53, 21.9, 36.0 }, 2.7 );
+      bvh::patch<> p( 13, 4096, k, bvh::m::vec3d{ 17.3, 20.6, 33.31 } );
+      ret->patch_meta = p;
+      ret->origin_node = 17;
+      std::vector< double > vals;
+      vals.reserve( 4096 );
+      for ( std::size_t i = 0; i < 4096; ++i )
+        vals.push_back( static_cast< double >( i + 1 ) );
+      ret->bytes.resize( 4096 * sizeof( double ) );
+      std::memcpy( ret->bytes.data(), vals.data(), ret->bytes.size() );
+      return ret;
+    } );
 
     for ( std::size_t i = 0; i < 1000; ++i )
     {

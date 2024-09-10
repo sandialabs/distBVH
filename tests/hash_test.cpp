@@ -201,7 +201,7 @@ TEST_CASE("benchmark morton", "[hash][!benchmark]")
 
   BENCHMARK("morton64")
   {
-    volatile std::uint64_t ret;
+    [[maybe_unused]] volatile std::uint64_t ret;
 
     for ( int i = 0; i < 3000; i += 3 )
     {
@@ -212,7 +212,7 @@ TEST_CASE("benchmark morton", "[hash][!benchmark]")
 #ifdef __BMI2__
   BENCHMARK("morton64 intrin")
   {
-    volatile std::uint64_t ret;
+    [[maybe_unused]] volatile std::uint64_t ret;
 
     for ( int i = 0; i < 3000; i += 3 )
     {

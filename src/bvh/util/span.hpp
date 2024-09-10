@@ -80,7 +80,7 @@ namespace bvh
 
     using element_type = T;
     using value_type = std::remove_reference_t< std::remove_const_t< T > >;
-    using index_type = std::ptrdiff_t;
+    using index_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using pointer = T *;
     using reference = T &;
@@ -103,8 +103,7 @@ namespace bvh
     constexpr span( pointer _ptr, index_type _count )
       : m_data( _ptr ), m_count( _count )
     {
-      BVH_ASSERT( extent == dynamic_extent() || _count == extent );
-
+      BVH_ASSERT( extent == dynamic_extent() || _count == static_cast< index_type >( extent ) );
     }
 
     constexpr span( pointer _first, pointer _last )
@@ -175,7 +174,7 @@ namespace bvh
 
     constexpr reference operator[]( index_type _idx ) const
     {
-      BVH_ASSERT( ( _idx >= 0 ) && ( _idx < m_count ) );
+      BVH_ASSERT( _idx < m_count );
       return m_data[_idx];
     }
 

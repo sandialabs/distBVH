@@ -74,8 +74,8 @@ namespace bvh
         }
 
         template< typename T, typename U, unsigned N >
-        constexpr BVH_INLINE auto
-        add( const constant_vec< T, N > &_lhs, const constant_vec< U, N > &_rhs )
+        constexpr BVH_INLINE auto add( [[maybe_unused]] const constant_vec< T, N > &_lhs,
+                                       [[maybe_unused]] const constant_vec< U, N > &_rhs )
         {
           using result_type = decltype( T{} + U{} );
           constant_vec< result_type, N > ret;
