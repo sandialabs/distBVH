@@ -81,9 +81,9 @@ namespace bvh
     bvh_build_trees_ = ::vt::theTrace()->registerUserEventColl( "bvh_build_trees_" );
     m_impl->logger->trace( "obj={} registered user tracing event bvh_build_trees_", m_impl->collision_idx );
 
-    m_impl->overdecomposition = static_cast< int >( _overdecomposition );
+    m_impl->overdecomposition = _overdecomposition;
 
-    for ( std::size_t i = 0; i < _overdecomposition; ++i )
+    for ( std::size_t i = 0; i < m_impl->overdecomposition; ++i )
     {
       m_impl->chainset.addIndex( vt_index{ i } );
     }
@@ -108,7 +108,7 @@ namespace bvh
   void collision_object::set_entity_data_impl( const void *_data, std::size_t _element_size )
   {
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
-    const auto od_factor = static_cast< std::size_t >( m_impl->overdecomposition );
+    const auto od_factor = m_impl->overdecomposition;
 
     m_impl->num_splits = m_impl->splits.extent( 0 );
 
@@ -117,7 +117,7 @@ namespace bvh
     m_impl->local_patches.clear();
     m_impl->local_patches.resize( od_factor );
 
-    BVH_ASSERT_ALWAYS( m_impl->num_splits + 1 == static_cast< std::size_t >( od_factor ), logger(),
+    BVH_ASSERT_ALWAYS( m_impl->num_splits + 1 == od_factor, logger(),
                        "error during splitting process, splits {} do not match od factor {}\n", m_impl->num_splits + 1,
                        od_factor );
 
@@ -302,7 +302,7 @@ namespace bvh
   collision_object::set_all_narrow_patches(){
 
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
-    const auto od_factor = static_cast< std::size_t >( m_impl->overdecomposition );
+    const auto od_factor = m_impl->overdecomposition;
 
     for ( std::size_t i = 0; i < od_factor; ++i )
       m_impl->narrowphase_patch_messages[i] = m_impl->prepare_local_patch_for_sending( i, rank );
