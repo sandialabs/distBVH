@@ -163,7 +163,7 @@ namespace bvh
     std::vector< collision_object_impl::narrowphase_index > active_narrowphase_indices;
     std::unordered_set< size_t > active_narrowphase_local_index;
 
-    bvh::view< const unsigned char * > m_entity_ptr;
+    bvh::view< const std::byte * > m_entity_ptr;
     std::size_t m_entity_unit_size = 0;
     element_permutations m_latest_permutations;
 

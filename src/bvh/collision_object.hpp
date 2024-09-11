@@ -125,8 +125,7 @@ namespace bvh
       // This assumes _data_view is on host for now... at the moment we can't do much better
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
-        set_entity_data_impl( reinterpret_cast< Kokkos::View< const unsigned char *, ViewProp... > & >( _data_view ),
-                              sizeof( T ) );
+        set_entity_data_impl( get_bytes( _data_view ), sizeof( T ) );
       }
     }
 
@@ -146,8 +145,7 @@ namespace bvh
       }
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
-        set_entity_data_impl( reinterpret_cast< Kokkos::View< const unsigned char *, ViewProp... > & >( _data ),
-                              sizeof( T ) );
+        set_entity_data_impl( get_bytes( _data ), sizeof( T ) );
       }
     }
 
@@ -206,8 +204,7 @@ namespace bvh
 
       update_snapshots( _data );
 
-      set_entity_data_impl( reinterpret_cast< Kokkos::View< const unsigned char *, ViewProp... > & >( _data ),
-                            sizeof( T ) );
+      set_entity_data_impl( get_bytes( _data ), sizeof( T ) );
       std::move( _trace ).end();
     }
 
@@ -217,7 +214,14 @@ namespace bvh
     ///
     /// \param[in] _data
     /// \param[in] _element_size
-    void set_entity_data_impl( bvh::view< const unsigned char * > _data, std::size_t _element_size );
+    void set_entity_data_impl( bvh::view< const std::byte * > _data, std::size_t _element_size );
+
+    template< typename T, typename... ViewProp >
+    Kokkos::View< const std::byte *, ViewProp... > get_bytes( Kokkos::View< const T *, ViewProp... > _data )
+    {
+      return Kokkos::View< const std::byte *, ViewProp... >( reinterpret_cast< const std::byte * >( _data.data() ),
+                                                             _data.size() * sizeof( T ) / sizeof( std::byte ) );
+    }
 
     void set_all_narrow_patches();
     void set_active_narrow_patches();
