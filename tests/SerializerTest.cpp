@@ -193,7 +193,7 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
     ::vt::theMsg()->pushEpoch( ep );
 
     auto collection = ::vt::theCollection()->constructCollective< narrowphase_patch_collection_type >(
-      coll_size, []( vt_index _idx ) {
+      coll_size, []( [[ maybe_unused ]] vt_index _idx ) {
       auto ret = std::make_unique< narrowphase_patch_collection_type >();
       auto k = bvh::bphase_kdop::from_sphere( bvh::m::vec3d{ 17.53, 21.9, 36.0 }, 2.7 );
       bvh::patch<> p( 13, 4096, k, bvh::m::vec3d{ 17.3, 20.6, 33.31 } );
