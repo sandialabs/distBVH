@@ -96,6 +96,7 @@ namespace bvh
     assert( m_hashes.extent( 0 ) == _elements.extent( 0 ) );
     assert( m_hashes.extent( 0 ) == _indices.extent( 0 ) );
 
+    // REMOVE_ME: debug here?
     const auto cluster_count = _splits.extent( 0 );
     const auto n = m_hashes.extent( 0 );
 
