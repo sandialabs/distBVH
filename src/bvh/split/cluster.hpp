@@ -157,6 +157,9 @@ namespace bvh
     // Mark these with 1, then we can execute an exclusive scan to re-index
     Kokkos::parallel_for( n - 1, KOKKOS_CLASS_LAMBDA( std::size_t _i ) {
       m_reindex( m_depths_indices( _i ) ) = ( _i < cluster_count ) ? 1 : 0;
+      printf( "cluster_count: %d\t_i: %d\t m_depths_indices(_i): %d\tm_reindex(...): %d\n",
+              static_cast< int >( cluster_count ), static_cast< int >( _i ),
+              static_cast< int >( m_depths_indices( _i ) ), static_cast< int >( m_reindex( m_depths_indices( _i ) ) ) );
     } );
 
     prefix_sum( m_reindex );

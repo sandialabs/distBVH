@@ -33,6 +33,7 @@
 #ifndef INC_BVH_UTIL_SORT_HPP
 #define INC_BVH_UTIL_SORT_HPP
 
+#include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <cstdlib>
 
@@ -122,9 +123,18 @@ namespace bvh
         m_bits( i ) = ~h & 0x1;
         m_scan( i ) = m_bits( i );
       } );
+      // Kokkos::fence();
 
       prefix_sum( m_scan );
-      Kokkos::parallel_for( n, KOKKOS_CLASS_LAMBDA ( int i ){
+      // Kokkos::fence();
+
+      Kokkos::parallel_for( n, KOKKOS_CLASS_LAMBDA( int i ) {
+        // this seems to work fine
+        // printf("i: %d\t num_bits: %d\t _shift: %d\t \n",
+        // i,
+        // static_cast<int>(num_bits),
+        // static_cast<int>(_shift));
+
         const auto total = m_scan( n - 1 ) + m_bits( n - 1 );
 
         auto t = i - m_scan( i ) + total;
@@ -132,6 +142,7 @@ namespace bvh
         m_index_scratch( new_idx ) = _indices( i );
         m_scratch( new_idx ) = _hashes( i );
       } );
+      // Kokkos::fence();
     }
 
   private:
