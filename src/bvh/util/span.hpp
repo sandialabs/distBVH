@@ -38,7 +38,6 @@
 #include "assert.hpp"
 #include <array>
 #include "../range.hpp"
-#include "../type_traits.hpp"
 
 namespace bvh
 {
@@ -110,23 +109,26 @@ namespace bvh
       : span( _first, _last - _first )
     {}
 
-    template< std::size_t N, typename = std::enable_if_t< extent == dynamic_extent() || N == extent > >
-    constexpr span( element_type ( &_arr )[N] ) noexcept
-      : m_data( _arr ), m_count( N )
+    template< std::size_t N,
+              typename = std::enable_if_t< extent == dynamic_extent() || N == static_cast< std::size_t >( extent ) > >
+    constexpr span( element_type ( &_arr )[N] ) noexcept : m_data( _arr ),
+                                                           m_count( N )
     {
 
     }
 
-    template< std::size_t N, typename = std::enable_if_t< extent == dynamic_extent() || N == extent > >
-    constexpr span( std::array< value_type, N > &_arr ) noexcept
-      : m_data( _arr.data() ), m_count( N )
+    template< std::size_t N,
+              typename = std::enable_if_t< extent == dynamic_extent() || N == static_cast< std::size_t >( extent ) > >
+    constexpr span( std::array< value_type, N > &_arr ) noexcept : m_data( _arr.data() ),
+                                                                   m_count( N )
     {
 
     }
 
-    template< std::size_t N, typename = std::enable_if_t< extent == dynamic_extent() || N == extent > >
-    constexpr span( const std::array< value_type, N > &_arr ) noexcept
-      : m_data( _arr.data() ), m_count( N )
+    template< std::size_t N,
+              typename = std::enable_if_t< extent == dynamic_extent() || N == static_cast< std::size_t >( extent ) > >
+    constexpr span( const std::array< value_type, N > &_arr ) noexcept : m_data( _arr.data() ),
+                                                                         m_count( N )
     {
 
     }
