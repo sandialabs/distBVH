@@ -78,18 +78,18 @@ namespace bvh
         : m_global_id( _gid ), m_kdop( _bounds ), m_centroid( _centroid ), m_local_index( _local_index )
     {}
 
-    KOKKOS_INLINE_FUNCTION entity_snapshot() = default;
-    KOKKOS_INLINE_FUNCTION ~entity_snapshot() = default;
+    KOKKOS_DEFAULTED_FUNCTION entity_snapshot() = default;
+    KOKKOS_DEFAULTED_FUNCTION ~entity_snapshot() = default;
 
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot( const entity_snapshot & ) = default;
 
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot( entity_snapshot && ) = default;
 
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot &operator=( const entity_snapshot & ) = default;
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot &operator=( entity_snapshot && ) = default;
 
     KOKKOS_INLINE_FUNCTION index_type global_id() const noexcept { return m_global_id; }
