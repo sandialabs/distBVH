@@ -33,6 +33,7 @@
 #ifndef INC_TEST_COMMON_HPP
 #define INC_TEST_COMMON_HPP
 
+#include <Kokkos_Macros.hpp>
 #include <bvh/types.hpp>
 #include <catch2/catch.hpp>
 
@@ -41,7 +42,6 @@
 #include <bvh/kdop.hpp>
 #include <bvh/patch.hpp>
 #include <bvh/util/container.hpp>
-#include <numeric>
 #include <random>
 
 
@@ -54,10 +54,10 @@ public:
 
   KOKKOS_INLINE_FUNCTION Element( std::size_t _index = static_cast< std::size_t >( -1 ) ) : m_index( _index ) {};
 
-  KOKKOS_INLINE_FUNCTION Element( const Element &_other ) = default;
-  KOKKOS_INLINE_FUNCTION Element( Element &&_other ) noexcept = default;
-  KOKKOS_INLINE_FUNCTION Element &operator=( const Element &_other ) = default;
-  KOKKOS_INLINE_FUNCTION Element &operator=( Element &&_other ) noexcept = default;
+  KOKKOS_DEFAULTED_FUNCTION Element( const Element &_other ) = default;
+  KOKKOS_DEFAULTED_FUNCTION Element( Element &&_other ) noexcept = default;
+  KOKKOS_DEFAULTED_FUNCTION Element &operator=( const Element &_other ) = default;
+  KOKKOS_DEFAULTED_FUNCTION Element &operator=( Element &&_other ) noexcept = default;
 
   KOKKOS_INLINE_FUNCTION auto begin() { return m_vertices.data(); }
   KOKKOS_INLINE_FUNCTION auto begin() const { return m_vertices.data(); }
