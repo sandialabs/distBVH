@@ -37,6 +37,7 @@
 #include <type_traits>
 #include "assert.hpp"
 #include <array>
+#include <Kokkos_Macros.hpp>
 #include "../range.hpp"
 
 namespace bvh
@@ -174,7 +175,7 @@ namespace bvh
     constexpr index_type size_bytes() const noexcept { return m_count * sizeof( element_type ); }
     constexpr bool empty() const noexcept { return m_count == 0; }
 
-    constexpr reference operator[]( index_type _idx ) const
+    constexpr KOKKOS_INLINE_FUNCTION reference operator[]( index_type _idx ) const
     {
       BVH_ASSERT( _idx < m_count );
       return m_data[_idx];
