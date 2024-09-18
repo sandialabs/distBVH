@@ -38,11 +38,9 @@
 #include "math/common.hpp"
 #include <algorithm>
 #include <cmath>
-#include "range.hpp"
+#include <Kokkos_Macros.hpp>
 #include "util/array.hpp"
 #include "util/attributes.hpp"
-#include "util/kokkos.hpp"
-#include "iterators/transform_iterator.hpp"
 #include <fmt/format.h>
 
 namespace bvh
@@ -161,8 +159,8 @@ namespace bvh
     static constexpr int num_axis = k / 2;
     using arithmetic_type = T;
 
-    BVH_INLINE kdop_base() = default;
-    BVH_INLINE ~kdop_base() = default;
+    KOKKOS_DEFAULTED_FUNCTION kdop_base() = default;
+    KOKKOS_DEFAULTED_FUNCTION ~kdop_base() = default;
 
     /**
      *  Create a k-DOP by merging a range of k-DOPs.
