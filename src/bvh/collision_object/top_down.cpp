@@ -94,8 +94,7 @@ namespace bvh
         reduce_vec m_snapshots;
       };
 
-
-      BVH_HOST_DEVICE void set_broadphase_trees( collision_object *_coll_obj, broadphase_tree_msg *_msg )
+      void set_broadphase_trees( collision_object *_coll_obj, broadphase_tree_msg *_msg )
       {
         _coll_obj->get_impl().tree = _msg->tree;
       }

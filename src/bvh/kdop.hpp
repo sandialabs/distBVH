@@ -169,8 +169,7 @@ namespace bvh
      *  \param _begin             the beginning k-DOP range
      *  \param _end               the end of the k-DOP range
      */
-    template< typename InputIterator >
-    kdop_base( InputIterator _begin, InputIterator _end )
+    template< typename InputIterator > kdop_base( InputIterator _begin, InputIterator _end )
     {
       if ( std::distance( _begin, _end ) == 0 )
         return;
@@ -205,8 +204,7 @@ namespace bvh
      *  \param _end               the end of the k-DOP range
      *  \return                   the constructed k-DOP.
      */
-    template< typename InputIterator >
-    static BVH_INLINE Derived from_kdops( InputIterator _begin, InputIterator _end )
+    template< typename InputIterator > static Derived from_kdops( InputIterator _begin, InputIterator _end )
     {
       return Derived( _begin, _end );
     }

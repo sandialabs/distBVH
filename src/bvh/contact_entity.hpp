@@ -103,11 +103,8 @@ namespace bvh
     };
 
     template< typename Entity, typename T >
-    KOKKOS_INLINE_FUNCTION
-    void
-    morton_impl( view< const Entity * > _elements,
-                 single_view< min_inv_diag_bounds > _bounds,
-                 view< T * > _out_codes )
+    void morton_impl( view< const Entity * > _elements, single_view< min_inv_diag_bounds > _bounds,
+                      view< T * > _out_codes )
     {
       using traits_type = element_traits< Entity >;
       Kokkos::parallel_for( _elements.extent( 0 ), KOKKOS_LAMBDA( int _i ){

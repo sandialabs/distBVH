@@ -55,61 +55,58 @@ namespace bvh
   namespace detail
   {
     template< typename Element >
-    constexpr auto get_kdop_impl( const Element &_element, overload_priority< 1 > )
-      -> decltype( get_entity_kdop( _element ) )
+    constexpr KOKKOS_INLINE_FUNCTION auto
+      get_kdop_impl( const Element &_element, overload_priority< 1 > ) -> decltype( get_entity_kdop( _element ) )
     {
       return get_entity_kdop( _element );
     }
 
     template< typename Element >
-    constexpr auto get_kdop_impl( const Element &_element, overload_priority< 0 > )
-      -> decltype( _element.kdop() )
+    constexpr KOKKOS_INLINE_FUNCTION auto get_kdop_impl( const Element &_element,
+                                                         overload_priority< 0 > ) -> decltype( _element.kdop() )
     {
       return _element.kdop();
     }
 
-    template< typename Element >
-    constexpr auto get_kdop( const Element &_element )
+    template< typename Element > constexpr KOKKOS_INLINE_FUNCTION auto get_kdop( const Element &_element )
     {
       return get_kdop_impl( _element, overload_priority< 1 >{} );
     }
 
     template< typename Element >
-    constexpr auto get_centroid_impl( const Element &_element, overload_priority< 1 > )
+    constexpr KOKKOS_INLINE_FUNCTION auto get_centroid_impl( const Element &_element, overload_priority< 1 > )
       -> decltype( get_entity_centroid( _element ) )
     {
       return get_entity_centroid( _element );
     }
 
     template< typename Element >
-    constexpr auto get_centroid_impl( const Element &_element, overload_priority< 0 >  )
-      -> decltype( _element.centroid() )
+    constexpr KOKKOS_INLINE_FUNCTION auto get_centroid_impl( const Element &_element,
+                                                             overload_priority< 0 > ) -> decltype( _element.centroid() )
     {
       return _element.centroid();
     }
 
-    template< typename Element >
-    constexpr auto get_centroid( const Element &_element )
+    template< typename Element > constexpr KOKKOS_INLINE_FUNCTION auto get_centroid( const Element &_element )
     {
       return get_centroid_impl( _element, overload_priority< 1 >{} );
     }
 
     template< typename Element >
-    constexpr auto get_global_id_impl( const Element &_element, overload_priority< 1 > )
+    constexpr KOKKOS_INLINE_FUNCTION auto get_global_id_impl( const Element &_element, overload_priority< 1 > )
       -> decltype( get_entity_global_id( _element ) )
     {
       return get_entity_global_id( _element );
     }
 
     template< typename Element >
-    constexpr auto get_global_id_impl( const Element &_element, overload_priority< 0 >  )
-      -> decltype( _element.global_id() )
+    constexpr KOKKOS_INLINE_FUNCTION auto
+      get_global_id_impl( const Element &_element, overload_priority< 0 > ) -> decltype( _element.global_id() )
     {
       return _element.global_id();
     }
 
-    template< typename Element >
-    constexpr auto get_global_id( const Element &_element )
+    template< typename Element > constexpr KOKKOS_INLINE_FUNCTION auto get_global_id( const Element &_element )
     {
       return get_global_id_impl( _element, overload_priority< 1 >{} );
     }

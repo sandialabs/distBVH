@@ -55,8 +55,8 @@ namespace bvh
 #endif
     return t;
   }
-  template< typename T, unsigned char V >
-  T fill()
+
+  template< typename T, unsigned char V > KOKKOS_INLINE_FUNCTION T fill()
   {
 #ifdef __GNUC__
     T t;
