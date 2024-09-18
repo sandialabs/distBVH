@@ -252,8 +252,6 @@ Main(const Config &config) {
 
             auto &result_a = static_cast<
                 bvh::typed_narrowphase_result<narrowphase_result> &>(result.a);
-            auto &result_b = static_cast<
-                bvh::typed_narrowphase_result<narrowphase_result> &>(result.b);
 
             for (auto &&sphere_1 : set_1.elements) {
               for (auto &&sphere_2 : set_2.elements) {
