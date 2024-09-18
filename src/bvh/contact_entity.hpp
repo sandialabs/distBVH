@@ -5,6 +5,7 @@
 #include "types.hpp"
 #include "hash.hpp"
 #include "traits.hpp"
+#include <Kokkos_Core.hpp>
 #include <limits>
 #include "vt/print.hpp"
 
@@ -61,7 +62,7 @@ namespace bvh
       using size_type = typename view< const Entity * >::size_type;
       using traits_type = element_traits< Entity >;
 
-      explicit min_diag_bounds_union( const view< const Entity * > &_v )
+      KOKKOS_INLINE_FUNCTION explicit min_diag_bounds_union( const view< const Entity * > &_v )
         : entities( _v )
       {}
 
@@ -87,7 +88,7 @@ namespace bvh
         {
           _dst.min[i] = Kokkos::min( _dst.min[i], _src.min[i] );
           // Use diag for max right now
-          _dst.inv_diag[i] = Kokkos::max( _dst.inv_diag[i], _dst.inv_diag[i] );
+          _dst.inv_diag[i] = Kokkos::max( _dst.inv_diag[i], _src.inv_diag[i] );
         }
       }
 
@@ -140,9 +141,6 @@ namespace bvh
     Kokkos::parallel_reduce( "compute_bounds_min_diag", _elements.extent( 0 ),
                              detail::min_diag_bounds_union< Entity >{ _elements },
                              _bounds );
-    if (_bounds.is_hostspace)
-      ::bvh::vt::debug( "bounds: inc_diag {}, min {}\n",
-                        _bounds().inv_diag, _bounds().min );
     Kokkos::parallel_for( 1, KOKKOS_LAMBDA( int ) {
       auto width = _bounds().inv_diag - _bounds().min;
       _bounds().inv_diag = 1.0 / width;

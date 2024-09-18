@@ -56,8 +56,8 @@ namespace bvh
   template< typename T >
   struct extent
   {
-    T min = std::numeric_limits< T >::max(); ///< The lower bound of an extent.
-    T max = std::numeric_limits< T >::lowest(); ///< The upper bound of an extent.
+    T min = m::max_double; ///< The lower bound of an extent.
+    T max = m::lowest_double; ///< The upper bound of an extent.
 
     /**
      *  The length of an extent.
@@ -236,7 +236,7 @@ namespace bvh
      *  \return                   the constructed k-DOP.
      */
     template< typename InputIterator >
-    static Derived from_vertices( InputIterator _begin, InputIterator _end, T _epsilon = T{ 0 } )
+    static KOKKOS_INLINE_FUNCTION Derived from_vertices( InputIterator _begin, InputIterator _end, T _epsilon = T{ 0 } )
     {
       Derived ret;
 
@@ -271,7 +271,7 @@ namespace bvh
      *  \return           the constructed k-DOP.
      */
     template< typename Vec >
-    static Derived from_sphere( const Vec &_center, T _radius )
+    static KOKKOS_INLINE_FUNCTION Derived from_sphere( const Vec &_center, T _radius )
     {
       Derived ret;
 
@@ -294,7 +294,7 @@ namespace bvh
      *  \param _radius    the radius of the sphere.
      *  \return           the constructed \f$k\f$-DOP.
      */
-    static Derived from_sphere( T _x, T _y, T _z, T _radius )
+    static KOKKOS_INLINE_FUNCTION Derived from_sphere( T _x, T _y, T _z, T _radius )
     {
       return from_sphere( m::vec3< T >( _x, _y, _z ), _radius );
     }
@@ -305,7 +305,7 @@ namespace bvh
      *
      * \param _amount The amount to grow.
      */
-    void inflate( arithmetic_type _amount )
+    KOKKOS_INLINE_FUNCTION void inflate( arithmetic_type _amount )
     {
       for ( int i = 0; i < K / 2; ++i )
       {
@@ -353,12 +353,12 @@ namespace bvh
      */
     int longest_axis() const
     {
-      auto iter = std::max_element( extents.begin(), extents.end(),
+      auto iter = std::max_element( extents.data(), extents.data() + K / 2,
                                 []( const extent< T > &_lhs, const extent< T > &_rhs ) {
                                   return _lhs.length() < _rhs.length();
                                 });
 
-      return static_cast< int >( std::distance( extents.begin(), iter ) );
+      return static_cast< int >( std::distance( extents.data(), iter ) );
     }
 
     /**
@@ -474,8 +474,8 @@ namespace bvh
     friend std::ostream &operator<<( std::ostream &os, const kdop_base &_kdop )
     {
       os << K << "-dop: ";
-      for ( auto &&e : _kdop.extents )
-        os << "[" << e.min << ", " << e.max << "] ";
+      for ( std::size_t i = 0; i < K / 2; ++i )
+        os << "[" << _kdop.extents[i].min << ", " << _kdop.extents[i].max << "] ";
 
       return os;
     }

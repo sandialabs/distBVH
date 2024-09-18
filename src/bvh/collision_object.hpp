@@ -103,16 +103,17 @@ namespace bvh
         {
           m_clusterer.resize( n );
         }
-        Kokkos::resize( Kokkos::WithoutInitializing, get_split_indices(), n );
+        auto &ind = get_split_indices();
+        Kokkos::resize( Kokkos::WithoutInitializing, ind, n );
 
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits(), num_splits );
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits_h(), num_splits );
 
         // Initialize our indices
-        auto split_indices = get_split_indices();
-        Kokkos::parallel_for( n, KOKKOS_LAMBDA( int _i ) { split_indices( _i ) = _i; } );
+        Kokkos::parallel_for(
+          n, KOKKOS_LAMBDA( int _i ) { ind( _i ) = _i; } );
 
-        m_clusterer( _data_view, get_split_indices(), get_splits() );
+        m_clusterer( _data_view, ind, get_splits() );
 
         Kokkos::deep_copy( get_splits_h(), get_splits() );
 

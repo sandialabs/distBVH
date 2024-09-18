@@ -36,7 +36,7 @@
 #include <bvh/types.hpp>
 #include <catch2/catch.hpp>
 
-#include <array>
+#include <Kokkos_Array.hpp>
 #include <bvh/math/vec.hpp>
 #include <bvh/kdop.hpp>
 #include <bvh/patch.hpp>
@@ -52,38 +52,41 @@ public:
   using kdop_type = bvh::bphase_kdop;
   static constexpr std::size_t vertex_count = 8;
 
-  Element( std::size_t _index = static_cast< std::size_t >( -1 ) ) : m_index( _index ) {};
+  KOKKOS_INLINE_FUNCTION Element( std::size_t _index = static_cast< std::size_t >( -1 ) ) : m_index( _index ) {};
 
-  Element( const Element &_other ) = default;
-  Element( Element &&_other ) noexcept = default;
-  Element &operator=( const Element &_other ) = default;
-  Element &operator=( Element &&_other ) noexcept = default;
+  KOKKOS_INLINE_FUNCTION Element( const Element &_other ) = default;
+  KOKKOS_INLINE_FUNCTION Element( Element &&_other ) noexcept = default;
+  KOKKOS_INLINE_FUNCTION Element &operator=( const Element &_other ) = default;
+  KOKKOS_INLINE_FUNCTION Element &operator=( Element &&_other ) noexcept = default;
 
-  bvh::m::vec3d centroid() const
+  KOKKOS_INLINE_FUNCTION auto begin() { return m_vertices.data(); }
+  KOKKOS_INLINE_FUNCTION auto begin() const { return m_vertices.data(); }
+
+  KOKKOS_INLINE_FUNCTION auto end() { return m_vertices.data() + 8; }
+  KOKKOS_INLINE_FUNCTION auto end() const { return m_vertices.data() + 8; }
+
+  KOKKOS_INLINE_FUNCTION bvh::m::vec3d centroid() const
   {
-    return std::accumulate( m_vertices.begin(), m_vertices.end(), bvh::m::vec3d::zeros() ) / static_cast< double >( m_vertices.size() );
+    auto ret = bvh::m::vec3d::zeros();
+    for ( std::size_t i = 0; i < m_vertices.size(); ++i )
+      ret += m_vertices[i];
+    return ret / static_cast< double >( m_vertices.size() );
   };
 
   template< typename... Args >
-  std::enable_if_t< ( sizeof...( Args ) == vertex_count ) >
+  KOKKOS_INLINE_FUNCTION std::enable_if_t< ( sizeof...( Args ) == vertex_count ) >
   setVertices( Args &&... _args )
   {
-    m_vertices = std::array< bvh::m::vec3d, vertex_count >{ std::forward< Args >( _args )... };
-    m_bounds = kdop_type::from_vertices( m_vertices.begin(), m_vertices.end() );
+    m_vertices = Kokkos::Array< bvh::m::vec3d, vertex_count >{ std::forward< Args >( _args )... };
+    m_bounds = kdop_type::from_vertices( begin(), end() );
   }
 
-  void setIndex( std::size_t _index ) { m_index = _index; }
+  KOKKOS_INLINE_FUNCTION void setIndex( std::size_t _index ) { m_index = _index; }
 
-  bvh::span< const bvh::m::vec3d > vertices() const { return m_vertices; }
+  KOKKOS_INLINE_FUNCTION bvh::span< const bvh::m::vec3d > vertices() const { return m_vertices; }
 
-  const kdop_type &kdop() const { return m_bounds; }
-  std::size_t global_id() const { return m_index; }
-
-  auto begin() { return m_vertices.begin(); }
-  auto begin() const { return m_vertices.begin(); }
-
-  auto end() { return m_vertices.end(); }
-  auto end() const { return m_vertices.end(); }
+  KOKKOS_INLINE_FUNCTION const kdop_type &kdop() const { return m_bounds; }
+  KOKKOS_INLINE_FUNCTION std::size_t global_id() const { return m_index; }
 
   friend std::ostream &operator<<( std::ostream &os, const Element &el )
   {
@@ -99,14 +102,15 @@ public:
     return os;
   }
 
-  friend bool operator==( const Element &_lhs, const Element &_rhs )
+  friend KOKKOS_INLINE_FUNCTION bool operator==( const Element &_lhs, const Element &_rhs )
   {
     if ( _lhs.m_index != _rhs.m_index )
       return false;
 
-    if ( !std::equal(_lhs.m_vertices.begin(), _lhs.m_vertices.end(),
-                     _rhs.m_vertices.begin(), _rhs.m_vertices.end() ) )
-      return false;
+
+    for ( std::size_t i = 0; i < _lhs.m_vertices.size(); ++i )
+      if ( _lhs.vertices()[i] != _rhs.vertices()[i] )
+        return false;
 
     return _lhs.m_bounds == _rhs.m_bounds;
   }
@@ -122,24 +126,24 @@ public:
 private:
 
   std::size_t m_index;
-  std::array< bvh::m::vec3d, 8 > m_vertices;
+  Kokkos::Array< bvh::m::vec3d, 8 > m_vertices;
   kdop_type m_bounds;
 };
 
 
-inline auto
+KOKKOS_INLINE_FUNCTION auto
 get_entity_kdop( const Element &_element )
 {
   return _element.kdop();
 }
 
-inline auto
+KOKKOS_INLINE_FUNCTION auto
 get_entity_global_id( const Element &_element )
 {
   return _element.global_id();
 }
 
-inline auto
+KOKKOS_INLINE_FUNCTION auto
 get_entity_centroid( const Element &_element )
 {
   return _element.centroid();

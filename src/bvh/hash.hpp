@@ -57,7 +57,7 @@ namespace bvh
       return _num;
     }
 
-    inline std::uint32_t expand32_alt( std::uint32_t _num )
+    KOKKOS_INLINE_FUNCTION std::uint32_t expand32_alt( std::uint32_t _num )
     {
       _num = ( _num ^ ( _num << 16 ) ) & 0xff0000ff;
       _num = ( _num ^ ( _num << 8  ) ) & 0x0300f00f;
@@ -69,7 +69,7 @@ namespace bvh
 
 
 
-    inline std::uint64_t expand64( std::uint64_t _21bit )
+    KOKKOS_INLINE_FUNCTION std::uint64_t expand64( std::uint64_t _21bit )
     {
       _21bit = ( _21bit * 0x1000001u ) & 0xfff000000fffu;
       _21bit = ( _21bit * 0x1001u ) & 0xfc003f000fc003fu;
@@ -81,7 +81,7 @@ namespace bvh
     }
 
 #ifdef __BMI2__
-    inline std::uint64_t expand64intrin( std::uint64_t _21bit )
+    KOKKOS_INLINE_FUNCTION std::uint64_t expand64intrin( std::uint64_t _21bit )
     {
 #if defined(KOKKOS_COMPILER_NVCC)
       return expand64(_21bit);
@@ -90,14 +90,14 @@ namespace bvh
 #endif
     }
 
-    inline std::uint64_t morton64_intrin( std::uint64_t _x21, std::uint64_t _y21, std::uint64_t _z21 )
+    KOKKOS_INLINE_FUNCTION std::uint64_t morton64_intrin( std::uint64_t _x21, std::uint64_t _y21, std::uint64_t _z21 )
     {
       return ( expand64intrin( _z21 ) << 2u ) | ( expand64intrin( _y21 ) << 1u ) | expand64intrin( _x21 );
     }
 #endif
 
 
-    inline std::uint64_t morton64( std::uint64_t _x21, std::uint64_t _y21, std::uint64_t _z21 )
+    KOKKOS_INLINE_FUNCTION std::uint64_t morton64( std::uint64_t _x21, std::uint64_t _y21, std::uint64_t _z21 )
     {
       return ( expand64( _z21 ) << 2u ) | ( expand64( _y21 ) << 1u ) | expand64( _x21 );
     }
@@ -144,7 +144,7 @@ namespace bvh
    * @return a vector of 10 bit quantized values
    */
   template< typename T >
-  m::vec3< std::uint32_t >
+  KOKKOS_INLINE_FUNCTION m::vec3< std::uint32_t >
   quantize32( const m::vec3< T > &_p )
   {
     // Scale up to highest 10 bit value
@@ -156,7 +156,7 @@ namespace bvh
   }
 
   template< typename T >
-  m::vec3< std::uint32_t >
+  KOKKOS_INLINE_FUNCTION m::vec3< std::uint32_t >
   quantize32( const m::vec3< T > &_p, const m::vec3< T > &_min, const m::vec3< T > &_inv_diagonal )
   {
     // Normalize
@@ -175,7 +175,7 @@ namespace bvh
    * @return a vector of 21 bit quantized values
    */
   template< typename T >
-  m::vec3< std::uint64_t >
+  KOKKOS_INLINE_FUNCTION m::vec3< std::uint64_t >
   quantize64( const m::vec3< T > &_p )
   {
     // Scale up to highest 21 bit value
@@ -187,7 +187,7 @@ namespace bvh
   }
 
   template< typename T >
-  m::vec3< std::uint64_t >
+  KOKKOS_INLINE_FUNCTION m::vec3< std::uint64_t >
   quantize64( const m::vec3< T > &_p, const m::vec3< T > &_min, const m::vec3< T > &_inv_diagonal )
   {
     // Normalize
@@ -206,7 +206,7 @@ namespace bvh
     struct quantize_impl< std::uint32_t >
     {
       template< typename... Args >
-      static auto quantize( Args &&... _args )
+      static KOKKOS_INLINE_FUNCTION auto quantize( Args &&... _args )
       {
         return quantize32( std::forward< Args >( _args )... );
       }
@@ -216,7 +216,7 @@ namespace bvh
     struct quantize_impl< std::uint64_t >
     {
       template< typename... Args >
-      static auto quantize( Args &&... _args )
+      static KOKKOS_INLINE_FUNCTION auto quantize( Args &&... _args )
       {
         return quantize64( std::forward< Args >( _args )... );
       }
@@ -224,7 +224,8 @@ namespace bvh
   }
 
   template< typename B, typename T >
-  auto quantize( const m::vec3< T > &_p, const m::vec3< T > &_min, const m::vec3< T > &_inv_diagonal )
+  KOKKOS_INLINE_FUNCTION auto
+  quantize( const m::vec3< T > &_p, const m::vec3< T > &_min, const m::vec3< T > &_inv_diagonal )
   {
     return detail::quantize_impl< B >::quantize( _p, _min, _inv_diagonal );
   }

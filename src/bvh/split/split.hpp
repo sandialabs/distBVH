@@ -43,6 +43,8 @@
 
 #include "element_permutations.hpp"
 
+#include <Kokkos_Core_fwd.hpp>
+#include <impl/Kokkos_HostThreadTeam.hpp>
 #include <iterator>
 #include <numeric>
 #include <algorithm>
@@ -296,7 +298,7 @@ namespace bvh
     if ( _depth > 0 ) {
       std::vector< std::pair< Element, size_t > > combi( _elements.size() );
       Kokkos::View< std::pair< Element, size_t >*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > h_combi(combi.data(), _elements.size());
-      Kokkos::parallel_for("CopyInit", _elements.size(), KOKKOS_LAMBDA (const int& i) {
+      Kokkos::parallel_for("CopyInit", Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, static_cast< int >( _elements.size() ) ), KOKKOS_LAMBDA (int i) {
                      h_combi[i] = std::make_pair( _elements[i], i );
                      } );
       detail::split_permutations_recursive_impl_ml< SplittingMethod, AxisSelector >( _elements, _depth - 1,

@@ -56,13 +56,21 @@ namespace bvh
     constexpr double epsilon = DBL_EPSILON;
     constexpr double epsilonf = FLT_EPSILON;
 
+    constexpr double lowest_double = -DBL_MAX;
+    constexpr double max_double = DBL_MAX;
+
     template< typename T >
     constexpr T epsilon_value = T{};
+    template<>
+    constexpr double epsilon_value<float> = FLT_EPSILON;
     template<>
     constexpr double epsilon_value<double> = DBL_EPSILON;
 #else
     constexpr double epsilon = std::numeric_limits< double >::epsilon();
     constexpr double epsilonf = std::numeric_limits< float >::epsilon();
+
+    constexpr double lowest_double = std::numeric_limits< double >::lowest();
+    constexpr double max_double = std::numeric_limits< double >::max();
 
     template< typename T >
     constexpr T epsilon_value = std::numeric_limits< T >::epsilon();

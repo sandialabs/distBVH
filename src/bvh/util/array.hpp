@@ -35,12 +35,12 @@
 
 #include "attributes.hpp"
 
-#include <array>
+#include <Kokkos_Array.hpp>
 
 namespace bvh
 {
   template< typename T, std::size_t N >
-  using array = std::array< T, N >;
+  using array = Kokkos::Array< T, N >;
 }
 
 #endif  // INC_BVH_UTIL_ARRAY_HPP
