@@ -36,6 +36,8 @@
 
 namespace bvh
 {
+  collision_object::impl::impl() : world( nullptr ) {}
+
   collision_object::impl::impl( collision_world &_world, std::size_t _idx )
     : world( &_world ),
       collision_idx( _idx ),
