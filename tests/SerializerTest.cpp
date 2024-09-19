@@ -42,6 +42,7 @@
 #include <bvh/tree_build.hpp>
 #include <bvh/collision_object/narrowphase.hpp>
 #include <bvh/collision_object/types.hpp>
+#include <bvh/collision_object.hpp>
 #include "TestCommon.hpp"
 
 TEMPLATE_TEST_CASE("a single value can be serialized", "[serializer]", int, double, float, std::size_t )
@@ -225,6 +226,14 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
     ::vt::theTerm()->finishedEpoch( ep );
     ::vt::runSchedulerThrough( ep );
   }
+}
+
+TEST_CASE( "collision_object serialization", "[serializer][collision_object]" )
+{
+  bvh::collision_world world( 2 );
+  auto &obj = world.create_collision_object();
+  auto ser = checkpoint::serialize< bvh::collision_object >( obj );
+  auto recPtr = checkpoint::deserialize< bvh::collision_object >( ser->getBuffer() );
 }
 
 #if 0

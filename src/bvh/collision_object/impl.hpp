@@ -65,6 +65,8 @@ namespace bvh
 
   struct collision_object::impl
   {
+    impl();
+
     explicit impl( collision_world &_world, std::size_t _idx );
 
     static impl &get_impl( collision_object &_obj ) { return *_obj.m_impl; }

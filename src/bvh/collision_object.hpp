@@ -47,6 +47,7 @@
 #include "types.hpp"
 #include "util/span.hpp"
 #include "split/cluster.hpp"
+#include "collision_object/types.hpp"
 
 namespace bvh
 {
@@ -57,6 +58,8 @@ namespace bvh
   public:
 
     using tree_function = std::function< void( const snapshot_tree & ) >;
+
+    collision_object();
 
     collision_object( const collision_object & ) = delete;
     collision_object( collision_object && ) noexcept = default;
@@ -192,6 +195,25 @@ namespace bvh
     spdlog::logger &broadphase_logger() const noexcept;
     spdlog::logger &narrowphase_logger() const noexcept;
 
+    template <typename Serializer>
+    void serialize(Serializer &s) {
+      s | get_collision_idx()
+        | get_local_patches()
+        | get_overdecomposition()
+        | get_build_trees()
+        | get_broadphase_patch_collection_proxy()
+        | get_narrowphase_patch_collection_proxy()
+        | get_narrowphase_collection_proxy()
+        | get_tree()
+        | get_active_narrowphase_indices()
+        | get_active_narrowphase_local_index()
+        | get_snapshots()
+        | get_split_indices()
+        | get_splits()
+        | get_split_indices_h()
+        | get_splits_h();
+    }
+
   private:
 
     friend class collision_world;
@@ -260,6 +282,18 @@ namespace bvh
     void for_each_tree_impl( tree_function &&_fun );
     void for_each_result_impl( std::function< void(const narrowphase_result &) > &&_fun );
 
+    void set_collision_world(collision_world *world);
+
+    std::size_t &get_collision_idx();
+    std::vector< collision_object_impl::broadphase_patch_type > &get_local_patches();
+    std::size_t &get_overdecomposition();
+    bool &get_build_trees();
+    collision_object_impl::broadphase_patch_collection_type::CollectionProxyType &get_broadphase_patch_collection_proxy();
+    collision_object_impl::narrowphase_patch_collection_type::CollectionProxyType &get_narrowphase_patch_collection_proxy();
+    collision_object_impl::narrowphase_collection_type::CollectionProxyType &get_narrowphase_collection_proxy();
+    collision_object_impl::tree_type &get_tree();
+    std::vector< collision_object_impl::narrowphase_index > &get_active_narrowphase_indices();
+    std::unordered_set< std::size_t > &get_active_narrowphase_local_index();
     view< bvh::entity_snapshot * > &get_snapshots();
     view< std::size_t * > &get_split_indices();
     view< std::size_t * > &get_splits();
