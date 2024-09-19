@@ -240,8 +240,8 @@ TEST_CASE( "collision_object serialization", "[serializer][collision_object]" )
 TEST_CASE( "collision_world serialization", "[serializer][collision_world]" )
 {
   bvh::collision_world world( 2 );
-  auto &obj1 = world.create_collision_object();
-  auto &obj2 = world.create_collision_object();
+  world.create_collision_object();
+  world.create_collision_object();
   auto ser = checkpoint::serialize< bvh::collision_world >( world );
   auto recPtr = bvh::collision_world::deserialize( ser->getBuffer() );
 }
