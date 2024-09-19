@@ -58,7 +58,7 @@ namespace bvh
     template< typename T >
     using narrowphase_functor = std::function< narrowphase_result_pair( const broadphase_collision< T > &, const broadphase_collision< T > & ) >;
 
-    explicit collision_world( std::size_t _overdecomposition_factor, const world_config &_cfg = {} );
+    explicit collision_world( std::size_t _overdecomposition_factor = 0, const world_config &_cfg = {} );
     ~collision_world();
 
     collision_world( const collision_world & ) = delete;
@@ -100,7 +100,21 @@ namespace bvh
     std::shared_ptr< spdlog::logger > collision_object_broadphase_logger() const;
     std::shared_ptr< spdlog::logger > collision_object_narrowphase_logger() const;
 
+    template <typename Serializer>
+    void serialize(Serializer &s)
+    {
+      s | get_collision_objects()
+        | get_overdecomposition()
+        | get_epoch();
+    }
+
+    static std::unique_ptr< collision_world > deserialize(char *buffer);
+
   private:
+
+    std::vector< std::unique_ptr< collision_object > > &get_collision_objects();
+    std::size_t &get_overdecomposition();
+    ::vt::EpochType &get_epoch();
 
     struct impl;
 
