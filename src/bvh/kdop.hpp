@@ -136,8 +136,8 @@ namespace bvh
     const extent< T > &_rhs ) noexcept
   {
     extent< T > ret;
-    ret.min = std::min( _lhs.min, _rhs.min );
-    ret.max = std::max( _lhs.max, _rhs.max );
+    ret.min = Kokkos::min( _lhs.min, _rhs.min );
+    ret.max = Kokkos::max( _lhs.max, _rhs.max );
 
     return ret;
   }
@@ -251,8 +251,8 @@ namespace bvh
         for ( auto iter = beg; iter != _end; ++iter )
         {
           proj = Derived::project( *iter, normal_list[i] );
-          ret.extents[i].min = std::min( ret.extents[i].min, proj - _epsilon );
-          ret.extents[i].max = std::max( ret.extents[i].max, proj + _epsilon );
+          ret.extents[i].min = Kokkos::min( ret.extents[i].min, proj - _epsilon );
+          ret.extents[i].max = Kokkos::max( ret.extents[i].max, proj + _epsilon );
         }
       }
 
@@ -441,8 +441,8 @@ namespace bvh
       for ( int i = 0; i < K / 2; ++i )
       {
         auto projected = Derived::project( _point, normal_list[i] );
-        extents[i].min = std::min( extents[i].min, projected - _epsilon );
-        extents[i].max = std::max( extents[i].max, projected + _epsilon );
+        extents[i].min = Kokkos::min( extents[i].min, projected - _epsilon );
+        extents[i].max = Kokkos::max( extents[i].max, projected + _epsilon );
       }
     }
 
