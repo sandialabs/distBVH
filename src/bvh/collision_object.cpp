@@ -37,7 +37,6 @@
 #include "collision_object/top_down.hpp"
 #include "collision_object/broadphase.hpp"
 #include "collision_object/narrowphase.hpp"
-#include <Kokkos_Core.hpp>
 #include <unordered_map>
 
 namespace bvh
@@ -131,39 +130,10 @@ namespace bvh
     // Ensure that our update of m_impl->snapshots has finished before reading it here
     Kokkos::fence();
 
-    // REMOVE_ME: this is just to make sure they are in sync
-    Kokkos::deep_copy( m_impl->splits_h, m_impl->splits );
-
     for ( std::size_t i = 0; i < od_factor; ++i ) {
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
       const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices.extent( 0 ) : m_impl->splits_h( i );
-      logger().warn( "m_impl->splits_h( 0 ): {}\t", m_impl->splits_h( 0 ) );
       const std::size_t nelements = send - sbeg;
-      // FIXME: differences between GPU and CPU run
-      //
-      // CPU:
-      // [collision_object] [info] initialized collision object 0
-      // [collision_object] [debug] obj=0 clustering 96 elements
-      // [collision_object] [warning] sbeg: 0       send: 47
-      // [collision_object] [debug] creating broadphase patch for body 0 size 47 from offset 0
-      // [collision_object] [warning] sbeg: 47      send: 96
-      // [collision_object] [debug] creating broadphase patch for body 0 size 49 from offset 47
-      //
-      // GPU:
-      // [collision_object] [info] initialized collision object 0
-      // [collision_object] [debug] obj=0 clustering 96 elements
-      // [collision_object] [warning] sbeg: 0	 send: 0
-      // [collision_object] [debug] creating broadphase patch for body 0 size 0 from offset 0
-      // [collision_object] [warning] sbeg: 0	 send: 96
-      // [collision_object] [debug] creating broadphase patch for body 0 size 96 from offset 0
-      //
-      // We later run into:
-      // /distBVH/tests/collision_object_test.cpp:54: FAILED:
-      //   REQUIRE( _tree.count() == od_factor * nranks )
-      // with expansion:
-      //   1 == 2
-      //
-      logger().warn( "sbeg: {}\t send: {}\t", sbeg, send );
       logger().debug( "creating broadphase patch for body {} size {} from offset {}", m_impl->collision_idx, nelements, sbeg );
       // FIXME_CUDA: should `span` be reworked to use Kokkos::View underneath?
       Kokkos::deep_copy( m_impl->snapshots_h, m_impl->snapshots );
@@ -490,8 +460,6 @@ namespace bvh
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > indices_view( _splits.indices.data(), _splits.indices.size() );
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > splits_view( _splits.splits.data(), _splits.splits.size() );
 
-    // FIXME: copy to m_impl->splits too?
-    // Kokkos::deep_copy(m_impl->splits, splits_view);
     Kokkos::deep_copy( m_impl->splits_h, splits_view );
     Kokkos::deep_copy( m_impl->split_indices, indices_view );
   }
