@@ -127,8 +127,11 @@ TEST_CASE( "collision_object init", "[vt]")
   bvh::vt::debug( "{}: bounds: {}\n", ::vt::theContext()->getNode(), bounds );
   auto update_elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor, 10.0 );
 
-  auto split_method
-    = GENERATE( /*bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,*/ bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
 

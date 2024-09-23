@@ -62,9 +62,7 @@ namespace bvh
       using size_type = typename view< const Entity * >::size_type;
       using traits_type = element_traits< Entity >;
 
-      KOKKOS_INLINE_FUNCTION explicit min_diag_bounds_union( const view< const Entity * > &_v )
-        : entities( _v )
-      {}
+      KOKKOS_INLINE_FUNCTION explicit min_diag_bounds_union( const view< const Entity * > &_v ) : entities( _v ) {}
 
       KOKKOS_INLINE_FUNCTION
       void
@@ -136,8 +134,7 @@ namespace bvh
                        single_view< min_inv_diag_bounds > _bounds )
   {
     Kokkos::parallel_reduce( "compute_bounds_min_diag", _elements.extent( 0 ),
-                             detail::min_diag_bounds_union< Entity >{ _elements },
-                             _bounds );
+                             detail::min_diag_bounds_union< Entity >{ _elements }, _bounds );
     Kokkos::parallel_for( 1, KOKKOS_LAMBDA( int ) {
       auto width = _bounds().inv_diag - _bounds().min;
       _bounds().inv_diag = 1.0 / width;

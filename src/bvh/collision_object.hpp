@@ -110,8 +110,7 @@ namespace bvh
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits_h(), num_splits );
 
         // Initialize our indices
-        Kokkos::parallel_for(
-          n, KOKKOS_LAMBDA( int _i ) { ind( _i ) = _i; } );
+        Kokkos::parallel_for( n, KOKKOS_LAMBDA( int _i ) { ind( _i ) = _i; } );
 
         m_clusterer( _data_view, ind, get_splits() );
 

@@ -45,8 +45,7 @@ namespace bvh
 {
   namespace detail
   {
-    template< typename Entity >
-    KOKKOS_INLINE_FUNCTION auto convert_centroid( const Entity &_ent )
+    template< typename Entity > KOKKOS_INLINE_FUNCTION auto convert_centroid( const Entity &_ent )
     {
       using kdop_type = typename element_traits< Entity >::kdop_type;
       using arithmetic_type = typename kdop_type::arithmetic_type;

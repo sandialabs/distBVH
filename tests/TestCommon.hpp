@@ -60,9 +60,11 @@ public:
   KOKKOS_DEFAULTED_FUNCTION Element &operator=( Element &&_other ) noexcept = default;
 
   KOKKOS_INLINE_FUNCTION auto begin() { return m_vertices.data(); }
+
   KOKKOS_INLINE_FUNCTION auto begin() const { return m_vertices.data(); }
 
   KOKKOS_INLINE_FUNCTION auto end() { return m_vertices.data() + 8; }
+
   KOKKOS_INLINE_FUNCTION auto end() const { return m_vertices.data() + 8; }
 
   KOKKOS_INLINE_FUNCTION bvh::m::vec3d centroid() const
@@ -74,8 +76,7 @@ public:
   };
 
   template< typename... Args >
-  KOKKOS_INLINE_FUNCTION std::enable_if_t< ( sizeof...( Args ) == vertex_count ) >
-  setVertices( Args &&... _args )
+  KOKKOS_INLINE_FUNCTION std::enable_if_t< ( sizeof...( Args ) == vertex_count ) > setVertices( Args &&..._args )
   {
     m_vertices = Kokkos::Array< bvh::m::vec3d, vertex_count >{ std::forward< Args >( _args )... };
     m_bounds = kdop_type::from_vertices( begin(), end() );
@@ -86,6 +87,7 @@ public:
   KOKKOS_INLINE_FUNCTION bvh::span< const bvh::m::vec3d > vertices() const { return m_vertices; }
 
   KOKKOS_INLINE_FUNCTION const kdop_type &kdop() const { return m_bounds; }
+
   KOKKOS_INLINE_FUNCTION std::size_t global_id() const { return m_index; }
 
   friend std::ostream &operator<<( std::ostream &os, const Element &el )
@@ -106,7 +108,6 @@ public:
   {
     if ( _lhs.m_index != _rhs.m_index )
       return false;
-
 
     for ( std::size_t i = 0; i < _lhs.m_vertices.size(); ++i )
       if ( _lhs.vertices()[i] != _rhs.vertices()[i] )
@@ -130,21 +131,20 @@ private:
   kdop_type m_bounds;
 };
 
-
 KOKKOS_INLINE_FUNCTION auto
-get_entity_kdop( const Element &_element )
+  get_entity_kdop( const Element &_element )
 {
   return _element.kdop();
 }
 
 KOKKOS_INLINE_FUNCTION auto
-get_entity_global_id( const Element &_element )
+  get_entity_global_id( const Element &_element )
 {
   return _element.global_id();
 }
 
 KOKKOS_INLINE_FUNCTION auto
-get_entity_centroid( const Element &_element )
+  get_entity_centroid( const Element &_element )
 {
   return _element.centroid();
 }

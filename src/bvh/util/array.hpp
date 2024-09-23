@@ -39,8 +39,7 @@
 
 namespace bvh
 {
-  template< typename T, std::size_t N >
-  using array = Kokkos::Array< T, N >;
+  template< typename T, std::size_t N > using array = Kokkos::Array< T, N >;
 }
 
 #endif  // INC_BVH_UTIL_ARRAY_HPP

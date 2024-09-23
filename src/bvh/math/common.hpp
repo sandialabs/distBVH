@@ -61,10 +61,8 @@ namespace bvh
 
     template< typename T >
     constexpr T epsilon_value = T{};
-    template<>
-    constexpr double epsilon_value<float> = FLT_EPSILON;
-    template<>
-    constexpr double epsilon_value<double> = DBL_EPSILON;
+    template<> constexpr double epsilon_value< float > = FLT_EPSILON;
+    template<> constexpr double epsilon_value< double > = DBL_EPSILON;
 #else
     constexpr double epsilon = std::numeric_limits< double >::epsilon();
     constexpr double epsilonf = std::numeric_limits< float >::epsilon();

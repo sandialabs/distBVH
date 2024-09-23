@@ -54,8 +54,8 @@ namespace bvh
   template< typename T >
   struct extent
   {
-    T min = m::max_double; ///< The lower bound of an extent.
-    T max = m::lowest_double; ///< The upper bound of an extent.
+    T min = m::max_double;     ///< The lower bound of an extent.
+    T max = m::lowest_double;  ///< The upper bound of an extent.
 
     /**
      *  The length of an extent.
@@ -266,8 +266,7 @@ namespace bvh
      *  \param _radius    the radius of the sphere.
      *  \return           the constructed k-DOP.
      */
-    template< typename Vec >
-    static KOKKOS_INLINE_FUNCTION Derived from_sphere( const Vec &_center, T _radius )
+    template< typename Vec > static KOKKOS_INLINE_FUNCTION Derived from_sphere( const Vec &_center, T _radius )
     {
       Derived ret;
 
@@ -349,10 +348,9 @@ namespace bvh
      */
     int longest_axis() const
     {
-      auto iter = std::max_element( extents.data(), extents.data() + K / 2,
-                                []( const extent< T > &_lhs, const extent< T > &_rhs ) {
-                                  return _lhs.length() < _rhs.length();
-                                });
+      auto iter = std::max_element(
+        extents.data(), extents.data() + K / 2,
+        []( const extent< T > &_lhs, const extent< T > &_rhs ) { return _lhs.length() < _rhs.length(); } );
 
       return static_cast< int >( std::distance( extents.data(), iter ) );
     }
