@@ -262,6 +262,7 @@ namespace bvh
      * \return  the offsets
      */
     array< std::size_t, 2 > &get_patch() noexcept { return m_entity_offsets; }
+
     const array< std::size_t, 2 > &get_patch() const noexcept { return m_entity_offsets; }
 
     /**
@@ -317,7 +318,7 @@ namespace bvh
   
     std::ptrdiff_t m_parent_offset;
     array< std::ptrdiff_t, 2 > m_child_offsets;
-    
+
     KDop m_kdop;
     array< std::size_t, 2 > m_entity_offsets;
   };

@@ -141,11 +141,12 @@ namespace bvh
 
       Kokkos::View< size_t*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > h_perm(_perm.data(), _perm.size());
       Kokkos::View< bvh::entity_snapshot*, Kokkos::HostSpace, Kokkos::MemoryTraits<Kokkos::Unmanaged> > h_elements(_elements.data(), _elements.size());
-      Kokkos::parallel_for("CopyLoop", Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, _elements.size() ), [=](const int& i) {
-                       auto tmp_pair = combi[i];
-                       h_elements[i] = std::get<0>( tmp_pair );
-                       h_perm(i) = std::get<1>( tmp_pair );
-                     } );
+      Kokkos::parallel_for( "CopyLoop", Kokkos::RangePolicy< Kokkos::DefaultHostExecutionSpace >( 0, _elements.size() ),
+                            [=]( const int &i ) {
+        auto tmp_pair = combi[i];
+        h_elements[i] = std::get< 0 >( tmp_pair );
+        h_perm( i ) = std::get< 1 >( tmp_pair );
+      } );
 
       auto delta = std::distance( combi.begin(), split_combi );
       if ( ( combi.begin() == split_combi ) || ( combi.end() == split_combi ) ) {
