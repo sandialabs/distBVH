@@ -262,7 +262,7 @@ namespace bvh
 
     constexpr KOKKOS_INLINE_FUNCTION iterator crend() const noexcept { return std::make_reverse_iterator( cbegin() ); }
 
-    /* implicit */ operator KOKKOS_INLINE_FUNCTION range< iterator >() { return range< iterator >( begin(), end() ); }
+    /* implicit */ KOKKOS_INLINE_FUNCTION operator range< iterator >() { return range< iterator >( begin(), end() ); }
 
   private:
 
