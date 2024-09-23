@@ -79,7 +79,7 @@ public:
   KOKKOS_INLINE_FUNCTION std::enable_if_t< ( sizeof...( Args ) == vertex_count ) > setVertices( Args &&..._args )
   {
     m_vertices = Kokkos::Array< bvh::m::vec3d, vertex_count >{ std::forward< Args >( _args )... };
-    m_bounds = kdop_type::from_vertices( begin(), end() );
+    m_bounds = kdop_type::from_vertices( m_vertices );
   }
 
   KOKKOS_INLINE_FUNCTION void setIndex( std::size_t _index ) { m_index = _index; }
