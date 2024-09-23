@@ -95,23 +95,26 @@ namespace bvh
     static constexpr ptrdiff_t extent = Extent;
 
     template< typename = std::enable_if_t< ( extent == 0 ) || ( extent == dynamic_extent() ) > >
-    constexpr KOKKOS_INLINE_FUNCTION span() noexcept : m_data( nullptr ),
-                                                       m_count( 0 )
+    constexpr KOKKOS_INLINE_FUNCTION span() noexcept
+      : m_data( nullptr ), m_count( 0 )
     {
 
     }
 
-    constexpr KOKKOS_INLINE_FUNCTION span( pointer _ptr, index_type _count ) : m_data( _ptr ), m_count( _count )
+    constexpr KOKKOS_INLINE_FUNCTION span( pointer _ptr, index_type _count )
+      : m_data( _ptr ), m_count( _count )
     {
       BVH_ASSERT( extent == dynamic_extent() || _count == static_cast< index_type >( extent ) );
     }
 
-    constexpr KOKKOS_INLINE_FUNCTION span( pointer _first, pointer _last ) : span( _first, _last - _first ) {}
+    constexpr KOKKOS_INLINE_FUNCTION span( pointer _first, pointer _last )
+      : span( _first, _last - _first )
+    {}
 
     template< std::size_t N,
               typename = std::enable_if_t< extent == dynamic_extent() || N == static_cast< std::size_t >( extent ) > >
     constexpr KOKKOS_INLINE_FUNCTION span( element_type ( &_arr )[N] ) noexcept : m_data( _arr ),
-                                                                                  m_count( N )
+                                                           m_count( N )
     {
 
     }
@@ -134,17 +137,19 @@ namespace bvh
 
     template< std::size_t N,
               typename = std::enable_if_t< extent == dynamic_extent() || N == static_cast< std::size_t >( extent ) > >
-    constexpr KOKKOS_INLINE_FUNCTION span( Kokkos::Array< value_type, N > &_arr ) noexcept
-      : m_data( _arr.data() ),
-        m_count( N )
-    {}
+    constexpr KOKKOS_INLINE_FUNCTION span( Kokkos::Array< value_type, N > &_arr ) noexcept : m_data( _arr.data() ),
+                                                                   m_count( N )
+    {
+
+    }
 
     template< std::size_t N,
               typename = std::enable_if_t< extent == dynamic_extent() || N == static_cast< std::size_t >( extent ) > >
-    constexpr KOKKOS_INLINE_FUNCTION span( const Kokkos::Array< value_type, N > &_arr ) noexcept
-      : m_data( _arr.data() ),
-        m_count( N )
-    {}
+    constexpr KOKKOS_INLINE_FUNCTION span( const Kokkos::Array< value_type, N > &_arr ) noexcept : m_data( _arr.data() ),
+                                                                         m_count( N )
+    {
+
+    }
 
     template< typename Container, typename = std::enable_if_t<
       !std::is_array< Container >::value
@@ -168,9 +173,11 @@ namespace bvh
       : m_data( _container.data() ), m_count( _container.size() )
     {}
 
-    template< typename U, std::ptrdiff_t N,
-              typename = std::enable_if_t< ( extent == dynamic_extent() || N == extent )
-                                           && ( std::is_same_v< std::remove_const_t< element_type >, U > ) > >
+    template< typename U, std::ptrdiff_t N, typename = std::enable_if_t<
+      ( extent == dynamic_extent() || N == extent )
+      && ( std::is_same_v< std::remove_const_t< element_type >, U > )
+    >
+    >
     constexpr KOKKOS_INLINE_FUNCTION span( const span< U, N > &_other ) noexcept
       : m_data( _other.data() ),
         m_count( _other.size() )
@@ -181,11 +188,8 @@ namespace bvh
     constexpr KOKKOS_DEFAULTED_FUNCTION span( const span &_other ) noexcept = default;
 
     constexpr KOKKOS_INLINE_FUNCTION pointer data() const noexcept { return m_data; }
-
     constexpr KOKKOS_INLINE_FUNCTION index_type size() const noexcept { return m_count; }
-
     constexpr KOKKOS_INLINE_FUNCTION index_type size_bytes() const noexcept { return m_count * sizeof( element_type ); }
-
     constexpr KOKKOS_INLINE_FUNCTION bool empty() const noexcept { return m_count == 0; }
 
     constexpr KOKKOS_INLINE_FUNCTION reference operator[]( index_type _idx ) const
@@ -194,9 +198,13 @@ namespace bvh
       return m_data[_idx];
     }
 
-    constexpr KOKKOS_INLINE_FUNCTION reference operator()( index_type _idx ) const { return ( *this )[_idx]; }
+    constexpr KOKKOS_INLINE_FUNCTION reference operator()( index_type _idx ) const
+    {
+      return ( *this )[_idx];
+    }
 
-    template< std::ptrdiff_t Count > constexpr KOKKOS_INLINE_FUNCTION span< element_type, Count > first() const
+    template< std::ptrdiff_t Count >
+    constexpr KOKKOS_INLINE_FUNCTION span< element_type, Count > first() const
     {
       BVH_ASSERT( ( Count >= 0 ) && ( Count <= m_count ) );
       return span< element_type, Count >( m_data, Count );
@@ -208,7 +216,8 @@ namespace bvh
       return span< element_type, dynamic_extent() >( m_data, _count );
     }
 
-    template< std::ptrdiff_t Count > constexpr KOKKOS_INLINE_FUNCTION span< element_type, Count > last() const
+    template< std::ptrdiff_t Count >
+    constexpr KOKKOS_INLINE_FUNCTION span< element_type, Count > last() const
     {
       BVH_ASSERT( ( Count >= 0 ) && ( Count <= m_count ) );
       return span< element_type, Count >( m_data + m_count - Count, Count );
@@ -237,8 +246,7 @@ namespace bvh
       return span< element_type, ext >( m_data + Offset, ( Count == dynamic_extent() ) ? m_count - Offset : Count );
     }
 
-    constexpr KOKKOS_INLINE_FUNCTION auto subspan( std::ptrdiff_t _offset,
-                                                   std::ptrdiff_t _count = dynamic_extent() ) const
+    constexpr KOKKOS_INLINE_FUNCTION auto subspan( std::ptrdiff_t _offset, std::ptrdiff_t _count = dynamic_extent() ) const
     {
       BVH_ASSERT( ( _offset >= 0 ) && ( _offset < m_count ) );
       BVH_ASSERT( ( _count >= 0 ) || ( _count == dynamic_extent() ) );
@@ -247,22 +255,18 @@ namespace bvh
     }
 
     constexpr KOKKOS_INLINE_FUNCTION iterator begin() const noexcept { return m_data; }
-
     constexpr KOKKOS_INLINE_FUNCTION iterator cbegin() const noexcept { return m_data; }
 
     constexpr KOKKOS_INLINE_FUNCTION iterator end() const noexcept { return m_data + m_count; }
-
     constexpr KOKKOS_INLINE_FUNCTION iterator cend() const noexcept { return m_data + m_count; }
 
     constexpr KOKKOS_INLINE_FUNCTION iterator rbegin() const noexcept { return std::make_reverse_iterator( end() ); }
-
     constexpr KOKKOS_INLINE_FUNCTION iterator crbegin() const noexcept { return std::make_reverse_iterator( cend() ); }
 
     constexpr KOKKOS_INLINE_FUNCTION iterator rend() const noexcept { return std::make_reverse_iterator( begin() ); }
-
     constexpr KOKKOS_INLINE_FUNCTION iterator crend() const noexcept { return std::make_reverse_iterator( cbegin() ); }
 
-    /* implicit */ KOKKOS_INLINE_FUNCTION operator range< iterator >() { return range< iterator >( begin(), end() ); }
+    /* implicit */ operator KOKKOS_INLINE_FUNCTION range< iterator >() { return range< iterator >( begin(), end() ); }
 
   private:
 
@@ -276,12 +280,14 @@ namespace bvh
     return span< T, Extent >( _begin, _end );
   }
 
-  template< typename Container > KOKKOS_INLINE_FUNCTION auto make_span( Container &_c )
+  template< typename Container >
+  KOKKOS_INLINE_FUNCTION auto make_span( Container &_c )
   {
     return span< typename Container::value_type >( _c );
   }
 
-  template< typename Container > KOKKOS_INLINE_FUNCTION auto make_const_span( const Container &_c )
+  template< typename Container >
+  KOKKOS_INLINE_FUNCTION auto make_const_span( const Container &_c )
   {
     return span< const typename Container::value_type >( _c );
   }

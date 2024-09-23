@@ -262,7 +262,6 @@ namespace bvh
      * \return  the offsets
      */
     array< std::size_t, 2 > &get_patch() noexcept { return m_entity_offsets; }
-
     const array< std::size_t, 2 > &get_patch() const noexcept { return m_entity_offsets; }
 
     /**
