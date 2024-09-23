@@ -261,8 +261,8 @@ namespace bvh
      *
      * \return  the offsets
      */
-    std::array< std::size_t, 2 > &get_patch() noexcept { return m_entity_offsets; }
-    const std::array< std::size_t, 2 > &get_patch() const noexcept { return m_entity_offsets; }
+    array< std::size_t, 2 > &get_patch() noexcept { return m_entity_offsets; }
+    const array< std::size_t, 2 > &get_patch() const noexcept { return m_entity_offsets; }
 
     /**
      * Set the offsets into the entity array that this node represents. The first offset is treated as a beginning
@@ -316,10 +316,10 @@ namespace bvh
     friend void serialize( S &_s, const bvh_node< U, K, N > &_node );
   
     std::ptrdiff_t m_parent_offset;
-    std::array< std::ptrdiff_t, 2 > m_child_offsets;
+    array< std::ptrdiff_t, 2 > m_child_offsets;
     
     KDop m_kdop;
-    std::array< std::size_t, 2 > m_entity_offsets;
+    array< std::size_t, 2 > m_entity_offsets;
   };
   
   namespace detail

@@ -232,7 +232,7 @@ namespace bvh
      *  \return                   the constructed k-DOP.
      */
     template< typename InputIterator >
-    static KOKKOS_INLINE_FUNCTION Derived from_vertices( InputIterator _begin, InputIterator _end, T _epsilon = T{ 0 } )
+    static Derived from_vertices( InputIterator _begin, InputIterator _end, T _epsilon = T{ 0 } )
     {
       Derived ret;
 
@@ -251,6 +251,32 @@ namespace bvh
         for ( auto iter = beg; iter != _end; ++iter )
         {
           proj = Derived::project( *iter, normal_list[i] );
+          ret.extents[i].min = Kokkos::min( ret.extents[i].min, proj - _epsilon );
+          ret.extents[i].max = Kokkos::max( ret.extents[i].max, proj + _epsilon );
+        }
+      }
+
+      return ret;
+    }
+
+    template< size_t N >
+    static KOKKOS_INLINE_FUNCTION Derived from_vertices( const Kokkos::Array< m::vec3< T >, N > &_array, T _epsilon = T{ 0 } )
+    {
+      Derived ret;
+
+      if ( _array.empty() )
+        return ret;
+
+      const auto &normal_list = Derived::normals();
+      for ( int i = 0; i < num_axis; ++i )
+      {
+        auto proj = Derived::project( _array[0], normal_list[i] );
+        ret.extents[i].min = proj - _epsilon;
+        ret.extents[i].max = proj + _epsilon;
+
+        for ( size_t j = 1; j < N; ++j )
+        {
+          proj = Derived::project( _array[j], normal_list[i] );
           ret.extents[i].min = Kokkos::min( ret.extents[i].min, proj - _epsilon );
           ret.extents[i].max = Kokkos::max( ret.extents[i].max, proj + _epsilon );
         }
@@ -368,7 +394,7 @@ namespace bvh
       // For each k/2 slab, find hyperplane equidistant to the extents of the slab.
       // For every combination of three planes, find the intersection. Take the average
       // of all intersection points to find the centroid.
-      std::array< T, num_axis > center_planes;
+      array< T, num_axis > center_planes;
       m::vec3< T > ret;
       const auto &normal_list = Derived::normals();
       for ( int i = 0; i < num_axis; ++i )
