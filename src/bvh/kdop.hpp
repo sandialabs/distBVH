@@ -260,8 +260,7 @@ namespace bvh
     }
 
     template< size_t N >
-    static KOKKOS_INLINE_FUNCTION Derived from_vertices( const Kokkos::Array< m::vec3< T >, N > &_array,
-                                                         T _epsilon = T{ 0 } )
+    static KOKKOS_INLINE_FUNCTION Derived from_vertices( const Kokkos::Array< m::vec3< T >, N > &_array, T _epsilon = T{ 0 } )
     {
       Derived ret;
 
