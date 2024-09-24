@@ -252,8 +252,11 @@ TEST_CASE( "collision_object init", "[vt]")
 
 TEST_CASE( "collision_object broadphase", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+  bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+  bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
