@@ -66,6 +66,10 @@ namespace bvh
 
   template< typename T >
   using single_host_view = host_view< T >;
+
+  template< typename T >
+  using unmanaged_view = Kokkos::View< T, primary_execution_space::array_layout, primary_execution_space,
+                                       Kokkos::MemoryTraits< Kokkos::Unmanaged > >;
 }
 
 #endif  // INC_BVH_UTIL_KOKKOS_HPP
