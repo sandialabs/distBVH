@@ -4,7 +4,7 @@ spack:
     - mpis:
       - mpich@3.4.2
     - core-packages:
-      - kokkos@4.1 +openmp +serial
+      - kokkos@4.4 +openmp +serial
       - fmt@10.2.1
       - spdlog@1.13.0
     - packages:

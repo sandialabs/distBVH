@@ -3,7 +3,7 @@ spack:
     - mpis:
       - mpich@3.4.2
     - core-packages:
-      - kokkos@4.1 +cuda +wrapper +cuda_lambda cuda_arch=61
+      - kokkos@4.4 +cuda +wrapper +cuda_lambda cuda_arch=61
       - fmt@10.2.1
       - spdlog@1.13.0
     - packages:
