@@ -35,6 +35,7 @@
 
 #include <vector>
 #include <optional>
+#include <Kokkos_Core.hpp>
 #include "../collision_object.hpp"
 #include "types.hpp"
 #include "../collision_world/impl.hpp"
@@ -109,12 +110,15 @@ namespace bvh
       logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
                     collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
       // Should be replaced with VT serialization
+
+      auto h_split_indices = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, split_indices );
+      auto h_data = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, m_entity_ptr );
       for (std::size_t j = sbeg; j < send; ++j)
       {
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        debug_assert( split_indices( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
+        debug_assert( h_split_indices( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
         // FIXME_CUDA: use subviews, deep_copy to host
-        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr.data() + ( split_indices( j ) * m_entity_unit_size ),
+        std::memcpy( &send_msg->user_data()[offset], h_data.data() + ( h_split_indices( j ) * m_entity_unit_size ),
                      m_entity_unit_size );
         offset += m_entity_unit_size;
       }
@@ -163,7 +167,7 @@ namespace bvh
     std::vector< collision_object_impl::narrowphase_index > active_narrowphase_indices;
     std::unordered_set< size_t > active_narrowphase_local_index;
 
-    bvh::view< const std::byte * > m_entity_ptr;
+    bvh::unmanaged_view< const std::byte * > m_entity_ptr;
     std::size_t m_entity_unit_size = 0;
     element_permutations m_latest_permutations;
 

@@ -46,6 +46,7 @@
 #include "split/axis.hpp"
 #include "tree_build.hpp"
 #include "types.hpp"
+#include "util/kokkos.hpp"
 #include "util/span.hpp"
 #include "split/cluster.hpp"
 
@@ -214,13 +215,12 @@ namespace bvh
     ///
     /// \param[in] _data
     /// \param[in] _element_size
-    void set_entity_data_impl( bvh::view< const std::byte * > _data, std::size_t _element_size );
+    void set_entity_data_impl( const bvh::unmanaged_view< const std::byte * > &_data, std::size_t _element_size );
 
-    template< typename T, typename... ViewProp >
-    Kokkos::View< const std::byte *, ViewProp... > get_bytes( Kokkos::View< const T *, ViewProp... > _data )
+    template< typename T, typename... ViewProp > auto get_bytes( Kokkos::View< const T *, ViewProp... > _data )
     {
-      return Kokkos::View< const std::byte *, ViewProp... >( reinterpret_cast< const std::byte * >( _data.data() ),
-                                                             _data.size() * sizeof( T ) / sizeof( std::byte ) );
+      return Kokkos::View< const std::byte *, ViewProp..., Kokkos::MemoryTraits< Kokkos::Unmanaged > >(
+        reinterpret_cast< const std::byte * >( _data.data() ), _data.size() * sizeof( T ) / sizeof( std::byte ) );
     }
 
     void set_all_narrow_patches();
