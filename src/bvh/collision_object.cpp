@@ -436,6 +436,18 @@ namespace bvh
     return m_impl->local_patches;
   }
 
+  std::vector< collision_object_impl::broadphase_patch_type > &
+  collision_object::get_last_step_local_patches()
+  {
+    return m_impl->last_step_local_patches;
+  }
+
+  std::vector< std::size_t > &
+  collision_object::get_local_data_indices()
+  {
+    return m_impl->local_data_indices;
+  }
+
   std::size_t &
   collision_object::get_overdecomposition()
   {
@@ -512,6 +524,12 @@ namespace bvh
   collision_object::get_splits_h()
   {
     return m_impl->splits_h;
+  }
+
+  std::size_t &
+  collision_object::get_num_splits()
+  {
+    return m_impl->num_splits;
   }
 
   span< const patch<> >

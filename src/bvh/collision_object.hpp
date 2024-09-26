@@ -199,19 +199,30 @@ namespace bvh
     void serialize(Serializer &s) {
       s | get_collision_idx()
         | get_local_patches()
+        | get_last_step_local_patches()
+        // skipping narrowphase_patch_messages as they are pointers
+        | get_local_data_indices()
+        // skipping narrowphase_result
+        // skipping chainset
         | get_overdecomposition()
         | get_build_trees()
         | get_broadphase_patch_collection_proxy()
         | get_narrowphase_patch_collection_proxy()
         | get_narrowphase_collection_proxy()
+        // skipping narrowphase_modification_token
+        // skipping objgroup
         | get_tree()
         | get_active_narrowphase_indices()
         | get_active_narrowphase_local_index()
+        // skipping m_entity_ptr, m_entity_unit_size
+        // skipping m_latest_permutations
+        // skipping narrowphase_patch_cache
         | get_snapshots()
         | get_split_indices()
         | get_splits()
         | get_split_indices_h()
-        | get_splits_h();
+        | get_splits_h()
+        | get_num_splits();
     }
 
   private:
@@ -286,6 +297,8 @@ namespace bvh
 
     std::size_t &get_collision_idx();
     std::vector< collision_object_impl::broadphase_patch_type > &get_local_patches();
+    std::vector< collision_object_impl::broadphase_patch_type > &get_last_step_local_patches();
+    std::vector< std::size_t > &get_local_data_indices();
     std::size_t &get_overdecomposition();
     bool &get_build_trees();
     collision_object_impl::broadphase_patch_collection_type::CollectionProxyType &get_broadphase_patch_collection_proxy();
@@ -299,6 +312,7 @@ namespace bvh
     view< std::size_t * > &get_splits();
     host_view< std::size_t * > &get_split_indices_h();
     host_view< std::size_t * > &get_splits_h();
+    std::size_t &get_num_splits();
 
     void initialize_split_indices( const element_permutations &_splits );
 
