@@ -75,6 +75,8 @@ namespace bvh
     template< typename T >
     void set_narrowphase_functor( narrowphase_functor< T > _fun )
     {
+      // FIXME_CUDA: static casts from const void * need to be changed into the correct view type with element type T
+      //             (do the `internal_narrowphase_functor` change first)
       set_narrowphase_functor_impl( [_fun]( collision_object &_first, const patch<> &_ma, std::size_t _first_patch_id, const void *_first_patch, std::size_t _first_patch_size,
                                            collision_object &_second, const patch<> &_mb,  std::size_t _second_patch_id, const void *_second_patch, std::size_t _second_patch_size ) {
         const T *first_elms = static_cast< const T * >( _first_patch );
@@ -106,6 +108,7 @@ namespace bvh
 
     friend impl &get_impl( collision_world &_world );
 
+    // FIXME_CUDA: replace void* with a View
     using internal_narrowphase_functor
         = std::function< narrowphase_result_pair( collision_object &, const patch<> &, std::size_t, const void *, std::size_t, collision_object &, const patch<> &, std::size_t, const void *, std::size_t ) >;
     void set_narrowphase_functor_impl( internal_narrowphase_functor &&_fun );

@@ -122,6 +122,7 @@ namespace bvh
 
   private:
 
+    // FIXME_CUDA: replace with a View (possibly strided?)
     std::vector< unsigned char > m_data;
     std::size_t m_stride;
     std::size_t m_num_elements;
@@ -224,7 +225,7 @@ namespace bvh
     using index_type = IndexType;
     using value_type = std::pair< IndexType, IndexType >;
     using container_type = std::vector< value_type >;
-    
+
     using iterator = typename container_type::iterator;
     using const_iterator = typename container_type::const_iterator;
 
@@ -233,18 +234,18 @@ namespace bvh
     collision_query_result( iterator _b, iterator _e )
       : pairs{ _b, _e }
     {}
-    
+
     typename container_type::size_type size() const noexcept
     { return pairs.size(); }
-    
+
     iterator begin() { return pairs.begin(); }
     const_iterator begin() const { return pairs.begin(); }
     const_iterator cbegin() const { return pairs.cbegin(); }
-    
+
     iterator end() { return pairs.end(); }
     const_iterator end() const { return pairs.end(); }
     const_iterator cend() const { return pairs.cend(); }
-    
+
     container_type pairs;
   };
 
@@ -260,7 +261,7 @@ namespace bvh
       results.pairs.emplace_back( _left, _right );
     }
   };
-  
+
   namespace detail
   {
     template< typename TreeType, typename ResultsType >
@@ -273,9 +274,9 @@ namespace bvh
       {
         reserve_size += pc.first.entities.size() * pc.second.entities.size();
       }
-      
+
       ret.pairs.reserve( reserve_size );
-      
+
       for ( auto &&pc : _results )
       {
         for ( auto &&entity_i : pc.first.entities )
@@ -286,10 +287,10 @@ namespace bvh
           }
         }
       }
-      
+
       return ret;
     }
-    
+
     template< typename NodeType, typename LeftLeafs, typename RightLeafs, typename OutputIterator >
     void
     get_overlapping_indices( const NodeType *_left,
@@ -301,7 +302,7 @@ namespace bvh
       // Both nodes need to exist and overlap in order to continue traversal
       if ( !_left || !_right || !overlap( _left->kdop(), _right->kdop() ) )
         return;
-      
+
       if ( _left->is_leaf() )
       {
         // Both are leaves, add all patch indices
@@ -327,7 +328,7 @@ namespace bvh
         get_overlapping_indices< NodeType >( _left->right(), _right->right(), _left_leafs, _right_leafs, _iter );
       }
     };
-  
+
     template< typename NodeType, typename Leafs, typename OutputIterator >
     void
     get_self_colliding_indices( const NodeType *_node,
@@ -336,7 +337,7 @@ namespace bvh
     {
       if ( !_node )
         return;
-    
+
       if ( _node->is_leaf() )
       {
         // Add all combinations of pairs
@@ -356,17 +357,17 @@ namespace bvh
       }
     };
   }
-  
+
   template< typename TreeType >
   typename TreeType::collision_query_result_type
   self_collision_set( const TreeType &_tree )
   {
     typename TreeType::collision_query_result_type ret;
     detail::get_self_colliding_indices< typename TreeType::node_type >( _tree.root(), _tree.leafs(), std::back_inserter( ret.pairs ) );
-    
+
     return ret;
   }
-  
+
   template< typename TreeType >
   typename TreeType::collision_query_result_type
   potential_collision_set( const TreeType &_lhs, const TreeType &_rhs )
@@ -374,14 +375,14 @@ namespace bvh
     typename TreeType::collision_query_result_type ret;
     detail::get_overlapping_indices< typename TreeType::node_type >( _lhs.root(), _rhs.root(), _lhs.leafs(), _rhs.leafs(),
       std::back_inserter( ret.pairs ) );
-    
+
     return ret;
   }
 
 #if 0
   namespace detail
   {
-    
+
     template< typename TreeType, typename OutputIterator >
     void
     get_node_overlapping_indices( const typename TreeType::kdop_type &_kdop,
@@ -392,7 +393,7 @@ namespace bvh
     {
       if ( !_node || !overlap( _kdop, _node->kdop() ) )
         return;
-      
+
       if ( _node->is_leaf() )
       {
         for ( std::size_t i = _node->get_patch()[0]; i < _node->get_patch()[1]; ++i )
@@ -404,7 +405,7 @@ namespace bvh
         get_node_overlapping_indices< TreeType, OutputIterator >( _kdop, _local_index, _node->right(), _leafs, _iter );
       }
     }
-    
+
     template< typename TreeType, typename OutputIterator >
     void
     get_tree_overlapping_indices( const typename TreeType::kdop_type &_kdop,

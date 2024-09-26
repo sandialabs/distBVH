@@ -123,6 +123,7 @@ namespace bvh
         if ( _s.isUnpacking() )
         {
           std::size_t stride;
+          // FIXME_CUDA: replace vector with a View
           std::vector< unsigned char > bbuffer;
 
           _s | stride | bbuffer;
@@ -131,7 +132,8 @@ namespace bvh
           result.set_data( bbuffer.data(), bbuffer.size() / stride );
         } else {
           auto stride = result.stride();
-          std::vector< unsigned char > bbuffer = result.byte_buffer();
+          // FIXME_CUDA: replace vector with a View
+          auto bbuffer = result.byte_buffer();
           _s | stride | bbuffer;
         }
       }
