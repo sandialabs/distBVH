@@ -217,10 +217,10 @@ namespace bvh
     /// \param[in] _element_size
     void set_entity_data_impl( const bvh::unmanaged_view< const std::byte * > &_data, std::size_t _element_size );
 
-    template< typename T, typename... ViewProp > auto get_bytes( Kokkos::View< const T *, ViewProp... > _data )
+    template< typename T > auto get_bytes( bvh::view< const T * > _data )
     {
-      return Kokkos::View< const std::byte *, ViewProp..., Kokkos::MemoryTraits< Kokkos::Unmanaged > >(
-        reinterpret_cast< const std::byte * >( _data.data() ), _data.size() * sizeof( T ) / sizeof( std::byte ) );
+      return bvh::unmanaged_view< const std::byte * >( reinterpret_cast< const std::byte * >( _data.data() ),
+                                                       _data.size() * sizeof( T ) / sizeof( std::byte ) );
     }
 
     void set_all_narrow_patches();
