@@ -59,7 +59,8 @@ namespace bvh
       _patch->ghost_destinations.clear();
       _patch->patch_meta = _msg->patch_meta;
       Kokkos::resize( Kokkos::WithoutInitializing, _patch->bytes, _msg->data_size );
-      std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
+      bvh::unmanaged_host_view< unsigned char * > u_data( _msg->user_data(), _msg->data_size );
+      Kokkos::deep_copy( _patch->bytes, u_data );
       _patch->origin_node = _msg->origin_node;
     }
   }
