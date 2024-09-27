@@ -219,8 +219,9 @@ namespace bvh
 
     template< typename T > auto get_bytes( bvh::view< const T * > _data )
     {
-      return bvh::unmanaged_view< const std::byte * >( reinterpret_cast< const std::byte * >( _data.data() ),
-                                                       _data.size() * sizeof( T ) / sizeof( std::byte ) );
+      return bvh::unmanaged_view< const std::byte * >(
+        reinterpret_cast< const std::byte * >( _data.data() ),
+        _data.size() * sizeof( T ) / sizeof( std::byte ) );  // FIXME_CUDA: should we use _data.span()?
     }
 
     void set_all_narrow_patches();
