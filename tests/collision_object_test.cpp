@@ -282,8 +282,11 @@ TEST_CASE( "collision_object broadphase", "[vt]")
 
 TEST_CASE( "collision_object multiple broadphase", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -378,8 +381,11 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
 
 TEST_CASE( "collision_object narrowphase", "[vt]")
 {
-  auto split_method
-    = GENERATE( /*bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,*/ bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -448,8 +454,11 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -557,8 +566,11 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
 TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
