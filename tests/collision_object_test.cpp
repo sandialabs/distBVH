@@ -418,10 +418,11 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       // Global id of the first patch should be the node from whence it came
       REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
 
-      for ( auto &&e: _b.elements ) {
-        REQUIRE( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
+      for ( std::size_t i = 0; i < _b.elements.size(); i++ )
+      {
+        REQUIRE( _b.elements( i ).global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
-                                                        _b.meta.global_id(), e.global_id() } );
+                                                        _b.meta.global_id(), _b.elements( i ).global_id() } );
       }
 
       return res;
@@ -496,8 +497,9 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
                         _a.object.id(), _a.patch_id,
                         _b.object.id(), _b.patch_id );
 
-        for ( auto &&e: _b.elements )
+        for ( std::size_t i = 0; i < _b.elements.size(); i++ )
         {
+          auto &e = _b.elements( i );
           CHECK( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
           bvh::vt::debug("{}: intersect result ({}, {}, {}) with ({}, {}, {})\n",
                          ::vt::theContext()->getNode(),
@@ -595,7 +597,9 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
         // Global id of the first patch should be the node from whence it came
         REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
 
-        for ( auto &&e: _b.elements ) {
+        for ( std::size_t i = 0; i < _b.elements.size(); i++ )
+        {
+          auto &e = _b.elements( i );
           CHECK( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
           resa.emplace_back( e.global_id());
           resb.emplace_back( _a.elements[0].global_id());
