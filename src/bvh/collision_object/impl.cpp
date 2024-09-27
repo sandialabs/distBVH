@@ -321,9 +321,8 @@ namespace bvh
       {
         ::vt::trace::TraceScopedEvent scope( world_impl.bvh_impl_functor_ );
         auto r = world_impl.functor( this_obj, this_cache.meta, static_cast< std::size_t >( idx[0] ),
-                                     this_cache.patch_data.data(), this_cache.patch_data.size(), other_obj,
-                                     other_cache.meta, static_cast< std::size_t >( idx[2] ),
-                                     other_cache.patch_data.data(), other_cache.patch_data.size() );
+                                     this_cache.patch_data, other_obj, other_cache.meta,
+                                     static_cast< std::size_t >( idx[2] ), other_cache.patch_data );
 
         if ( r.a.size() > 0 )
         {

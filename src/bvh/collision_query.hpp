@@ -50,17 +50,18 @@ namespace bvh
   template< typename T >
   struct broadphase_collision
   {
-    broadphase_collision(collision_object &_object,
-                         const patch<> &_meta,
-                         std::size_t _patch_id,
-                         span<const T> _elements)
-        : object(_object), meta( _meta ), patch_id(_patch_id), elements(_elements)
+    broadphase_collision( collision_object &_object, const patch<> &_meta, std::size_t _patch_id,
+                          bvh::host_view< T * > _elements )
+      : object( _object ),
+        meta( _meta ),
+        patch_id( _patch_id ),
+        elements( _elements )
     {}
 
     collision_object &object;
     patch<> meta;
     std::size_t patch_id;
-    span< const T > elements;
+    bvh::host_view< T * > elements;
   };
 
   class narrowphase_result
@@ -122,7 +123,6 @@ namespace bvh
 
   private:
 
-    // FIXME_CUDA: replace with a View (possibly strided?)
     std::vector< unsigned char > m_data;
     std::size_t m_stride;
     std::size_t m_num_elements;
