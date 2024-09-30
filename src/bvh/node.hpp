@@ -68,47 +68,47 @@ namespace bvh
     using value_type = T;       ///< The `ContactEntity`-conforming type stored in the node
     using kdop_type = KDop;     ///< The type of \f$k\f$-DOP used as bounding volumes.
     using data_type = NodeData; ///< The type of additional user data, `void` if no data specified
-  
+
     using size_type = std::size_t;  ///< The size used for representing distances and depths in the node
-    
+
     // TODO: remove default constructor
     bvh_node() : m_parent_offset( 0 ), m_child_offsets{}, m_entity_offsets{} {}
-  
+
     /**
      *  Get the parent of the node.
      *
      *  \return the parent of the node or `this` if this is the root node
      */
     bvh_node *parent() noexcept { return this + m_parent_offset; }
-  
+
     /**
      *  Get the parent of the node.
      *
      *  \return the parent of the node or `this` if this is the root node
      */
     const bvh_node *parent() const noexcept { return this + m_parent_offset; }
-  
+
     /**
      *  Get the left child of the node.
      *
      *  \return the left child of the node or `this` if there is no left child
      */
     bvh_node *left() noexcept { return this + m_child_offsets[0]; }
-  
+
     /**
      *  Get the left child of the node.
      *
      *  \return the left child of the node or `this` if there is no left child
      */
     const bvh_node *left() const noexcept { return this + m_child_offsets[0]; }
-  
+
     /**
      *  Get the right child of the node.
      *
      *  \return the right child of the node or `this` if there is no right child
      */
     bvh_node *right() noexcept { return this + m_child_offsets[1]; }
-  
+
     /**
      *  Get the right child of the node.
      *
@@ -141,7 +141,7 @@ namespace bvh
      * \return          the offset of the child or 0 if there is no child at that index
      */
     std::ptrdiff_t get_child_offset( int _child ) const noexcept { return m_child_offsets[_child]; }
-    
+
     /**
      *  Get whether or not the node is a leaf node.
      *
@@ -151,7 +151,7 @@ namespace bvh
     {
       return !has_left() && !has_right();
     }
-  
+
     /**
      *  Get the depth of the tree at the node.
      *
@@ -192,7 +192,7 @@ namespace bvh
     {
       return is_leaf() ? 1 : std::max( left()->depth(), right()->depth() ) + 1;
     }
-  
+
     /**
      *  Get the level of the tree at the node.
      *
@@ -207,7 +207,7 @@ namespace bvh
         ++level;
         p = p->parent();
       }
-    
+
       return level;
     }
 
@@ -220,7 +220,7 @@ namespace bvh
     {
       m_parent_offset = _offset;
     }
-    
+
     /**
      *  Construct a node by moving in a k_DOP and giving a parent node.
      *
@@ -234,7 +234,7 @@ namespace bvh
         m_entity_offsets{}
     {
     }
-    
+
     /**
      *  Get the number of elements in this node.
      *
@@ -244,16 +244,16 @@ namespace bvh
     {
       if ( this->is_leaf() )
         return m_entity_offsets[1] - m_entity_offsets[0];
-  
+
       return this->left()->count() + this->right()->count();
     }
-    
+
     /**
      *  Get the bounding volume of the node
      *
      *  \return the k-DOP bounding the node
      */
-    const kdop_type &kdop() const noexcept { return m_kdop; }
+    const KOKKOS_INLINE_FUNCTION kdop_type &kdop() const noexcept { return m_kdop; }
 
     /**
      * Get the offsets of the entities into the entity array that this node represents. These offsets are returned
@@ -307,7 +307,7 @@ namespace bvh
         && ( _lhs.m_child_offsets == _rhs.m_child_offsets )
         && ( _lhs.m_entity_offsets == _rhs.m_entity_offsets );
     }
-    
+
   private:
 
     template< typename S,
@@ -315,14 +315,14 @@ namespace bvh
               typename K,
               typename N >
     friend void serialize( S &_s, const bvh_node< U, K, N > &_node );
-  
+
     std::ptrdiff_t m_parent_offset;
     array< std::ptrdiff_t, 2 > m_child_offsets;
 
     KDop m_kdop;
     array< std::size_t, 2 > m_entity_offsets;
   };
-  
+
   namespace detail
   {
     template< typename T, typename KDop, typename NodeData >
@@ -331,14 +331,14 @@ namespace bvh
                     const dynarray< T > &_leafs)
     {
       bool last = _last_stack.back();
-      
+
       for ( std::size_t i = 0; i < _last_stack.size() - 1; ++i )
       {
         _strm << ( ( !_last_stack[i] ) ? "\u2502" : " " ) << ' ';
       }
-  
+
       _strm << ( last ? "\u2514 " : "\u251c " );
-      
+
       auto level = _node.level();
       if ( _node.is_leaf() )
       {
@@ -355,15 +355,15 @@ namespace bvh
         _last_stack.push_back( !_node.right() );
         dump_node_impl( _strm, *_node.left(), _last_stack, _leafs );
       }
-    
+
       if ( _node.has_right() )
       {
         _last_stack.push_back( true );
         dump_node_impl( _strm, *_node.right(), _last_stack, _leafs );
       }
-      
+
       _last_stack.pop_back();
-    
+
       return _strm;
     }
   }
@@ -384,7 +384,7 @@ namespace bvh
   {
     std::vector< bool > last_stack;
     last_stack.push_back( true );
-    
+
     return detail::dump_node_impl( _strm, _node, last_stack, _leafs );
   }
 }

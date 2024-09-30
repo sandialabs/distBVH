@@ -75,9 +75,9 @@ namespace
     unsigned m_gid;
     bvh::m::vec3d m_centroid;
 
-    const kdop_type &kdop() const noexcept{ return m_kdop; }
-    const bvh::m::vec3d &centroid() const noexcept { return m_centroid; }
-    unsigned global_id() const noexcept { return m_gid; }
+    const KOKKOS_INLINE_FUNCTION kdop_type &kdop() const noexcept{ return m_kdop; }
+    const KOKKOS_INLINE_FUNCTION bvh::m::vec3d &centroid() const noexcept { return m_centroid; }
+    KOKKOS_INLINE_FUNCTION unsigned global_id() const noexcept { return m_gid; }
   };
 }
 
@@ -331,6 +331,7 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
 
 }
 
+#ifndef BVH_ENABLE_CUDA
 TEST_CASE("new recursive mean splitting 2D elements", "[split]")
 {
   static constexpr std::size_t Nx = 4, Ny = 3;
@@ -437,3 +438,4 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
     //
   }
 }
+#endif
