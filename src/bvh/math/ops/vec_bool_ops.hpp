@@ -35,7 +35,6 @@
 
 #include "../vector_traits.hpp"
 #include "vec_base_ops.hpp"
-#include "../promotion.hpp"
 #include "../../util/bits.hpp"
 
 namespace bvh

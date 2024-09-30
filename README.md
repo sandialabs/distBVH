@@ -14,7 +14,7 @@ BVH requires a compiler that supports C++17. This includes at least clang 5 or g
 
 BVH uses [DARMA/vt](https://github.com/DARMA-tasking/vt) for asynchronous tasking. For more information about DARMA/vt
 please consult the [documentation](https://darma-tasking.github.io/docs/html/index.html).
-BVH requires [Kokkos](https://github.com/kokkos/kokkos) version `4.1` or later.
+BVH requires [Kokkos](https://github.com/kokkos/kokkos) version `4.4` or later.
 
 VTK can also be used for visualizing the the tree data structure.
 

@@ -140,7 +140,7 @@ namespace bvh
 
     // Exclude the last index from the range since there is not going
     // to be a split in the tree after it...
-    Kokkos::parallel_for( n - 1, [this] KOKKOS_FUNCTION( int _i ) {
+    Kokkos::parallel_for( n - 1, KOKKOS_CLASS_LAMBDA( int _i ) {
       auto mask = m_hashes( _i ) ^ m_hashes( _i + 1 );
       m_depths_indices( _i ) = _i;
 
@@ -154,12 +154,12 @@ namespace bvh
 
     // We want the first cluster_count indices -- but they have to be in sorted index order
     // Mark these with 1, then we can execute an exclusive scan to re-index
-    Kokkos::parallel_for( n - 1, [this, cluster_count] KOKKOS_FUNCTION( std::size_t _i ) {
+    Kokkos::parallel_for( n - 1, KOKKOS_CLASS_LAMBDA( std::size_t _i ) {
       m_reindex( m_depths_indices( _i ) ) = ( _i < cluster_count ) ? 1 : 0;
     } );
 
     prefix_sum( m_reindex );
-    Kokkos::parallel_for( n - 1, [this, _splits, cluster_count] KOKKOS_FUNCTION( std::size_t _i ) {
+    Kokkos::parallel_for( n - 1, KOKKOS_CLASS_LAMBDA( std::size_t _i ) {
       if ( _i < cluster_count )
       {
         auto new_idx = m_reindex( m_depths_indices( _i ) );

@@ -36,6 +36,7 @@
 #include <cstddef>
 #include <memory>
 #include <functional>
+#include <Kokkos_Core.hpp>
 #include <vt/context/context.h>
 #include <spdlog/spdlog.h>
 
@@ -45,6 +46,7 @@
 #include "split/axis.hpp"
 #include "tree_build.hpp"
 #include "types.hpp"
+#include "util/kokkos.hpp"
 #include "util/span.hpp"
 #include "split/cluster.hpp"
 
@@ -102,20 +104,18 @@ namespace bvh
         {
           m_clusterer.resize( n );
         }
-        Kokkos::resize( Kokkos::WithoutInitializing, get_split_indices(), n );
-        Kokkos::resize( Kokkos::WithoutInitializing, get_split_indices_h(), n );
+        auto &ind = get_split_indices();
+        Kokkos::resize( Kokkos::WithoutInitializing, ind, n );
 
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits(), num_splits );
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits_h(), num_splits );
 
         // Initialize our indices
-        Kokkos::parallel_for(
-          n, KOKKOS_LAMBDA( int _i ) { get_split_indices()( _i ) = _i; } );
+        Kokkos::parallel_for( n, KOKKOS_LAMBDA( int _i ) { ind( _i ) = _i; } );
 
-        m_clusterer( _data_view, get_split_indices(), get_splits() );
+        m_clusterer( _data_view, ind, get_splits() );
 
         Kokkos::deep_copy( get_splits_h(), get_splits() );
-        Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
 
         // Now split_indices/_h is reordered according to the morton encoding
         // It provides a mapping from original indices to the new reordered elements that
@@ -126,7 +126,7 @@ namespace bvh
       // This assumes _data_view is on host for now... at the moment we can't do much better
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
-        set_entity_data_impl( _data_view.data(), sizeof( T ) );
+        set_entity_data_impl( get_bytes( _data_view ), sizeof( T ) );
       }
     }
 
@@ -146,7 +146,7 @@ namespace bvh
       }
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
-        set_entity_data_impl( _data.data(), sizeof( T ) );
+        set_entity_data_impl( get_bytes( _data ), sizeof( T ) );
       }
     }
 
@@ -205,7 +205,7 @@ namespace bvh
 
       update_snapshots( _data );
 
-      set_entity_data_impl( _data.data(), sizeof( T ) );
+      set_entity_data_impl( get_bytes( _data ), sizeof( T ) );
       std::move( _trace ).end();
     }
 
@@ -215,7 +215,14 @@ namespace bvh
     ///
     /// \param[in] _data
     /// \param[in] _element_size
-    void set_entity_data_impl( const void *_data, std::size_t _element_size );
+    void set_entity_data_impl( const bvh::unmanaged_view< const std::byte * > &_data, std::size_t _element_size );
+
+    template< typename T > auto get_bytes( bvh::view< const T * > _data )
+    {
+      return bvh::unmanaged_view< const std::byte * >(
+        reinterpret_cast< const std::byte * >( _data.data() ),
+        _data.size() * sizeof( T ) / sizeof( std::byte ) );  // FIXME_CUDA: should we use _data.span()?
+    }
 
     void set_all_narrow_patches();
     void set_active_narrow_patches();
@@ -234,8 +241,10 @@ namespace bvh
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
+      auto &snap_h = get_snapshots_h();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
-      auto &ind = get_split_indices_h();
+      Kokkos::resize( Kokkos::WithoutInitializing, snap_h, _data_view.extent( 0 ) );
+      auto &ind = get_split_indices();
       Kokkos::parallel_for(
         ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
           snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
@@ -248,7 +257,9 @@ namespace bvh
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
+      auto &snap_h = get_snapshots_h();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
+      Kokkos::resize( Kokkos::WithoutInitializing, snap_h, _data_view.extent( 0 ) );
       Kokkos::parallel_for(
         _data_view.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
           snap( _idx ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
@@ -261,9 +272,9 @@ namespace bvh
     void for_each_result_impl( std::function< void(const narrowphase_result &) > &&_fun );
 
     view< bvh::entity_snapshot * > &get_snapshots();
+    host_view< bvh::entity_snapshot * > &get_snapshots_h();
     view< std::size_t * > &get_split_indices();
     view< std::size_t * > &get_splits();
-    host_view< std::size_t * > &get_split_indices_h();
     host_view< std::size_t * > &get_splits_h();
 
     void initialize_split_indices( const element_permutations &_splits );
