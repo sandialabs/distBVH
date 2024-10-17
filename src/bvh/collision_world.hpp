@@ -110,6 +110,8 @@ namespace bvh
 
     static std::unique_ptr< collision_world > deserialize(char *buffer);
 
+    bool operator==( const collision_world &other ) const;
+
   private:
 
     std::vector< std::unique_ptr< collision_object > > &get_collision_objects();
@@ -126,6 +128,10 @@ namespace bvh
 
     std::unique_ptr< impl > m_impl;
   };
+
+  KOKKOS_INLINE_FUNCTION bool operator!=( const collision_world &lhs, const collision_world &rhs ) {
+    return !(lhs == rhs);
+  }
 }
 
 #endif  // INC_BVH_COLLISION_WORLD_HPP

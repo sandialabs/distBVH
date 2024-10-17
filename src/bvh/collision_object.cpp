@@ -571,4 +571,9 @@ namespace bvh
     return *m_impl->narrowphase_logger;
   }
 
+  bool collision_object::operator==( const collision_object &other ) const
+  {
+    return *m_impl == *other.m_impl;
+  }
+
 } // namespace bvh

@@ -288,6 +288,8 @@ namespace bvh
         } );
     }
 
+    bool operator==( const collision_object &other ) const;
+
   private:
 
     void for_each_tree_impl( tree_function &&_fun );
@@ -329,6 +331,10 @@ namespace bvh
 
     morton_cluster m_clusterer; // lazily initialized
   };
+
+  KOKKOS_INLINE_FUNCTION bool operator!=( const collision_object &lhs, const collision_object &rhs ) {
+    return !(lhs == rhs);
+  }
 }
 
 #endif  // INC_BVH_COLLISION_OBJECT_HPP

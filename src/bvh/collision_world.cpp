@@ -170,4 +170,9 @@ namespace bvh
   {
     return m_impl->epoch;
   }
+
+  bool collision_world::operator==( const collision_world &other ) const
+  {
+    return *m_impl == *other.m_impl;
+  }
 }
