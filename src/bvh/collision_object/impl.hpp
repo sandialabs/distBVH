@@ -39,6 +39,7 @@
 #include "types.hpp"
 #include "../collision_world/impl.hpp"
 #include "../split/element_permutations.hpp"
+#include "../util/kokkos.hpp"
 
 #include <vt/transport.h>
 #include <vt/messaging/collection_chain_set.h>
@@ -188,6 +189,47 @@ namespace bvh
     std::shared_ptr< spdlog::logger > logger;
     std::shared_ptr< spdlog::logger > broadphase_logger;
     std::shared_ptr< spdlog::logger > narrowphase_logger;
+
+    friend KOKKOS_INLINE_FUNCTION bool operator==(const impl &lhs, const impl &rhs) {
+      return (lhs.collision_idx == rhs.collision_idx)
+          && (lhs.local_patches == rhs.local_patches)
+          && (lhs.last_step_local_patches == rhs.last_step_local_patches)
+          && (lhs.local_data_indices == rhs.local_data_indices)
+          && (lhs.overdecomposition == rhs.overdecomposition)
+          && (lhs.build_trees == rhs.build_trees)
+          // todo: broadphase_patch_collection_proxy equality
+          // todo: narrowphase_patch_collection_proxy equality
+          // todo: narrowphase_collection_proxy equality
+          && (lhs.tree == rhs.tree)
+          && (lhs.active_narrowphase_indices == rhs.active_narrowphase_indices)
+          && (lhs.active_narrowphase_local_index == rhs.active_narrowphase_local_index)
+          && Kokkos::Experimental::equal(primary_execution_space(),
+                                         Kokkos::Experimental::begin(lhs.snapshots),
+                                         Kokkos::Experimental::end(lhs.snapshots),
+                                         Kokkos::Experimental::begin(rhs.snapshots),
+                                         Kokkos::Experimental::end(rhs.snapshots))
+          && Kokkos::Experimental::equal(primary_execution_space(),
+                                         Kokkos::Experimental::begin(lhs.split_indices),
+                                         Kokkos::Experimental::end(lhs.split_indices),
+                                         Kokkos::Experimental::begin(rhs.split_indices),
+                                         Kokkos::Experimental::end(rhs.split_indices))
+          && Kokkos::Experimental::equal(primary_execution_space(),
+                                         Kokkos::Experimental::begin(lhs.splits),
+                                         Kokkos::Experimental::end(lhs.splits),
+                                         Kokkos::Experimental::begin(rhs.splits),
+                                         Kokkos::Experimental::end(rhs.splits))
+          && Kokkos::Experimental::equal(host_execution_space(),
+                                         Kokkos::Experimental::begin(lhs.split_indices_h),
+                                         Kokkos::Experimental::end(lhs.split_indices_h),
+                                         Kokkos::Experimental::begin(rhs.split_indices_h),
+                                         Kokkos::Experimental::end(rhs.split_indices_h))
+          && Kokkos::Experimental::equal(host_execution_space(),
+                                         Kokkos::Experimental::begin(lhs.splits_h),
+                                         Kokkos::Experimental::end(lhs.splits_h),
+                                         Kokkos::Experimental::begin(rhs.splits_h),
+                                         Kokkos::Experimental::end(rhs.splits_h))
+          && lhs.num_splits == rhs.num_splits;
+    }
   };
 
   namespace collision_object_impl

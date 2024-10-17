@@ -116,6 +116,15 @@ namespace bvh
                   / static_cast< float_type >( centroid_range.size() );
     }
 
+    friend bool operator==(const patch<KDop> &lhs, const patch<KDop> &rhs) {
+      return lhs.m_global_id   == rhs.m_global_id
+          && lhs.m_size        == rhs.m_size
+          && lhs.m_kdop        == rhs.m_kdop
+          && lhs.m_centroid[0] == rhs.m_centroid[0]
+          && lhs.m_centroid[1] == rhs.m_centroid[1]
+          && lhs.m_centroid[2] == rhs.m_centroid[2];
+    }
+
     index_type  m_global_id = static_cast< index_type >( -1 );
     std::size_t m_size = 0;
     kdop_type   m_kdop;
