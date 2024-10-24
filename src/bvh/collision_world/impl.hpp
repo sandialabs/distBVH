@@ -33,6 +33,7 @@
 #ifndef INC_BVH_COLLISION_WORLD_IMPL_HPP
 #define INC_BVH_COLLISION_WORLD_IMPL_HPP
 
+#include "../collision_object.hpp"
 #include "../collision_world.hpp"
 #include <vt/transport.h>
 #include <vt/trace/trace_common.h>
@@ -54,6 +55,21 @@ namespace bvh
 
   struct collision_world::impl
   {
+    friend KOKKOS_INLINE_FUNCTION bool operator==(const impl &lhs, const impl &rhs) {
+      if (lhs.collision_objects.size() != rhs.collision_objects.size()) {
+        return false;
+      }
+
+      for (std::size_t i = 0; i < lhs.collision_objects.size(); ++i) {
+        if (*lhs.collision_objects[i] != *rhs.collision_objects[i]) {
+          return false;
+        }
+      }
+
+      return (lhs.overdecomposition == rhs.overdecomposition) &&
+             (lhs.epoch == rhs.epoch);
+    }
+
     std::vector< std::unique_ptr< collision_object > > collision_objects;
 
     collision_world::internal_narrowphase_functor functor;

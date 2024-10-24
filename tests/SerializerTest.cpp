@@ -42,6 +42,8 @@
 #include <bvh/tree_build.hpp>
 #include <bvh/collision_object/narrowphase.hpp>
 #include <bvh/collision_object/types.hpp>
+#include <bvh/collision_object.hpp>
+#include <bvh/collision_world.hpp>
 #include "TestCommon.hpp"
 
 TEMPLATE_TEST_CASE("a single value can be serialized", "[serializer]", int, double, float, std::size_t )
@@ -225,6 +227,100 @@ TEST_CASE("narrowphase_patches collection serialization", "[serializer][collisio
     ::vt::theTerm()->finishedEpoch( ep );
     ::vt::runSchedulerThrough( ep );
   }
+}
+
+TEST_CASE( "collision_object serialization", "[serializer][collision_object]" )
+{
+  bvh::collision_world world( 2 );
+  auto &obj = world.create_collision_object();
+  auto ser = checkpoint::serialize< bvh::collision_object >( obj );
+  auto recPtr = checkpoint::deserialize< bvh::collision_object >( ser->getBuffer() );
+  REQUIRE(*recPtr == obj);
+}
+
+TEST_CASE( "collision_world serialization", "[serializer][collision_world]" )
+{
+  bvh::collision_world world( 2 );
+  world.create_collision_object();
+  world.create_collision_object();
+  auto ser = checkpoint::serialize< bvh::collision_world >( world );
+  auto recPtr = bvh::collision_world::deserialize( ser->getBuffer() );
+  REQUIRE(*recPtr == world);
+}
+
+struct narrowphase_result
+{
+  narrowphase_result( std::size_t _i )
+      : idx( _i )
+  {}
+
+  std::size_t idx;
+};
+
+TEST_CASE( "collision_world serialization after broadphase", "[serializer][collision_world]" )
+{
+  auto split_method
+    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+
+  bvh::collision_world world( 2 );
+
+  auto &obj = world.create_collision_object();
+  auto &obj2 = world.create_collision_object();
+
+  world.start_iteration();
+
+  auto rank = ::vt::theContext()->getNode();
+
+  auto elements = build_element_grid( 1, 1, 1, rank );
+  obj.set_entity_data( elements, split_method );
+  obj.init_broadphase();
+
+  auto elements2 = build_element_grid( 2, 3, 2, rank * 12 );
+  obj2.set_entity_data( elements2, split_method );
+  obj2.init_broadphase();
+
+  world.set_narrowphase_functor< Element >(
+    []( const bvh::broadphase_collision< Element > &_a, const bvh::broadphase_collision< Element > &_b ) {
+    auto res = bvh::narrowphase_result_pair();
+    res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
+    res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
+    auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
+    auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
+
+    REQUIRE( _a.object.id() == 0 );
+    REQUIRE( _b.object.id() == 1 );
+    // First patch only has one element, ever
+    REQUIRE( _a.elements.size() == 1 );
+    // Second patch number of elements depends on the split algorithm, so not tested
+
+    // Global id of the first patch should be the node from whence it came
+    REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
+    bvh::vt::debug("{}: intersect patch ({}, {}) with ({}, {})\n",
+                    ::vt::theContext()->getNode(),
+                    _a.object.id(), _a.patch_id,
+                    _b.object.id(), _b.patch_id );
+
+    for ( auto &&e: _b.elements )
+    {
+      CHECK( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
+      bvh::vt::debug("{}: intersect result ({}, {}, {}) with ({}, {}, {})\n",
+                     ::vt::theContext()->getNode(),
+                     _a.object.id(), _a.patch_id, _a.elements[0].global_id(),
+                     _b.object.id(), _b.patch_id, e.global_id() );
+      resa.emplace_back( e.global_id());
+      resb.emplace_back( _a.elements[0].global_id());
+    }
+
+    return res;
+  } );
+
+  obj.broadphase( obj2 );
+
+  world.finish_iteration();
+
+  auto ser = checkpoint::serialize< bvh::collision_world >( world );
+  auto recPtr = bvh::collision_world::deserialize( ser->getBuffer() );
+  REQUIRE(*recPtr == world);
 }
 
 #if 0
