@@ -33,6 +33,7 @@
 #ifndef INC_BVH_COLLISION_OBJECT_IMPL_HPP
 #define INC_BVH_COLLISION_OBJECT_IMPL_HPP
 
+#include <Kokkos_Core.hpp>
 #include <vector>
 #include <optional>
 #include <Kokkos_Core.hpp>
@@ -59,8 +60,8 @@ namespace bvh
       _patch->ghost_destinations.clear();
       _patch->patch_meta = _msg->patch_meta;
       Kokkos::resize( Kokkos::WithoutInitializing, _patch->bytes, _msg->data_size );
-      bvh::unmanaged_host_view< unsigned char * > u_data( _msg->user_data(), _msg->data_size );
-      Kokkos::deep_copy( _patch->bytes, u_data );
+      Kokkos::deep_copy( _patch->bytes, _msg->user_data() );
+      //std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
       _patch->origin_node = _msg->origin_node;
     }
   }
@@ -98,7 +99,7 @@ namespace bvh
 
       const auto idx = _local_idx;
       const auto sbeg = ( idx == 0 ) ? 0 : splits_h( idx - 1 );
-      const auto send = ( idx == num_splits ) ? split_indices.extent( 0 ) : splits_h( idx );
+      const auto send = ( idx == num_splits ) ? split_indices_h.extent( 0 ) : splits_h( idx );
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_entity_unit_size;
       const int rank = _rank;
@@ -111,16 +112,17 @@ namespace bvh
       logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
                     collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
       // Should be replaced with VT serialization
-
-      auto h_split_indices = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, split_indices );
-      auto h_data = Kokkos::create_mirror_view_and_copy( bvh::host_execution_space{}, m_entity_ptr );
+      auto user_data = send_msg->user_data();
       for (std::size_t j = sbeg; j < send; ++j)
       {
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        debug_assert( h_split_indices( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
+        debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
         // FIXME_CUDA: use subviews, deep_copy to host
-        std::memcpy( &send_msg->user_data()[offset], h_data.data() + ( h_split_indices( j ) * m_entity_unit_size ),
-                     m_entity_unit_size );
+        auto src = Kokkos::subview( m_entity_ptr, std::pair{ split_indices_h( j ) * m_entity_unit_size, m_entity_unit_size } );
+        auto dest = Kokkos::subview( user_data, std::pair{ offset, offset + m_entity_unit_size } );
+        Kokkos::deep_copy( dest, src );
+        //std::memcpy( &send_msg->user_data()[offset], m_entity_ptr.data() + ( split_indices_h( j ) * m_entity_unit_size ),
+        //             m_entity_unit_size );
         offset += m_entity_unit_size;
       }
 
@@ -175,7 +177,7 @@ namespace bvh
     struct narrowphase_patch_cache_entry
     {
       patch<> meta;
-      view< unsigned char * > patch_data;
+      view< std::byte * > patch_data;
       ::vt::NodeType origin_node;
     };
 
@@ -183,10 +185,11 @@ namespace bvh
 
     // Split and clustering views
     view< bvh::entity_snapshot * > snapshots;
-    host_view< bvh::entity_snapshot * > snapshots_h;
+    view< bvh::entity_snapshot * >::host_mirror_type snapshots_h;
     view< std::size_t * > split_indices;  ///< Mapping from original element indices to the reordered indices
+    view< std::size_t * >::host_mirror_type split_indices_h;
     view< std::size_t * > splits; ///< bounds of each split
-    host_view< std::size_t * > splits_h;
+    view< std::size_t * >::host_mirror_type splits_h;
     std::size_t num_splits = 0; ///< The number of actual splits -- may be les than splits.extent( 0 )
 
     // Loggers
