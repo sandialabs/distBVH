@@ -58,8 +58,9 @@ namespace bvh
       Kokkos::resize( Kokkos::WithoutInitializing, _coll->bytes, _msg->data_size );
 
       // Guard the memcpy because it's UB even if size is zero if the pointers are invalid
-      if ( _msg->data_size > 0 )
-        std::memcpy( _coll->bytes.data(), _msg->user_data(), _msg->data_size );
+      Kokkos::deep_copy( _coll->bytes, _msg->user_data() );
+      //if ( _msg->data_size > 0 )
+      //  std::memcpy( _coll->bytes.data(), _msg->user_data(), _msg->data_size );
       _coll->origin_node = _msg->origin_node;
 
       // Reset cache destinations
@@ -421,7 +422,7 @@ namespace bvh
     return m_impl->snapshots;
   }
 
-  host_view< bvh::entity_snapshot * > &collision_object::get_snapshots_h()
+  view< bvh::entity_snapshot * >::host_mirror_type &collision_object::get_snapshots_h()
   {
     return m_impl->snapshots_h;
   }
@@ -432,13 +433,19 @@ namespace bvh
     return m_impl->split_indices;
   }
 
+  view< std::size_t * >::host_mirror_type &
+  collision_object::get_split_indices_h()
+  {
+    return m_impl->split_indices_h;
+  }
+
   view< std::size_t * > &
   collision_object::get_splits()
   {
     return m_impl->splits;
   }
 
-  host_view< std::size_t * > &
+  view< std::size_t * >::host_mirror_type &
   collision_object::get_splits_h()
   {
     return m_impl->splits_h;

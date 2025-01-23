@@ -77,6 +77,13 @@ namespace bvh
     template< typename T, typename... ViewProp, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
     void set_entity_data( Kokkos::View< const T *, ViewProp... > _data, split_algorithm _algorithm )
     {
+#if BVH_ENABLE_CUDA
+      if ( split_algorithm::clustering != _algorithm )
+      {
+        logger().error( "Only clustered splitting is supported on the GPU -- set algorithm to split_algorithm::cluster" );
+        std::abort();
+      }
+#endif
       switch ( _algorithm )
       {
         case split_algorithm::geom_axis: set_entity_data_geom_axis( _data ); break;
@@ -105,7 +112,9 @@ namespace bvh
           m_clusterer.resize( n );
         }
         auto &ind = get_split_indices();
+        auto &ind_h = get_split_indices_h();
         Kokkos::resize( Kokkos::WithoutInitializing, ind, n );
+        Kokkos::resize( Kokkos::WithoutInitializing, ind_h, n );
 
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits(), num_splits );
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits_h(), num_splits );
@@ -116,6 +125,7 @@ namespace bvh
         m_clusterer( _data_view, ind, get_splits() );
 
         Kokkos::deep_copy( get_splits_h(), get_splits() );
+        Kokkos::deep_copy( ind_h, ind );
 
         // Now split_indices/_h is reordered according to the morton encoding
         // It provides a mapping from original indices to the new reordered elements that
@@ -272,10 +282,11 @@ namespace bvh
     void for_each_result_impl( std::function< void(const narrowphase_result &) > &&_fun );
 
     view< bvh::entity_snapshot * > &get_snapshots();
-    host_view< bvh::entity_snapshot * > &get_snapshots_h();
+    view< bvh::entity_snapshot * >::host_mirror_type &get_snapshots_h();
     view< std::size_t * > &get_split_indices();
+    view< std::size_t * >::host_mirror_type &get_split_indices_h();
     view< std::size_t * > &get_splits();
-    host_view< std::size_t * > &get_splits_h();
+    view< std::size_t * >::host_mirror_type &get_splits_h();
 
     void initialize_split_indices( const element_permutations &_splits );
 
