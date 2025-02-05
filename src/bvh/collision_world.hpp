@@ -76,9 +76,9 @@ namespace bvh
     void set_narrowphase_functor( narrowphase_functor< T > _fun )
     {
       set_narrowphase_functor_impl( [_fun]( collision_object &_first, const patch<> &_ma, std::size_t _first_patch_id,
-                                            bvh::view< unsigned char * > _first_patch, collision_object &_second,
+                                            bvh::view< std::byte * > _first_patch, collision_object &_second,
                                             const patch<> &_mb, std::size_t _second_patch_id,
-                                            bvh::view< unsigned char * > _second_patch ) {
+                                            bvh::view< std::byte * > _second_patch ) {
         bvh::unmanaged_view< T * > u_first_elms( reinterpret_cast< T * >( _first_patch.data() ),
                                                  _first_patch.size() / sizeof( T ) );
         bvh::host_view< T * > first_elms( "first_elements", u_first_elms.size() );
@@ -113,8 +113,8 @@ namespace bvh
     friend impl &get_impl( collision_world &_world );
 
     using internal_narrowphase_functor = std::function< narrowphase_result_pair(
-      collision_object &, const patch<> &, std::size_t, bvh::view< unsigned char * >, collision_object &,
-      const patch<> &, std::size_t, bvh::view< unsigned char * > ) >;
+      collision_object &, const patch<> &, std::size_t, bvh::view< std::byte * >, collision_object &,
+      const patch<> &, std::size_t, bvh::view< std::byte * > ) >;
     void set_narrowphase_functor_impl( internal_narrowphase_functor &&_fun );
 
     std::unique_ptr< impl > m_impl;
