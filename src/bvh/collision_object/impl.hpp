@@ -118,7 +118,7 @@ namespace bvh
         debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
         debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
         // FIXME_CUDA: use subviews, deep_copy to host
-        auto src = Kokkos::subview( m_entity_ptr, std::pair{ split_indices_h( j ) * m_entity_unit_size, m_entity_unit_size } );
+        auto src = Kokkos::subview( m_entity_ptr, std::pair{ split_indices_h( j ) * m_entity_unit_size, ( split_indices_h( j ) + 1 ) * m_entity_unit_size } );
         auto dest = Kokkos::subview( user_data, std::pair{ offset, offset + m_entity_unit_size } );
         Kokkos::deep_copy( dest, src );
         //std::memcpy( &send_msg->user_data()[offset], m_entity_ptr.data() + ( split_indices_h( j ) * m_entity_unit_size ),
