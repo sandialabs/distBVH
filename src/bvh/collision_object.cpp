@@ -461,14 +461,17 @@ namespace bvh
   collision_object::initialize_split_indices( const element_permutations &_splits )
   {
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->split_indices, _splits.indices.size() );
+    Kokkos::resize( Kokkos::WithoutInitializing, m_impl->split_indices_h, _splits.indices.size() );
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->splits, _splits.splits.size() );
     Kokkos::resize( Kokkos::WithoutInitializing, m_impl->splits_h, _splits.splits.size() );
 
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > indices_view( _splits.indices.data(), _splits.indices.size() );
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > splits_view( _splits.splits.data(), _splits.splits.size() );
 
-    Kokkos::deep_copy( m_impl->splits_h, splits_view );
+    Kokkos::deep_copy( m_impl->splits, splits_view );
     Kokkos::deep_copy( m_impl->split_indices, indices_view );
+    Kokkos::deep_copy( m_impl->splits_h, m_impl->splits);
+    Kokkos::deep_copy( m_impl->split_indices_h, m_impl->split_indices);
   }
 
   spdlog::logger &
