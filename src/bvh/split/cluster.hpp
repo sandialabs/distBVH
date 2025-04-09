@@ -144,9 +144,7 @@ namespace bvh
       auto mask = m_hashes( _i ) ^ m_hashes( _i + 1 );
       m_depths_indices( _i ) = _i;
 
-      // Kokkos doesn't currently offer clz but they do offer int_log2 but in the Impl namespace ;_;
-      constexpr int shift = sizeof(unsigned) * CHAR_BIT - 1;
-      m_depths( _i ) = ( mask != 0 ) ? shift - Kokkos::Impl::int_log2( mask ) : static_cast< unsigned >( -1 );  // this could break at any version of Kokkos...
+      m_depths( _i ) = ( mask != 0 ) ? clz( mask ) : static_cast< unsigned >( -1 );  // this could break at any version of Kokkos...
     } );
 
     // Sort in order of increasing depth
