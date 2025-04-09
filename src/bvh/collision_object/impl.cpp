@@ -40,9 +40,9 @@ namespace bvh
     : world( &_world ),
       collision_idx( _idx ),
       snapshots( fmt::format( "contact entity {} snapshot", _idx ), 0 ),
+      snapshots_h( fmt::format( "contact entity host {} snapshot", _idx ), 0 ),
       split_indices( fmt::format( "contact entity {} split indices", _idx ), 0 ),
       splits( fmt::format( "contact entity {} splits", _idx ), 0 ),
-      split_indices_h( fmt::format( "contact entity host {} split indices", _idx ), 0 ),
       splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 ),
       logger( _world.collision_object_logger() ),
       broadphase_logger( _world.collision_object_broadphase_logger() ),
@@ -321,9 +321,8 @@ namespace bvh
       {
         ::vt::trace::TraceScopedEvent scope( world_impl.bvh_impl_functor_ );
         auto r = world_impl.functor( this_obj, this_cache.meta, static_cast< std::size_t >( idx[0] ),
-                                     this_cache.patch_data.data(), this_cache.patch_data.size(), other_obj,
-                                     other_cache.meta, static_cast< std::size_t >( idx[2] ),
-                                     other_cache.patch_data.data(), other_cache.patch_data.size() );
+                                     this_cache.patch_data, other_obj, other_cache.meta,
+                                     static_cast< std::size_t >( idx[2] ), other_cache.patch_data );
 
         if ( r.a.size() > 0 )
         {

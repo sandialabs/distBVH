@@ -33,8 +33,10 @@
 #ifndef INC_BVH_COLLISION_OBJECT_IMPL_HPP
 #define INC_BVH_COLLISION_OBJECT_IMPL_HPP
 
+#include <Kokkos_Core.hpp>
 #include <vector>
 #include <optional>
+#include <Kokkos_Core.hpp>
 #include "../collision_object.hpp"
 #include "types.hpp"
 #include "../collision_world/impl.hpp"
@@ -57,8 +59,9 @@ namespace bvh
       logger.debug( "late initializing narrowphase patch {} with {} bytes", idx.x(), _msg->data_size );
       _patch->ghost_destinations.clear();
       _patch->patch_meta = _msg->patch_meta;
-      _patch->bytes.resize(_msg->data_size);
-      std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
+      Kokkos::resize( Kokkos::WithoutInitializing, _patch->bytes, _msg->data_size );
+      Kokkos::deep_copy( _patch->bytes, _msg->user_data() );
+      //std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
       _patch->origin_node = _msg->origin_node;
     }
   }
@@ -98,24 +101,18 @@ namespace bvh
       const auto sbeg = ( idx == 0 ) ? 0 : splits_h( idx - 1 );
       const auto send = ( idx == num_splits ) ? split_indices_h.extent( 0 ) : splits_h( idx );
       const std::size_t nelements = send - sbeg;
-      const std::size_t chunk_data_size = nelements * m_entity_unit_size;
+      const std::size_t chunk_data_size = nelements * m_user_data->element_size();
       const int rank = _rank;
-      debug_assert( m_entity_unit_size > 0, "entity unit size must be > 0" );
+      debug_assert( chunk_data_size > 0, "chunk_data_size size must be > 0" );
 
       auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( chunk_data_size );
       send_msg->data_size = chunk_data_size;
 
-      std::size_t offset = 0;
       logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
                     collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
-      // Should be replaced with VT serialization
-      for (std::size_t j = sbeg; j < send; ++j)
-      {
-        debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
-        std::memcpy( &send_msg->user_data()[offset], m_entity_ptr + (split_indices_h( j ) * m_entity_unit_size), m_entity_unit_size);
-        offset += m_entity_unit_size;
-      }
+      
+      
+      m_user_data->scatter_to_byte_buffer( send_msg->user_data(), sbeg, send, split_indices_h );
 
       send_msg->origin_node = rank;
       send_msg->patch_meta = local_patches[idx];
@@ -161,14 +158,13 @@ namespace bvh
     std::vector< collision_object_impl::narrowphase_index > active_narrowphase_indices;
     std::unordered_set< size_t > active_narrowphase_local_index;
 
-    const unsigned char *m_entity_ptr;
-    std::size_t m_entity_unit_size = 0;
+    std::unique_ptr< detail::user_element_storage_base > m_user_data;
     element_permutations m_latest_permutations;
 
     struct narrowphase_patch_cache_entry
     {
       patch<> meta;
-      std::vector< unsigned char > patch_data;
+      view< std::byte * > patch_data;
       ::vt::NodeType origin_node;
     };
 
@@ -176,10 +172,11 @@ namespace bvh
 
     // Split and clustering views
     view< bvh::entity_snapshot * > snapshots;
+    view< bvh::entity_snapshot * >::host_mirror_type snapshots_h;
     view< std::size_t * > split_indices;  ///< Mapping from original element indices to the reordered indices
+    view< std::size_t * >::host_mirror_type split_indices_h;
     view< std::size_t * > splits; ///< bounds of each split
-    host_view< std::size_t * > split_indices_h;
-    host_view< std::size_t * > splits_h;
+    view< std::size_t * >::host_mirror_type splits_h;
     std::size_t num_splits = 0; ///< The number of actual splits -- may be les than splits.extent( 0 )
 
     // Loggers
