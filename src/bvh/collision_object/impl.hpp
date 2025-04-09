@@ -101,30 +101,18 @@ namespace bvh
       const auto sbeg = ( idx == 0 ) ? 0 : splits_h( idx - 1 );
       const auto send = ( idx == num_splits ) ? split_indices_h.extent( 0 ) : splits_h( idx );
       const std::size_t nelements = send - sbeg;
-      const std::size_t chunk_data_size = nelements * m_entity_unit_size;
+      const std::size_t chunk_data_size = nelements * m_user_data->element_size();
       const int rank = _rank;
-      debug_assert( m_entity_unit_size > 0, "entity unit size must be > 0" );
+      debug_assert( chunk_data_size > 0, "chunk_data_size size must be > 0" );
 
       auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( chunk_data_size );
       send_msg->data_size = chunk_data_size;
 
-      std::size_t offset = 0;
       logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
                     collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
-      // Should be replaced with VT serialization
-      auto user_data = send_msg->user_data();
-      for (std::size_t j = sbeg; j < send; ++j)
-      {
-        debug_assert( offset < send_msg->data_size, "split index offset={} is out of bounds (local data size is {})", offset, send_msg->data_size );
-        debug_assert( split_indices_h( j ) < snapshots.extent( 0 ), "user index is out of bounds" );
-        // FIXME_CUDA: use subviews, deep_copy to host
-        auto src = Kokkos::subview( m_entity_ptr, std::pair{ split_indices_h( j ) * m_entity_unit_size, ( split_indices_h( j ) + 1 ) * m_entity_unit_size } );
-        auto dest = Kokkos::subview( user_data, std::pair{ offset, offset + m_entity_unit_size } );
-        Kokkos::deep_copy( dest, src );
-        //std::memcpy( &send_msg->user_data()[offset], m_entity_ptr.data() + ( split_indices_h( j ) * m_entity_unit_size ),
-        //             m_entity_unit_size );
-        offset += m_entity_unit_size;
-      }
+      
+      
+      m_user_data->scatter_to_byte_buffer( send_msg->user_data(), sbeg, send, split_indices_h );
 
       send_msg->origin_node = rank;
       send_msg->patch_meta = local_patches[idx];
@@ -170,8 +158,7 @@ namespace bvh
     std::vector< collision_object_impl::narrowphase_index > active_narrowphase_indices;
     std::unordered_set< size_t > active_narrowphase_local_index;
 
-    bvh::unmanaged_view< const std::byte * > m_entity_ptr;
-    std::size_t m_entity_unit_size = 0;
+    std::unique_ptr< detail::user_element_storage_base > m_user_data;
     element_permutations m_latest_permutations;
 
     struct narrowphase_patch_cache_entry

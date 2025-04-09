@@ -106,8 +106,7 @@ namespace bvh
 
   collision_object::~collision_object() = default;
 
-  void collision_object::set_entity_data_impl( const bvh::unmanaged_view< const std::byte * > &_data,
-                                               std::size_t _element_size )
+  void collision_object::set_entity_data_impl( std::unique_ptr< detail::user_element_storage_base > &&_data )
   {
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
@@ -126,8 +125,7 @@ namespace bvh
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
 
-    m_impl->m_entity_ptr = _data;
-    m_impl->m_entity_unit_size = _element_size;
+    m_impl->m_user_data = std::move( _data );
 
     // Ensure that our update of m_impl->snapshots has finished before reading it here
     Kokkos::fence();
