@@ -443,7 +443,7 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
 {
   auto results = _res.vec;
 
-  bvh::vt::print("verify_single_narrowphase_new: found {} collision result(s).\n", results.size());
+  bvh::vt::debug("verify_single_narrowphase_new: found {} collision result(s).\n", results.size());
 
   // Expecting exactly 8 collisions:
   //   - single element of object 0 collides with element 0 and 1 of object 1 (2 collisions)
@@ -499,12 +499,12 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
 
 TEST_CASE("collision_object narrowphase three objects", "[vt]") {
   std::cout << "starting my test\n";
-  bvh::collision_world world(2);
+  bvh::collision_world world(2); // power of 2
   auto &obj0 = world.create_collision_object();
   auto &obj1 = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  auto split_method = bvh::split_algorithm::geom_axis;
+  auto split_method = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis);
 
   bvh::vt::reducable_vector< detailed_narrowphase_result > results;
 
@@ -524,21 +524,21 @@ TEST_CASE("collision_object narrowphase three objects", "[vt]") {
     obj2.set_entity_data(elements2, split_method);
     obj2.init_broadphase();
 
-    bvh::vt::print("Object 0 initialized with {} element(s):\n", elements0.extent(0));
+    bvh::vt::debug("Object 0 initialized with {} element(s):\n", elements0.extent(0));
     for (std::size_t i = 0; i < elements0.extent(0); i++) {
-      bvh::vt::print("  Element {}: global_id = {}\n", i, elements0(i).global_id());
+      bvh::vt::debug("  Element {}: global_id = {}\n", i, elements0(i).global_id());
       std::cout << elements0(i) << "\n";
     }
 
-    bvh::vt::print("Object 1 initialized with {} element(s):\n", elements1.extent(0));
+    bvh::vt::debug("Object 1 initialized with {} element(s):\n", elements1.extent(0));
     for (std::size_t i = 0; i < elements1.extent(0); i++) {
-      bvh::vt::print("  Element {}: global_id = {}\n", i, elements1(i).global_id());
+      bvh::vt::debug("  Element {}: global_id = {}\n", i, elements1(i).global_id());
       std::cout << elements1(i) << "\n";
     }
 
-    bvh::vt::print("Object 2 initialized with {} element(s):\n", elements2.extent(0));
+    bvh::vt::debug("Object 2 initialized with {} element(s):\n", elements2.extent(0));
     for (std::size_t i = 0; i < elements2.extent(0); i++) {
-      bvh::vt::print("  Element {}: global_id = {}\n", i, elements2(i).global_id());
+      bvh::vt::debug("  Element {}: global_id = {}\n", i, elements2(i).global_id());
       std::cout << elements2(i) << "\n";
     }
     CHECK(elements0.extent(0) == 1);
