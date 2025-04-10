@@ -439,6 +439,154 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
   } );
 }
 
+void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< detailed_narrowphase_result > &_res )
+{
+  auto results = _res.vec;
+
+  bvh::vt::debug("verify_single_narrowphase_new: found {} collision result(s).\n", results.size());
+
+  // Expecting exactly 8 collisions:
+  //   - single element of object 0 collides with element 0 and 1 of object 1 (2 collisions)
+  //   - single element of object 0 collides with element 0 and 1 of object 2 (2 collisions)
+  //   - element 0 of object 1 collides with element 0 and 1 of object 2 (2 collisions)
+  //   - element 1 of object 1 collides with element 0 and 1 of object 2 (2 collisions)
+  CHECK(results.size() == 8);
+
+  // construct a vector of unordered pairs (min, max) representing the two colliding element global ids
+  std::vector<std::pair<std::size_t, std::size_t>> collisionPairs;
+  for (std::size_t i = 0; i < results.size(); ++i) {
+    const auto& res = results[i];
+    std::size_t id1 = res.element_p;
+    std::size_t id2 = res.element_q;
+
+    if (id1 > id2) std::swap(id1, id2);
+      collisionPairs.push_back({id1, id2});
+
+    bvh::vt::debug("Collision {}: patch_p = {}, element_p = {}, patch_q = {}, element_q = {} -> unordered pair = {{ {}, {} }}\n",
+                   i, res.patch_p, res.element_p, res.patch_q, res.element_q, id1, id2);
+  }
+
+  std::vector<std::pair<std::size_t, std::size_t>> expectedPairs = {
+    {100,110}, {100,111},           // collisions between obj0 and obj1
+    {110,120}, {110,121}, {111,120}, {111,121}, // collisions between obj1 and obj2
+    {100,120}, {100,121}            // collisions between obj0 and obj2
+  };
+
+  // Sort both vectors (first by first element, then by second) to compare them regardless of order
+  auto pairComparator = [](const std::pair<std::size_t, std::size_t>& a,
+                           const std::pair<std::size_t, std::size_t>& b) {
+    return (a.first < b.first) || ((a.first == b.first) && (a.second < b.second));
+  };
+
+  std::sort(collisionPairs.begin(), collisionPairs.end(), pairComparator);
+  std::sort(expectedPairs.begin(), expectedPairs.end(), pairComparator);
+
+  bvh::vt::debug("Sorted collision pairs:\n");
+  for (const auto& p : collisionPairs) {
+    bvh::vt::debug("  {{ {}, {} }}\n", p.first, p.second);
+  }
+  bvh::vt::debug("Expected collision pairs:\n");
+  for (const auto& p : expectedPairs) {
+    bvh::vt::debug("  {{ {}, {} }}\n", p.first, p.second);
+  }
+
+  REQUIRE(collisionPairs.size() == expectedPairs.size());
+  for (std::size_t i = 0; i < expectedPairs.size(); ++i) {
+    REQUIRE(collisionPairs[i].first == expectedPairs[i].first);
+    REQUIRE(collisionPairs[i].second == expectedPairs[i].second);
+  }
+}
+
+TEST_CASE("collision_object narrowphase three objects", "[vt]") {
+  std::cout << "starting my test\n";
+  bvh::collision_world world(2); // power of 2
+  auto &obj0 = world.create_collision_object();
+  auto &obj1 = world.create_collision_object();
+  auto &obj2 = world.create_collision_object();
+
+  auto split_method = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis);
+
+  bvh::vt::reducable_vector< detailed_narrowphase_result > results;
+
+  ::vt::runInEpochCollective( "collision_object.narrowphase", [&]() {
+    world.start_iteration();
+    // auto rank = ::vt::theContext()->getNode();
+
+    auto elements0 = build_element_grid(1, 1, 1, 100, 0.0);
+    obj0.set_entity_data(elements0, split_method);
+    obj0.init_broadphase();
+
+    auto elements1 = build_element_grid(1, 2, 1, 110, 0.0);
+    obj1.set_entity_data(elements1, split_method);
+    obj1.init_broadphase();
+
+    auto elements2 = build_element_grid(1, 1, 2, 120, 0.0);
+    obj2.set_entity_data(elements2, split_method);
+    obj2.init_broadphase();
+
+    bvh::vt::debug("Object 0 initialized with {} element(s):\n", elements0.extent(0));
+    for (std::size_t i = 0; i < elements0.extent(0); i++) {
+      bvh::vt::debug("  Element {}: global_id = {}\n", i, elements0(i).global_id());
+      std::cout << elements0(i) << "\n";
+    }
+
+    bvh::vt::debug("Object 1 initialized with {} element(s):\n", elements1.extent(0));
+    for (std::size_t i = 0; i < elements1.extent(0); i++) {
+      bvh::vt::debug("  Element {}: global_id = {}\n", i, elements1(i).global_id());
+      std::cout << elements1(i) << "\n";
+    }
+
+    bvh::vt::debug("Object 2 initialized with {} element(s):\n", elements2.extent(0));
+    for (std::size_t i = 0; i < elements2.extent(0); i++) {
+      bvh::vt::debug("  Element {}: global_id = {}\n", i, elements2(i).global_id());
+      std::cout << elements2(i) << "\n";
+    }
+    CHECK(elements0.extent(0) == 1);
+    CHECK(elements1.extent(0) == 2);
+    CHECK(elements2.extent(0) == 2);
+
+    world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
+      const bvh::broadphase_collision< Element > &_b ) {
+      auto res = bvh::narrowphase_result_pair();
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
+
+      for ( auto &&e: _b.elements ) {
+        resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
+                  _b.meta.global_id(), e.global_id() } );
+      }
+
+      return res;
+    } );
+
+    obj0.broadphase( obj1 );
+    obj1.broadphase( obj2 );
+    obj2.broadphase( obj0 );
+
+    results.vec.clear();
+    obj0.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
+      results.vec.emplace_back( _res );
+    } );
+
+    obj1.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
+      results.vec.emplace_back( _res );
+    } );
+
+    obj2.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
+      results.vec.emplace_back( _res );
+    } );
+
+    world.finish_iteration();
+  } );
+
+  static_assert( std::is_default_constructible_v< detailed_narrowphase_result > );
+  ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
+    auto r = ::vt::theCollective()->global();
+    r->reduce< verify_single_narrowphase_three_objects, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
+  } );
+}
+
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
   auto split_method
