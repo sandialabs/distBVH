@@ -452,10 +452,48 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   //   - element 1 of object 1 collides with element 0 and 1 of object 2 (2 collisions)
   CHECK(results.size() == 8);
 
+  // construct a vector of unordered pairs (min, max) representing the two colliding element global ids
+  std::vector<std::pair<std::size_t, std::size_t>> collisionPairs;
   for (std::size_t i = 0; i < results.size(); ++i) {
     const auto& res = results[i];
-    bvh::vt::print("Collision {}: patch_p = {}, element_p = {}, patch_q = {}, element_q = {}\n",
-                   i, res.patch_p, res.element_p, res.patch_q, res.element_q);
+    std::size_t id1 = res.element_p;
+    std::size_t id2 = res.element_q;
+
+    if (id1 > id2) std::swap(id1, id2);
+      collisionPairs.push_back({id1, id2});
+
+    bvh::vt::debug("Collision {}: patch_p = {}, element_p = {}, patch_q = {}, element_q = {} -> unordered pair = {{ {}, {} }}\n",
+                   i, res.patch_p, res.element_p, res.patch_q, res.element_q, id1, id2);
+  }
+
+  std::vector<std::pair<std::size_t, std::size_t>> expectedPairs = {
+    {100,110}, {100,111},           // collisions between obj0 and obj1
+    {110,120}, {110,121}, {111,120}, {111,121}, // collisions between obj1 and obj2
+    {100,120}, {100,121}            // collisions between obj0 and obj2
+  };
+
+  // Sort both vectors (first by first element, then by second) to compare them regardless of order
+  auto pairComparator = [](const std::pair<std::size_t, std::size_t>& a,
+                           const std::pair<std::size_t, std::size_t>& b) {
+    return (a.first < b.first) || ((a.first == b.first) && (a.second < b.second));
+  };
+
+  std::sort(collisionPairs.begin(), collisionPairs.end(), pairComparator);
+  std::sort(expectedPairs.begin(), expectedPairs.end(), pairComparator);
+
+  bvh::vt::debug("Sorted collision pairs:\n");
+  for (const auto& p : collisionPairs) {
+    bvh::vt::debug("  {{ {}, {} }}\n", p.first, p.second);
+  }
+  bvh::vt::debug("Expected collision pairs:\n");
+  for (const auto& p : expectedPairs) {
+    bvh::vt::debug("  {{ {}, {} }}\n", p.first, p.second);
+  }
+
+  REQUIRE(collisionPairs.size() == expectedPairs.size());
+  for (std::size_t i = 0; i < expectedPairs.size(); ++i) {
+    REQUIRE(collisionPairs[i].first == expectedPairs[i].first);
+    REQUIRE(collisionPairs[i].second == expectedPairs[i].second);
   }
 }
 
