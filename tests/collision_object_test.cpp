@@ -381,7 +381,6 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
-  auto &obj3 = world.create_collision_object();
   bvh::vt::reducable_vector< detailed_narrowphase_result > results;
 
   ::vt::runInEpochCollective( "collision_object.narrowphase", [&]() {
@@ -397,10 +396,6 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
     obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
-    auto elements3 = build_element_grid( 1, 2, 1, rank * 2 );
-    obj3.set_entity_data( elements2, split_method );
-    obj3.init_broadphase();
-
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                   const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
@@ -408,19 +403,17 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
-      // REQUIRE( _a.object.id() == 0 );
-      // REQUIRE( _b.object.id() == 1 );
-      // REQUIRE(_a.object.id() < _b.object.id());
-      // // First patch only has one element, ever
-      // if ( _a.object.id() == 0)
-      //   REQUIRE( _a.elements.size() == 1 );
+      REQUIRE( _a.object.id() == 0 );
+      REQUIRE( _b.object.id() == 1 );
+      // First patch only has one element, ever
+      REQUIRE( _a.elements.size() == 1 );
       // Second patch number of elements depends on the split algorithm, so not tested
 
       // Global id of the first patch should be the node from whence it came
-      // REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
+      REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
 
       for ( auto &&e: _b.elements ) {
-        // REQUIRE( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
+        REQUIRE( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
                                                         _b.meta.global_id(), e.global_id() } );
       }
@@ -429,19 +422,11 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
     } );
 
     obj.broadphase( obj2 );
-    obj.broadphase( obj3 );
-    obj2.broadphase( obj3 );
 
     results.vec.clear();
     obj.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
       results.vec.emplace_back( _res );
     } );
-    // obj2.for_each_result< detailed_narrowphase_result >([&]( const detailed_narrowphase_result &_res ) {
-    //   results.vec.emplace_back(_res);
-    // });
-    // obj3.for_each_result< detailed_narrowphase_result >([&]( const detailed_narrowphase_result &_res ) {
-    //   results.vec.emplace_back(_res);
-    // });
 
     world.finish_iteration();
   } );
@@ -451,6 +436,116 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
   ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
     auto r = ::vt::theCollective()->global();
     r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
+  } );
+}
+
+void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< detailed_narrowphase_result > &_res )
+{
+  auto results = _res.vec;
+
+  bvh::vt::print("verify_single_narrowphase_new: found {} collision result(s).\n", results.size());
+
+  // Expecting exactly 8 collisions:
+  //   - single element of object 0 collides with element 0 and 1 of object 1 (2 collisions)
+  //   - single element of object 0 collides with element 0 and 1 of object 2 (2 collisions)
+  //   - element 0 of object 1 collides with element 0 and 1 of object 2 (2 collisions)
+  //   - element 1 of object 1 collides with element 0 and 1 of object 2 (2 collisions)
+  CHECK(results.size() == 8);
+
+  for (std::size_t i = 0; i < results.size(); ++i) {
+    const auto& res = results[i];
+    bvh::vt::print("Collision {}: patch_p = {}, element_p = {}, patch_q = {}, element_q = {}\n",
+                   i, res.patch_p, res.element_p, res.patch_q, res.element_q);
+  }
+}
+
+TEST_CASE("collision_object narrowphase three objects", "[vt]") {
+  std::cout << "starting my test\n";
+  bvh::collision_world world(2);
+  auto &obj0 = world.create_collision_object();
+  auto &obj1 = world.create_collision_object();
+  auto &obj2 = world.create_collision_object();
+
+  auto split_method = bvh::split_algorithm::geom_axis;
+
+  bvh::vt::reducable_vector< detailed_narrowphase_result > results;
+
+  ::vt::runInEpochCollective( "collision_object.narrowphase", [&]() {
+    world.start_iteration();
+    // auto rank = ::vt::theContext()->getNode();
+
+    auto elements0 = build_element_grid(1, 1, 1, 100, 0.0);
+    obj0.set_entity_data(elements0, split_method);
+    obj0.init_broadphase();
+
+    auto elements1 = build_element_grid(1, 2, 1, 110, 0.0);
+    obj1.set_entity_data(elements1, split_method);
+    obj1.init_broadphase();
+
+    auto elements2 = build_element_grid(1, 1, 2, 120, 0.0);
+    obj2.set_entity_data(elements2, split_method);
+    obj2.init_broadphase();
+
+    bvh::vt::print("Object 0 initialized with {} element(s):\n", elements0.extent(0));
+    for (std::size_t i = 0; i < elements0.extent(0); i++) {
+      bvh::vt::print("  Element {}: global_id = {}\n", i, elements0(i).global_id());
+      std::cout << elements0(i) << "\n";
+    }
+
+    bvh::vt::print("Object 1 initialized with {} element(s):\n", elements1.extent(0));
+    for (std::size_t i = 0; i < elements1.extent(0); i++) {
+      bvh::vt::print("  Element {}: global_id = {}\n", i, elements1(i).global_id());
+      std::cout << elements1(i) << "\n";
+    }
+
+    bvh::vt::print("Object 2 initialized with {} element(s):\n", elements2.extent(0));
+    for (std::size_t i = 0; i < elements2.extent(0); i++) {
+      bvh::vt::print("  Element {}: global_id = {}\n", i, elements2(i).global_id());
+      std::cout << elements2(i) << "\n";
+    }
+    CHECK(elements0.extent(0) == 1);
+    CHECK(elements1.extent(0) == 2);
+    CHECK(elements2.extent(0) == 2);
+
+    world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
+      const bvh::broadphase_collision< Element > &_b ) {
+      auto res = bvh::narrowphase_result_pair();
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
+
+      for ( auto &&e: _b.elements ) {
+        resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
+                  _b.meta.global_id(), e.global_id() } );
+      }
+
+      return res;
+    } );
+
+    obj0.broadphase( obj1 );
+    obj1.broadphase( obj2 );
+    obj2.broadphase( obj0 );
+
+    results.vec.clear();
+    obj0.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
+      results.vec.emplace_back( _res );
+    } );
+
+    obj1.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
+      results.vec.emplace_back( _res );
+    } );
+
+    obj2.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
+      results.vec.emplace_back( _res );
+    } );
+
+    world.finish_iteration();
+  } );
+
+  static_assert( std::is_default_constructible_v< detailed_narrowphase_result > );
+  ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
+    auto r = ::vt::theCollective()->global();
+    r->reduce< verify_single_narrowphase_three_objects, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
   } );
 }
 
