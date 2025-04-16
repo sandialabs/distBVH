@@ -478,16 +478,16 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   }
 
   std::vector< collision_pair_t > expectedPairs;
-  for (int e0 = 0; e0 < numEltsOnObj0 * numNodes; e0++) {
-    for (int e1 = 0; e1 < numEltsOnObj1 * numNodes; e1++) {
+  for (std::size_t e0 = 0; e0 < numEltsOnObj0 * numNodes; e0++) {
+    for (std::size_t e1 = 0; e1 < numEltsOnObj1 * numNodes; e1++) {
       expectedPairs.push_back( { e0, 10 + e1 } );
     }
-    for (int e2 = 0; e2 < numEltsOnObj2 * numNodes; e2++) {
+    for (std::size_t e2 = 0; e2 < numEltsOnObj2 * numNodes; e2++) {
       expectedPairs.push_back( { e0, 20 + e2 } );
     }
   }
-  for (int e1 = 0; e1 < numEltsOnObj1 * numNodes; e1++) {
-    for (int e2 = 0; e2 < numEltsOnObj2 * numNodes; e2++) {
+  for (std::size_t e1 = 0; e1 < numEltsOnObj1 * numNodes; e1++) {
+    for (std::size_t e2 = 0; e2 < numEltsOnObj2 * numNodes; e2++) {
       expectedPairs.push_back( { 10 + e1, 20 + e2 } );
     }
   }
