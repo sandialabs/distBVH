@@ -364,7 +364,7 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
       res.patch_p, res.element_p, res.patch_q, res.element_q );
   }
 
-  std::size_t expectedNumCollisions = ( 1 * numNodes * 12 * numNodes ); // elts on obj 0 times elts on obj 1
+  std::size_t expectedNumCollisions = 1 * numNodes * 12 * numNodes;
   CHECK( results.size() == expectedNumCollisions );
 
   for ( std::size_t i = 0; i < std::min( results.size(), ref_rhs_element_ids.size() ); ++i )
