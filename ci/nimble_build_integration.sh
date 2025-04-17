@@ -4,7 +4,7 @@ set -e
 mkdir -p /opt/src
 
 pushd /opt/src
-git clone https://github.com/NimbleSM/NimbleSM.git
+git clone -b 371-fix-distbvh-integration https://github.com/NimbleSM/NimbleSM.git
 mkdir -p /opt/builds/NimbleSM
 
 pushd /opt/builds/NimbleSM
