@@ -276,7 +276,7 @@ namespace bvh
       auto &other_impl = other_obj.get_impl();
 
       auto &logger = this_obj.narrowphase_logger();
-      logger.debug( "executing narrowphase <{}, {}, {}, {}> in epoch={}", this_obj.id(), idx[0], idx[1],
+      logger.debug( "executing narrowphase <obj {}, patch {} | obj {}, patch {}> in epoch={}", this_obj.id(), idx[0], idx[1],
                     idx[2], ::vt::theMsg()->getEpoch() );
 
       // Run actual narrowphase functor
@@ -289,7 +289,7 @@ namespace bvh
       // Only run if we are looking at the right "other obj"
       if ( other_obj.get_impl().collision_idx != static_cast< std::size_t >( idx.y() ) )
       {
-        logger.trace( "skipping <{}, {}, {}, {}> -- mismatched index",
+        logger.trace( "skipping <obj {}, patch {} | obj {}, patch {}> -- mismatched index",
                       this_obj.id(), idx[0], idx[1], idx[2] );
         return;
       }
@@ -297,7 +297,7 @@ namespace bvh
       // Ignore self collisions (this will usually be caught by the above condition)
       if ( this_obj.get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
       {
-        logger.trace( "skipping <{}, {}, {}, {}> -- self collision",
+        logger.trace( "skipping <obj {}, patch {} | obj {}, patch {}> -- self collision",
                       this_obj.id(), idx[0], idx[1], idx[2] );
         return;
       }
@@ -329,7 +329,7 @@ namespace bvh
         {
           auto lmsg = ::vt::makeMessage< result_msg >();
           lmsg->result = std::move( r.a );
-          logger.trace( "<send={}> result from <{}, {}, {}, {}>",
+          logger.trace( "<send={}> result from <obj {}, patch {} | obj {}, patch {}>",
                         left_node, this_obj.id(), idx[0], idx[1], idx[2] );
           this_obj.get_impl()
             .objgroup[left_node]
@@ -340,7 +340,7 @@ namespace bvh
         {
           auto rmsg = ::vt::makeMessage< result_msg >();
           rmsg->result = std::move( r.b );
-          logger.trace( "<send={}> result from <{}, {}, {}, {}>",
+          logger.trace( "<send={}> result from <obj {}, patch {} | obj {}, patch {}>",
                         right_node, this_obj.id(), idx[0], idx[1], idx[2] );
           this_obj.get_impl()
             .objgroup[right_node]
@@ -354,7 +354,7 @@ namespace bvh
       auto &this_obj = *_narrow->this_proxy.get()->self;
       auto &logger = this_obj.narrowphase_logger();
       const auto idx = _narrow->getIndex();
-      logger.trace( "clearing narrowphase index <{}, {}, {}, {}>",
+      logger.trace( "clearing narrowphase index <obj {}, patch {} | obj {}, patch {}>",
                     this_obj.id(), idx[0], idx[1], idx[2] );
       _narrow->active = false;
     }
