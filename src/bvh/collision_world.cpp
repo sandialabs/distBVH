@@ -56,6 +56,14 @@ namespace bvh
     m_impl->collision_object_narrowphase_logger = logging::make_logger( "collision_object.narrowphase", stdout_sink, _cfg );
     m_impl->collision_world_logger->trace( "Initialized collision object narrowphase logger" );
 
+    BVH_ASSERT_ALWAYS(_overdecomposition_factor > 0 &&
+                      !(_overdecomposition_factor &
+                      (_overdecomposition_factor - 1)),
+      m_impl->collision_world_logger,
+      "error during world instantiation, overdecomposition factor must be a power of 2 (received {})\n",
+      _overdecomposition_factor
+    );
+
     m_impl->overdecomposition = _overdecomposition_factor;
     auto user_event_name = "bvh_impl_functor_";
     m_impl->bvh_impl_functor_ = ::vt::theTrace()->registerUserEventColl( user_event_name);
