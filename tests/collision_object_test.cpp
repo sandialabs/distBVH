@@ -344,7 +344,7 @@ bool operator<( const detailed_narrowphase_result &_lhs, const detailed_narrowph
 void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrowphase_result > &_res )
 {
   auto results = _res.vec;
-  auto numNodes = ::vt::theContext()->getNumNodes();
+  const auto numNodes = ::vt::theContext()->getNumNodes();
   std::vector< std::size_t > ref_rhs_element_ids( numNodes * 12 );
   std::iota( ref_rhs_element_ids.begin(), ref_rhs_element_ids.end(), 0UL );
 
@@ -364,7 +364,7 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
       res.patch_p, res.element_p, res.patch_q, res.element_q );
   }
 
-  std::size_t expectedNumCollisions = 1 * numNodes * 12 * numNodes;
+  const std::size_t expectedNumCollisions = 1 * numNodes * 12 * numNodes;
   CHECK( results.size() == expectedNumCollisions );
 
   for ( std::size_t i = 0; i < std::min( results.size(), ref_rhs_element_ids.size() ); ++i )
@@ -450,13 +450,13 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   auto numNodes = ::vt::theContext()->getNumNodes();
 
   // Define the problem
-  std::size_t numEltsOnObj0 = 1;
-  std::size_t numEltsOnObj1 = 2;
-  std::size_t numEltsOnObj2 = 2;
+  const std::size_t numEltsOnObj0 = 1;
+  const std::size_t numEltsOnObj1 = 2;
+  const std::size_t numEltsOnObj2 = 2;
 
   bvh::vt::debug( "verify_single_narrowphase_new: found {} collision result(s).\n", results.size() );
 
-  std::size_t expectedNumCollisions = (
+  const std::size_t expectedNumCollisions = (
     numEltsOnObj0 * numNodes * numEltsOnObj1 * numNodes + // obj 0 and obj 1
     numEltsOnObj0 * numNodes * numEltsOnObj2 * numNodes + // obj 0 and obj 2
     numEltsOnObj1 * numNodes * numEltsOnObj2 * numNodes   // obj 1 and obj 2
@@ -480,15 +480,15 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   std::vector< collision_pair_t > expectedPairs;
   for (std::size_t e0 = 0; e0 < numEltsOnObj0 * numNodes; e0++) {
     for (std::size_t e1 = 0; e1 < numEltsOnObj1 * numNodes; e1++) {
-      expectedPairs.push_back( { e0, 10 + e1 } );
+      expectedPairs.push_back( { e0, e1 } );
     }
     for (std::size_t e2 = 0; e2 < numEltsOnObj2 * numNodes; e2++) {
-      expectedPairs.push_back( { e0, 20 + e2 } );
+      expectedPairs.push_back( { e0, e2 } );
     }
   }
   for (std::size_t e1 = 0; e1 < numEltsOnObj1 * numNodes; e1++) {
     for (std::size_t e2 = 0; e2 < numEltsOnObj2 * numNodes; e2++) {
-      expectedPairs.push_back( { 10 + e1, 20 + e2 } );
+      expectedPairs.push_back( { e1, e2 } );
     }
   }
 
@@ -541,30 +541,27 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     obj0.set_entity_data( elements0, split_method );
     obj0.init_broadphase();
 
-    auto elements1 = build_element_grid( 1, 2, 1, 10 + (rank * 2), 0.0 );
+    auto elements1 = build_element_grid( 1, 2, 1, rank * 2, 0.0 );
     obj1.set_entity_data( elements1, split_method );
     obj1.init_broadphase();
 
-    auto elements2 = build_element_grid( 1, 1, 2, 20 + (rank * 2), 0.0 );
+    auto elements2 = build_element_grid( 1, 1, 2, rank * 2, 0.0 );
     obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
     bvh::vt::debug( "Object 0 initialized with {} element(s):\n", elements0.extent( 0 ) );
     for ( std::size_t i = 0; i < elements0.extent( 0 ); i++ ) {
       bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements0( i ).global_id() );
-      std::cout << elements0( i ) << "\n";
     }
 
     bvh::vt::debug( "Object 1 initialized with {} element(s):\n", elements1.extent( 0 ) );
     for ( std::size_t i = 0; i < elements1.extent( 0 ); i++ ) {
       bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements1( i ).global_id() );
-      std::cout << elements1( i ) << "\n";
     }
 
     bvh::vt::debug( "Object 2 initialized with {} element(s):\n", elements2.extent( 0 ) );
     for ( std::size_t i = 0; i < elements2.extent( 0 ); i++ ) {
       bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements2( i ).global_id() );
-      std::cout << elements2( i ) << "\n";
     }
     CHECK( elements0.extent( 0 ) == 1 );
     CHECK( elements1.extent( 0 ) == 2 );
@@ -704,7 +701,6 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
           REQUIRE( old_results.at( j ).idx == new_results.at( j ).idx );
       }
 
-      std::cout << "new results size " << new_results.size() << '\n';
       old_results = new_results;
 
       if ( i > 0 ) {
@@ -713,11 +709,9 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
           REQUIRE( old_results2.at( j ).idx == new_results2.at( j ).idx );
       }
 
-      std::cout << "new results2 size " << new_results2.size() << '\n';
       old_results2 = new_results2;
     }
   } );
-  std::cout << "========== Done, ready for next gen!\n";
 }
 
 TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
@@ -779,7 +773,6 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 
       std::vector< narrowphase_result > new_results2;
       obj2.for_each_result< narrowphase_result >( [&new_results2]( const narrowphase_result &_res ) {
-        std::cout << "got a result!!!\n";
         new_results2.emplace_back( _res );
       } );
 
@@ -791,7 +784,6 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
           REQUIRE( old_results.at( j ).idx == new_results.at( j ).idx );
       }
 
-      std::cout << "new results size " << new_results.size() << '\n';
       old_results = new_results;
 
       if ( i > 0 ) {
@@ -800,7 +792,6 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
           REQUIRE( old_results2.at( j ).idx == new_results2.at( j ).idx );
       }
 
-      std::cout << "new results2 size " << new_results2.size() << '\n';
       old_results2 = new_results2;
 
     }
