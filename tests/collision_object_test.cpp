@@ -612,7 +612,6 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
 TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
   bvh::collision_world world( 2 ); // power of 2
   auto &obj0 = world.create_collision_object();
-  auto &obj1 = world.create_collision_object();
 
   auto split_method = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis );
 
@@ -653,7 +652,7 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
       return res;
     } );
 
-    obj0.broadphase( /*obj0*/ );
+    obj0.broadphase( obj0 );
 
     results.vec.clear();
     obj0.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
