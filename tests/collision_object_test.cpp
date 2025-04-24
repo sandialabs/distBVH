@@ -620,22 +620,28 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
   ::vt::runInEpochCollective( "collision_object.narrowphase", [&]() {
     world.start_iteration();
     auto rank = ::vt::theContext()->getNode();
-    auto numNodes = ::vt::theContext()->getNode();
+    auto numNodes = ::vt::theContext()->getNumNodes();
 
     auto elements0 = build_element_grid( 1, 1, 1, rank, 0.0 );
     auto elements1 = build_element_grid( 2, 3, 2, numNodes + (rank * 12), 0.0 );
-    obj0.set_entity_data( elements0, split_method );
-    obj0.set_entity_data( elements1, split_method );
-    obj0.init_broadphase();
-
-    bvh::vt::debug( "Object 0 initialized with {} element(s):\n", elements0.extent( 0 ) );
-    for ( std::size_t i = 0; i < elements0.extent( 0 ); i++ ) {
-      bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements0( i ).global_id() );
-      std::cout << elements0( i ) << "\n";
-    }
-
     CHECK( elements0.extent( 0 ) == 1 );
     CHECK( elements1.extent( 0 ) == 12 );
+
+    auto combined = bvh::view< Element * >( "combined elements", elements0.size() + elements1.size() );
+    CHECK( combined.extent( 0 ) == 13 );
+    Kokkos::deep_copy( Kokkos::subview( combined, Kokkos::make_pair( size_t{ 0 }, elements0.size() ) ), elements0 );
+    Kokkos::deep_copy(
+      Kokkos::subview( combined, Kokkos::make_pair( elements0.size(), elements0.size() + elements1.size() ) ),
+      elements1 );
+    obj0.set_entity_data( combined, split_method );
+    obj0.init_broadphase();
+
+    bvh::vt::debug( "Object 0 initialized with {} element(s):\n", combined.extent( 0 ) );
+    for ( std::size_t i = 0; i < combined.extent( 0 ); i++ ) {
+      bvh::vt::debug( "  Element {}: global_id = {}\n", i, combined( i ).global_id() );
+      std::cout << combined( i ) << "\n";
+    }
+
 
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
       const bvh::broadphase_collision< Element > &_b ) {
