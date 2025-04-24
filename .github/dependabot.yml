@@ -4,9 +4,9 @@ updates:
     directory: /
     schedule:
       interval: "weekly"
-        target-branch: "main"
+    target-branch: "main"
   - package-ecosystem: "github-actions"
     directory: /
     schedule:
       interval: "weekly"
-        target-branch: "ci-images"
+    target-branch: "ci-images"
