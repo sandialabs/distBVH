@@ -648,9 +648,14 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
+      REQUIRE(_a.object.id() == _b.object.id());
+
+      auto numElements = _a.elements.size() + _b.elements.size();
+      REQUIRE(numElements == 13)
+
       for ( auto &&b_elt: _b.elements ) {
         for ( auto &&a_elt: _a.elements ) {
-          std::cout << "b: " << b_elt.global_id() << ", a: " << a_elt.global_id() << std::endl;
+          // std::cout << "b: " << b_elt.global_id() << ", a: " << a_elt.global_id() << std::endl;
           if ( overlap( a_elt.kdop(), b_elt.kdop() ) ) {
             resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), a_elt.global_id(),
                                                             _b.meta.global_id(), b_elt.global_id() } );
