@@ -227,11 +227,11 @@ namespace bvh
       }
 
       // Ignore self collisions (this will usually be caught by the above condition)
-      if ( this_obj->get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
-      {
-        logger.trace( "{}: skipping <{}, {}, {}, {}> -- self collision", this_obj->id(), idx[0], idx[1], idx[2] );
-        return;
-      }
+      // if ( this_obj->get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
+      // {
+      //   logger.trace( "{}: skipping <{}, {}, {}, {}> -- self collision", this_obj->id(), idx[0], idx[1], idx[2] );
+      //   return;
+      // }
 
       _narrow->this_proxy = _msg->this_obj;
       _narrow->other_proxy = _msg->other_obj;
@@ -294,13 +294,13 @@ namespace bvh
         return;
       }
 
-      // Ignore self collisions (this will usually be caught by the above condition)
-      if ( this_obj.get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
-      {
-        logger.trace( "skipping <obj {}, patch {} | obj {}, patch {}> -- self collision",
-                      this_obj.id(), idx[0], idx[1], idx[2] );
-        return;
-      }
+      // // Ignore self collisions (this will usually be caught by the above condition)
+      // if ( this_obj.get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
+      // {
+      //   logger.trace( "skipping <obj {}, patch {} | obj {}, patch {}> -- self collision",
+      //                 this_obj.id(), idx[0], idx[1], idx[2] );
+      //   return;
+      // }
 
       BVH_ASSERT_ALWAYS( this_impl.narrowphase_patch_cache.find( this_index ) != this_impl.narrowphase_patch_cache.end(),
                          logger,

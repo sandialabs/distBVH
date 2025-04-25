@@ -639,9 +639,7 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
     bvh::vt::debug( "Object 0 initialized with {} element(s):\n", combined.extent( 0 ) );
     for ( std::size_t i = 0; i < combined.extent( 0 ); i++ ) {
       bvh::vt::debug( "  Element {}: global_id = {}\n", i, combined( i ).global_id() );
-      std::cout << combined( i ) << "\n";
     }
-
 
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
       const bvh::broadphase_collision< Element > &_b ) {
@@ -650,9 +648,14 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
-      for ( auto &&e: _b.elements ) {
-        resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
-                  _b.meta.global_id(), e.global_id() } );
+      for ( auto &&b_elt: _b.elements ) {
+        for ( auto &&a_elt: _a.elements ) {
+          std::cout << "b: " << b_elt.global_id() << ", a: " << a_elt.global_id() << std::endl;
+          if ( overlap( a_elt.kdop(), b_elt.kdop() ) ) {
+            resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), a_elt.global_id(),
+                                                            _b.meta.global_id(), b_elt.global_id() } );
+          }
+        }
       }
 
       return res;
