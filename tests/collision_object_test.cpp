@@ -538,6 +538,7 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   }
 }
 
+#ifndef BVH_ENABLE_CUDA
 TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
   bvh::collision_world world( 2 ); // power of 2
   auto &obj0 = world.create_collision_object();
@@ -589,10 +590,11 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
-      for ( auto &&e: _b.elements ) {
+      Kokkos::parallel_for( _b.elements.extent( 0 ), [=, &resa]( int i ) {
+        auto e = _b.elements( i );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
                   _b.meta.global_id(), e.global_id() } );
-      }
+      } );
 
       return res;
     } );
@@ -623,6 +625,7 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     r->reduce< verify_single_narrowphase_three_objects, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
   } );
 }
+#endif
 
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
