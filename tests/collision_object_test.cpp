@@ -609,6 +609,38 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
   } );
 }
 
+void verify_single_narrowphase_self_contact( const bvh::vt::reducable_vector< detailed_narrowphase_result > &_res )
+{
+  auto results = _res.vec;
+  const auto numNodes = ::vt::theContext()->getNumNodes();
+  std::vector< std::size_t > ref_rhs_element_ids( numNodes * 12 );
+  std::iota( ref_rhs_element_ids.begin(), ref_rhs_element_ids.end(), numNodes );
+
+  // Sort ignoring patch id, we only care about element global ids
+  // That way, we can compare to our reference collision vector
+  std::sort( results.begin(), results.end(),
+             []( const detailed_narrowphase_result &_lhs, const detailed_narrowphase_result &_rhs ) {
+    if ( _lhs.element_p != _rhs.element_p )
+      return _lhs.element_p < _rhs.element_p;
+
+    return _lhs.element_q < _rhs.element_q;
+  } );
+
+  for ( auto &&res : results )
+  {
+    bvh::vt::debug("{}: isect ({}, {}) with ({}, {})\n", ::vt::theContext()->getNode(),
+      res.patch_p, res.element_p, res.patch_q, res.element_q );
+  }
+
+  const std::size_t expectedNumCollisions = 1 * numNodes * 12 * numNodes;
+  CHECK( results.size() == expectedNumCollisions );
+
+  for ( std::size_t i = 0; i < std::min( results.size(), ref_rhs_element_ids.size() ); ++i )
+  {
+    CHECK( results[i].element_q == ref_rhs_element_ids[i] );
+  }
+}
+
 TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
   bvh::collision_world world( 2 );
   auto &obj0 = world.create_collision_object();
@@ -648,13 +680,21 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
+      auto narrowphase_filter = []( const Element& _e0, const Element& _e1 ) -> bool
+      {
+        bool areOverlapping = overlap( _e0.kdop(), _e1.kdop() );
+        bool areDifferent = _e0.global_id() != _e1.global_id();
+        bool areOrdered = _e0.global_id() < _e1.global_id();
+        return areOverlapping && areDifferent && areOrdered;
+      };
+
       REQUIRE(_a.object.id() == _b.object.id());
 
       auto numElements = _a.elements.size() + _b.elements.size();
 
       for ( auto &&b_elt: _b.elements ) {
         for ( auto &&a_elt: _a.elements ) {
-          if ( overlap( a_elt.kdop(), b_elt.kdop() ) ) {
+          if ( narrowphase_filter( a_elt, b_elt ) ) {
             resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), a_elt.global_id(),
                                                             _b.meta.global_id(), b_elt.global_id() } );
           }
@@ -677,7 +717,7 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
   static_assert( std::is_default_constructible_v< detailed_narrowphase_result > );
   ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
     auto r = ::vt::theCollective()->global();
-    r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
+    r->reduce< verify_single_narrowphase_self_contact, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
   } );
 }
 
