@@ -355,7 +355,7 @@ void verify_single_narrowphase(
 
   // Determine the expected number of collisions
   std::size_t expectedNumCollisions = 0;
-  if ( isSelfContact ) expectedNumCollisions = objSizes[ 0 ] - numNodes;
+  if ( isSelfContact ) expectedNumCollisions = numNodes * (objSizes[ 0 ] - numNodes);
   else {
     for ( std::size_t i = 0; i < numObjs; i++ ) {
       for ( std::size_t j = ( i + 1 ); j < numObjs; j++ ) {
@@ -497,7 +497,6 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 
   ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
     auto r = ::vt::theCollective()->global();
-    const std::size_t numNodes = ::vt::theContext()->getNumNodes();
     const std::vector<std::size_t> numEltsPerObj = { 1, 12 };
     r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results, numEltsPerObj );
   } );
@@ -631,15 +630,17 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
 
       auto narrowphase_filter = []( const Element& _e0, const Element& _e1 ) -> bool
       {
-        bool areOverlapping = overlap( _e0.kdop(), _e1.kdop() );
-        bool areDifferent = _e0.global_id() != _e1.global_id();
-        bool areOrdered = _e0.global_id() < _e1.global_id();
-        return areOverlapping && areDifferent && areOrdered;
+        auto get_element_grid_id = []( const Element& _e ) -> int
+        {
+          return _e.global_id() < ::vt::theContext()->getNumNodes() ? 0 : 1;
+        };
+        const bool areOverlapping = overlap( _e0.kdop(), _e1.kdop() );
+        const bool areOrdered = _e0.global_id() < _e1.global_id();
+        const bool areOnDifferentGrids = get_element_grid_id( _e0 ) != get_element_grid_id( _e1 );
+        return areOverlapping && areOrdered && areOnDifferentGrids;
       };
 
       REQUIRE(_a.object.id() == _b.object.id());
-
-      auto numElements = _a.elements.size() + _b.elements.size();
 
       for ( auto &&b_elt: _b.elements ) {
         for ( auto &&a_elt: _a.elements ) {
