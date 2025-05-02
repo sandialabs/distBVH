@@ -632,7 +632,8 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
       {
         auto get_element_grid_id = []( const Element& _e ) -> int
         {
-          return _e.global_id() < ::vt::theContext()->getNumNodes() ? 0 : 1;
+          const std::size_t numNodes = ::vt::theContext()->getNumNodes();
+          return _e.global_id() < numNodes ? 0 : 1;
         };
         const bool areOverlapping = overlap( _e0.kdop(), _e1.kdop() );
         const bool areOrdered = _e0.global_id() < _e1.global_id();
