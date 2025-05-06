@@ -602,10 +602,10 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
     auto rank = ::vt::theContext()->getNode();
     auto numNodes = ::vt::theContext()->getNumNodes();
 
-    auto elements0 = build_element_grid( 1, 1, 1, rank, 0.0 );
-    auto elements1 = build_element_grid( 1, 2, 1, numNodes + (rank * 2), 0.0 );
+    auto elements0 = build_element_grid( 1, 1, 1, rank,                  rank * 2.0 );
+    auto elements1 = build_element_grid( 2, 3, 2, numNodes + (rank * 12), rank * 2.0 );
     CHECK( elements0.extent( 0 ) == 1 );
-    CHECK( elements1.extent( 0 ) == 2 );
+    CHECK( elements1.extent( 0 ) == 12 );
 
     auto combined = bvh::view< Element * >( "combined elements", elements0.size() + elements1.size() );
     CHECK( combined.extent( 0 ) == elements0.extent( 0 ) + elements1.extent( 0 ) );
@@ -630,15 +630,9 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
 
       auto narrowphase_filter = []( const Element& _e0, const Element& _e1 ) -> bool
       {
-        auto get_element_grid_id = []( const Element& _e ) -> int
-        {
-          const std::size_t numNodes = ::vt::theContext()->getNumNodes();
-          return _e.global_id() < numNodes ? 0 : 1;
-        };
         const bool areOverlapping = overlap( _e0.kdop(), _e1.kdop() );
         const bool areOrdered = _e0.global_id() < _e1.global_id();
-        const bool areOnDifferentGrids = get_element_grid_id( _e0 ) != get_element_grid_id( _e1 );
-        return areOverlapping && areOrdered && areOnDifferentGrids;
+        return areOverlapping && areOrdered;
       };
 
       REQUIRE(_a.object.id() == _b.object.id());
@@ -668,7 +662,7 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
   static_assert( std::is_default_constructible_v< detailed_narrowphase_result > );
   ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
     auto r = ::vt::theCollective()->global();
-    const std::vector< std::size_t > numEltsPerObj = { 3 };
+    const std::vector< std::size_t > numEltsPerObj = { 13 };
     r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results, numEltsPerObj );
   } );
 }
