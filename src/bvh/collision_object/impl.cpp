@@ -226,13 +226,6 @@ namespace bvh
         return;
       }
 
-      // Ignore self collisions (this will usually be caught by the above condition)
-      if ( this_obj->get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
-      {
-        logger.trace( "{}: skipping <{}, {}, {}, {}> -- self collision", this_obj->id(), idx[0], idx[1], idx[2] );
-        return;
-      }
-
       _narrow->this_proxy = _msg->this_obj;
       _narrow->other_proxy = _msg->other_obj;
 
@@ -290,14 +283,6 @@ namespace bvh
       if ( other_obj.get_impl().collision_idx != static_cast< std::size_t >( idx.y() ) )
       {
         logger.trace( "skipping <obj {}, patch {} | obj {}, patch {}> -- mismatched index",
-                      this_obj.id(), idx[0], idx[1], idx[2] );
-        return;
-      }
-
-      // Ignore self collisions (this will usually be caught by the above condition)
-      if ( this_obj.get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
-      {
-        logger.trace( "skipping <obj {}, patch {} | obj {}, patch {}> -- self collision",
                       this_obj.id(), idx[0], idx[1], idx[2] );
         return;
       }

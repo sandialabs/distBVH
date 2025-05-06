@@ -86,6 +86,12 @@ if (NOT BVH_DISABLE_TESTS)
     NAME "mpi_collision_object_narrowphase_three_objects_np_4"
     COMMAND mpirun -np 4 $<TARGET_FILE:BVHTests> "collision_object narrowphase three objects")
   add_test(
+    NAME "mpi_collision_object_narrowphase_self_contact_np_2"
+    COMMAND mpirun -np 2 $<TARGET_FILE:BVHTests> "collision_object narrowphase self contact")
+  add_test(
+    NAME "mpi_collision_object_narrowphase_self_contact_np_4"
+    COMMAND mpirun -np 4 $<TARGET_FILE:BVHTests> "collision_object narrowphase self contact")
+  add_test(
     NAME "mpi_collision_object_narrowphase_multi_iteration_np_2"
     COMMAND mpirun -np 2 $<TARGET_FILE:BVHTests> "collision_object narrowphase multi-iteration")
   add_test(
