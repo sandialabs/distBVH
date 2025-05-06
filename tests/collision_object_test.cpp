@@ -355,7 +355,7 @@ void verify_single_narrowphase(
 
   // Determine the expected number of collisions
   std::size_t expectedNumCollisions = 0;
-  if ( isSelfContact ) expectedNumCollisions = numNodes * (objSizes[ 0 ] - numNodes);
+  if ( isSelfContact ) expectedNumCollisions = objSizes[ 0 ] - numNodes;
   else {
     for ( std::size_t i = 0; i < numObjs; i++ ) {
       for ( std::size_t j = ( i + 1 ); j < numObjs; j++ ) {
@@ -384,9 +384,10 @@ void verify_single_narrowphase(
   // Generate the expected pairs -- all elements of all object(s) in contact
   std::vector< collision_pair_t > expectedPairs;
   if ( isSelfContact ) {
-    for (std::size_t i = 0; i < numNodes; i++ ) {
-      for ( std::size_t j = numNodes; j < objSizes[ 0 ]; j++ ) {
-        expectedPairs.push_back( { i, j } );
+    for ( std::size_t i = 0; i < numNodes; ++i ) {
+      std::size_t offset = numNodes + i * ( objSizes[ 0 ] / numNodes - 1 );
+      for ( std::size_t j = 0; j < ( objSizes[ 0 ] / numNodes - 1 ); ++j ) {
+        expectedPairs.push_back( { i, offset + j } );
       }
     }
   } else {
@@ -603,9 +604,9 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
     auto numNodes = ::vt::theContext()->getNumNodes();
 
     auto elements0 = build_element_grid( 1, 1, 1, rank,                  rank * 2.0 );
-    auto elements1 = build_element_grid( 2, 3, 2, numNodes + (rank * 12), rank * 2.0 );
+    auto elements1 = build_element_grid( 1, 2, 1, numNodes + (rank * 2), rank * 2.0 );
     CHECK( elements0.extent( 0 ) == 1 );
-    CHECK( elements1.extent( 0 ) == 12 );
+    CHECK( elements1.extent( 0 ) == 2 );
 
     auto combined = bvh::view< Element * >( "combined elements", elements0.size() + elements1.size() );
     CHECK( combined.extent( 0 ) == elements0.extent( 0 ) + elements1.extent( 0 ) );
@@ -662,7 +663,7 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
   static_assert( std::is_default_constructible_v< detailed_narrowphase_result > );
   ::vt::runInEpochCollective( "collision_object.narrowphase.verify", [&]() {
     auto r = ::vt::theCollective()->global();
-    const std::vector< std::size_t > numEltsPerObj = { 13 };
+    const std::vector< std::size_t > numEltsPerObj = { 3 };
     r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results, numEltsPerObj );
   } );
 }
