@@ -67,6 +67,8 @@ namespace bvh
     }
   } // namespace details
 
+  collision_object::collision_object() : m_impl{ std::make_unique< impl >() } {}
+
   collision_object::collision_object( collision_world &_world, std::size_t _idx, std::size_t _overdecomposition )
     : m_impl{ std::make_unique< impl >( _world, _idx ) }
   {
@@ -414,6 +416,86 @@ namespace bvh
     return m_impl->collision_idx;
   }
 
+  void
+  collision_object::set_collision_world(collision_world *world)
+  {
+    if (m_impl->world == nullptr) {
+      m_impl->world = world;
+    }
+  }
+
+  std::size_t &
+  collision_object::get_collision_idx()
+  {
+    return m_impl->collision_idx;
+  }
+
+  std::vector< collision_object_impl::broadphase_patch_type > &
+  collision_object::get_local_patches()
+  {
+    return m_impl->local_patches;
+  }
+
+  std::vector< collision_object_impl::broadphase_patch_type > &
+  collision_object::get_last_step_local_patches()
+  {
+    return m_impl->last_step_local_patches;
+  }
+
+  std::vector< std::size_t > &
+  collision_object::get_local_data_indices()
+  {
+    return m_impl->local_data_indices;
+  }
+
+  std::size_t &
+  collision_object::get_overdecomposition()
+  {
+    return m_impl->overdecomposition;
+  }
+
+  bool &
+  collision_object::get_build_trees()
+  {
+    return m_impl->build_trees;
+  }
+
+  collision_object_impl::broadphase_patch_collection_type::CollectionProxyType &
+  collision_object::get_broadphase_patch_collection_proxy()
+  {
+    return m_impl->broadphase_patch_collection_proxy;
+  }
+
+  collision_object_impl::narrowphase_patch_collection_type::CollectionProxyType &
+  collision_object::get_narrowphase_patch_collection_proxy()
+  {
+    return m_impl->narrowphase_patch_collection_proxy;
+  }
+
+  collision_object_impl::narrowphase_collection_type::CollectionProxyType &
+  collision_object::get_narrowphase_collection_proxy()
+  {
+    return m_impl->narrowphase_collection_proxy;
+  }
+
+  collision_object_impl::tree_type &
+  collision_object::get_tree()
+  {
+    return m_impl->tree;
+  }
+
+  std::vector< collision_object_impl::narrowphase_index > &
+  collision_object::get_active_narrowphase_indices()
+  {
+    return m_impl->active_narrowphase_indices;
+  }
+
+  std::unordered_set< std::size_t > &
+  collision_object::get_active_narrowphase_local_index()
+  {
+    return m_impl->active_narrowphase_local_index;
+  }
+
   view< bvh::entity_snapshot * > &
   collision_object::get_snapshots()
   {
@@ -442,6 +524,12 @@ namespace bvh
   collision_object::get_splits_h()
   {
     return m_impl->splits_h;
+  }
+
+  std::size_t &
+  collision_object::get_num_splits()
+  {
+    return m_impl->num_splits;
   }
 
   span< const patch<> >
@@ -481,6 +569,11 @@ namespace bvh
   collision_object::narrowphase_logger() const noexcept
   {
     return *m_impl->narrowphase_logger;
+  }
+
+  bool collision_object::operator==( const collision_object &other ) const
+  {
+    return *m_impl == *other.m_impl;
   }
 
 } // namespace bvh

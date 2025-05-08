@@ -38,6 +38,7 @@
 #include <memory>
 #include <vt/transport.h>
 #include <vt/trace/trace_lite.h>
+#include <checkpoint/checkpoint.h>
 
 namespace bvh
 {
@@ -148,5 +149,38 @@ namespace bvh
   collision_world::collision_object_narrowphase_logger() const
   {
     return m_impl->collision_object_narrowphase_logger;
+  }
+
+  std::unique_ptr< collision_world >
+  collision_world::deserialize(char *buffer)
+  {
+    auto world = checkpoint::deserialize< collision_world >(buffer);
+    for (auto &obj : world->m_impl->collision_objects) {
+      obj->set_collision_world(world.get());
+    }
+    return world;
+  }
+
+  std::vector< std::unique_ptr< collision_object > > &
+  collision_world::get_collision_objects()
+  {
+    return m_impl->collision_objects;
+  }
+
+  std::size_t &
+  collision_world::get_overdecomposition()
+  {
+    return m_impl->overdecomposition;
+  }
+
+  ::vt::EpochType &
+  collision_world::get_epoch()
+  {
+    return m_impl->epoch;
+  }
+
+  bool collision_world::operator==( const collision_world &other ) const
+  {
+    return *m_impl == *other.m_impl;
   }
 }
