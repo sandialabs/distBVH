@@ -100,7 +100,7 @@ namespace bvh
       std::size_t offset = 0;
       for ( std::size_t j = _begin; j < _end; ++j )
       {
-        debug_assert( offset + sizeof( T ) < max_size_bytes, "split index offset={} is out of bounds (local data size is {})",
+        debug_assert( offset + sizeof( T ) <= max_size_bytes, "split index offset={} is out of bounds (local data size is {})",
                       offset, max_size_bytes );
         const std::size_t user_index = _split_indices( j );
         debug_assert( user_index < m_host_user_data.extent( 0 ), "user index is out of bounds" );
