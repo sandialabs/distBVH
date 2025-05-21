@@ -50,17 +50,18 @@ namespace bvh
   template< typename T >
   struct broadphase_collision
   {
-    broadphase_collision(collision_object &_object,
-                         const patch<> &_meta,
-                         std::size_t _patch_id,
-                         span<const T> _elements)
-        : object(_object), meta( _meta ), patch_id(_patch_id), elements(_elements)
+    broadphase_collision( collision_object &_object, const patch<> &_meta, std::size_t _patch_id,
+                          bvh::host_view< T * > _elements )
+      : object( _object ),
+        meta( _meta ),
+        patch_id( _patch_id ),
+        elements( _elements )
     {}
 
     collision_object &object;
     patch<> meta;
     std::size_t patch_id;
-    span< const T > elements;
+    bvh::host_view< T * > elements;
   };
 
   class narrowphase_result
@@ -79,24 +80,32 @@ namespace bvh
 
     void append_data( void *_data, std::size_t _num_elements )
     {
+      std::size_t prev_size = m_data.extent( 0 );
+      std::size_t new_elements = _num_elements * m_stride;
       m_num_elements += _num_elements;
-      m_data.insert( m_data.end(),
-                    static_cast< unsigned char * >( _data ),
-                    static_cast< unsigned char * >( _data ) + _num_elements * m_stride );
+
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, m_num_elements );
+
+      auto back_of_m_data = Kokkos::subview( m_data, std::make_pair( prev_size, prev_size + new_elements ) );
+      auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), new_elements );
+      Kokkos::deep_copy( back_of_m_data, new_data );
     }
 
     void set_data( void *_data, std::size_t _num_elements )
     {
       m_num_elements = _num_elements;
-      m_data.resize( m_num_elements * m_stride );
-      std::memcpy( m_data.data(), _data, m_data.size() );
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, m_num_elements * m_stride );
+      auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), m_num_elements * m_stride );
+      Kokkos::deep_copy( m_data, new_data );
     }
 
     void *allocate( std::size_t _n )
     {
+      std::size_t orig_size = m_data.extent( 0 );
+      std::size_t bytes_to_add = _n * m_stride;
       m_num_elements += _n;
-      auto iter = m_data.insert( m_data.end(), _n * m_stride, 0x00 );
-      return &( *iter );
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, orig_size + bytes_to_add );
+      return static_cast< void * >( &m_data( orig_size ) );
     }
 
     void *at( std::size_t _i )
@@ -113,16 +122,16 @@ namespace bvh
 
     void reserve( std::size_t _n )
     {
-      m_data.reserve( _n * m_stride );
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, _n * m_stride );
     }
 
     std::size_t stride() const noexcept { return m_stride; }
-    const std::vector< unsigned char > &byte_buffer() const noexcept { return m_data; }
+    const view< std::byte * > &byte_buffer() const noexcept { return m_data; }
     std::size_t size() const noexcept { return m_num_elements; }
 
   private:
 
-    std::vector< unsigned char > m_data;
+    view< std::byte * > m_data;
     std::size_t m_stride;
     std::size_t m_num_elements;
   };
@@ -224,7 +233,7 @@ namespace bvh
     using index_type = IndexType;
     using value_type = std::pair< IndexType, IndexType >;
     using container_type = std::vector< value_type >;
-    
+
     using iterator = typename container_type::iterator;
     using const_iterator = typename container_type::const_iterator;
 
@@ -233,18 +242,18 @@ namespace bvh
     collision_query_result( iterator _b, iterator _e )
       : pairs{ _b, _e }
     {}
-    
+
     typename container_type::size_type size() const noexcept
     { return pairs.size(); }
-    
+
     iterator begin() { return pairs.begin(); }
     const_iterator begin() const { return pairs.begin(); }
     const_iterator cbegin() const { return pairs.cbegin(); }
-    
+
     iterator end() { return pairs.end(); }
     const_iterator end() const { return pairs.end(); }
     const_iterator cend() const { return pairs.cend(); }
-    
+
     container_type pairs;
   };
 
@@ -260,7 +269,7 @@ namespace bvh
       results.pairs.emplace_back( _left, _right );
     }
   };
-  
+
   namespace detail
   {
     template< typename TreeType, typename ResultsType >
@@ -273,9 +282,9 @@ namespace bvh
       {
         reserve_size += pc.first.entities.size() * pc.second.entities.size();
       }
-      
+
       ret.pairs.reserve( reserve_size );
-      
+
       for ( auto &&pc : _results )
       {
         for ( auto &&entity_i : pc.first.entities )
@@ -286,10 +295,10 @@ namespace bvh
           }
         }
       }
-      
+
       return ret;
     }
-    
+
     template< typename NodeType, typename LeftLeafs, typename RightLeafs, typename OutputIterator >
     void
     get_overlapping_indices( const NodeType *_left,
@@ -301,7 +310,7 @@ namespace bvh
       // Both nodes need to exist and overlap in order to continue traversal
       if ( !_left || !_right || !overlap( _left->kdop(), _right->kdop() ) )
         return;
-      
+
       if ( _left->is_leaf() )
       {
         // Both are leaves, add all patch indices
@@ -327,7 +336,7 @@ namespace bvh
         get_overlapping_indices< NodeType >( _left->right(), _right->right(), _left_leafs, _right_leafs, _iter );
       }
     };
-  
+
     template< typename NodeType, typename Leafs, typename OutputIterator >
     void
     get_self_colliding_indices( const NodeType *_node,
@@ -336,7 +345,7 @@ namespace bvh
     {
       if ( !_node )
         return;
-    
+
       if ( _node->is_leaf() )
       {
         // Add all combinations of pairs
@@ -356,17 +365,17 @@ namespace bvh
       }
     };
   }
-  
+
   template< typename TreeType >
   typename TreeType::collision_query_result_type
   self_collision_set( const TreeType &_tree )
   {
     typename TreeType::collision_query_result_type ret;
     detail::get_self_colliding_indices< typename TreeType::node_type >( _tree.root(), _tree.leafs(), std::back_inserter( ret.pairs ) );
-    
+
     return ret;
   }
-  
+
   template< typename TreeType >
   typename TreeType::collision_query_result_type
   potential_collision_set( const TreeType &_lhs, const TreeType &_rhs )
@@ -374,14 +383,14 @@ namespace bvh
     typename TreeType::collision_query_result_type ret;
     detail::get_overlapping_indices< typename TreeType::node_type >( _lhs.root(), _rhs.root(), _lhs.leafs(), _rhs.leafs(),
       std::back_inserter( ret.pairs ) );
-    
+
     return ret;
   }
 
 #if 0
   namespace detail
   {
-    
+
     template< typename TreeType, typename OutputIterator >
     void
     get_node_overlapping_indices( const typename TreeType::kdop_type &_kdop,
@@ -392,7 +401,7 @@ namespace bvh
     {
       if ( !_node || !overlap( _kdop, _node->kdop() ) )
         return;
-      
+
       if ( _node->is_leaf() )
       {
         for ( std::size_t i = _node->get_patch()[0]; i < _node->get_patch()[1]; ++i )
@@ -404,7 +413,7 @@ namespace bvh
         get_node_overlapping_indices< TreeType, OutputIterator >( _kdop, _local_index, _node->right(), _leafs, _iter );
       }
     }
-    
+
     template< typename TreeType, typename OutputIterator >
     void
     get_tree_overlapping_indices( const typename TreeType::kdop_type &_kdop,
