@@ -248,12 +248,12 @@ namespace bvh
 
     std::size_t id() const noexcept;
 
-    template< typename ResultType, typename F > void for_each_result( F &&_fun )
+    template< typename ResultType, typename F > void for_each_result( const F &_fun )
     {
-      for_each_result_impl( [&_fun]( const narrowphase_result &_res ) {
+      for_each_result_impl( [_fun]( const narrowphase_result &_res ) {
         for ( std::size_t i = 0; i < _res.size(); ++i )
         {
-          std::forward< F >( _fun )( *reinterpret_cast< const ResultType * >( _res.at( i ) ) );
+          std::invoke( _fun, *reinterpret_cast< const ResultType * >( _res.at( i ) ) );
         }
       } );
     }

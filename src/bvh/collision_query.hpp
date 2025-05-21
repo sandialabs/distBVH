@@ -40,6 +40,8 @@
 #include "util/span.hpp"
 #include "patch.hpp"
 
+#include "debug/assert.hpp"
+
 namespace bvh
 {
   template< typename LeftIndex, typename RightIndex >
@@ -69,63 +71,78 @@ namespace bvh
   public:
 
     narrowphase_result()
-        : m_stride( 0 ), m_num_elements( 0 )
-    {}
+        : narrowphase_result( 0, 0 ) {}
 
     explicit narrowphase_result( std::size_t _stride )
-        : m_stride( _stride ), m_num_elements( 0 )
-    {
+        : narrowphase_result( _stride, 0 ) {}
 
-    }
-
-    void append_data( void *_data, std::size_t _num_elements )
+    explicit narrowphase_result( std::size_t _stride, std::size_t _n_possible_elements )
+        : m_stride( _stride )
     {
-      m_num_elements += _num_elements;
-      m_data.insert( m_data.end(),
-                    static_cast< std::byte * >( _data ),
-                    static_cast< std::byte * >( _data ) + _num_elements * m_stride );
+      // Initialize with zero known elements, but allocate enough space for all possible collisions
+      m_num_elements = view< std::size_t >("m_num_elements");
+      Kokkos::deep_copy( m_num_elements, std::size_t( 0 ) );
+      m_data = view< std::byte *>( "m_data", _n_possible_elements * m_stride );
     }
 
     void set_data( void *_data, std::size_t _num_elements )
     {
-      m_num_elements = _num_elements;
-      m_data.resize( m_num_elements * m_stride );
-      std::memcpy( m_data.data(), _data, m_data.size() );
+      auto num_bytes = _num_elements * m_stride;
+      check_capacity( num_bytes , "set_data" );
+      Kokkos::atomic_add( &m_num_elements(), _num_elements );
+      auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), num_bytes );
+      Kokkos::deep_copy( m_data, new_data );
     }
 
     void *allocate( std::size_t _n )
     {
-      m_num_elements += _n;
-      auto iter = m_data.insert( m_data.end(), _n * m_stride, static_cast< std::byte >( 0x00 ) );
-      return &( *iter );
+      auto prev_num_elements = Kokkos::atomic_fetch_add( &m_num_elements(), _n );
+      auto last_element_idx = prev_num_elements * m_stride;
+      auto num_new_bytes = _n * m_stride;
+      check_capacity( last_element_idx + num_new_bytes, "allocate" );
+      return static_cast< void * >( &m_data( last_element_idx ) );
     }
 
     void *at( std::size_t _i )
     {
-      return &m_data[_i * m_stride];
+      return &m_data[ _i * m_stride ];
     }
 
     const void *at( std::size_t _i ) const
     {
-      return &m_data[_i * m_stride];
+      return &m_data[ _i * m_stride ];
     }
 
     void *data() { return m_data.data(); }
 
+    // CWS Note: Still necessary?
     void reserve( std::size_t _n )
     {
-      m_data.reserve( _n * m_stride );
+      std::cout << "Calling reserve with n: " << _n << std::endl;
     }
 
     std::size_t stride() const noexcept { return m_stride; }
-    const std::vector< std::byte > &byte_buffer() const noexcept { return m_data; }
-    std::size_t size() const noexcept { return m_num_elements; }
+    const view< std::byte * > &byte_buffer() const noexcept { return m_data; }
+    std::size_t size() const noexcept { return get_m_num_elements(); }
 
   private:
 
-    std::vector< std::byte > m_data;
+    std::size_t get_m_num_elements() const noexcept {
+      std::size_t num_elements;
+      Kokkos::deep_copy( num_elements, m_num_elements );
+      return num_elements;
+    }
+
+    void check_capacity( const std::size_t& requested_size, const std::string& label ) const noexcept {
+      debug_assert(
+        requested_size <= m_data.extent( 0 ),
+        label + ": Out of capacity"
+      );
+    }
+
     std::size_t m_stride;
-    std::size_t m_num_elements;
+    view< std::byte * > m_data;
+    view< std::size_t > m_num_elements;
   };
 
   template< typename T >
