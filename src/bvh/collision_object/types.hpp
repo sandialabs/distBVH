@@ -124,7 +124,7 @@ namespace bvh
         {
           std::size_t stride;
           // FIXME_CUDA: replace vector with a View (?)
-          std::vector< std::byte > bbuffer;
+          view< std::byte * > bbuffer;
 
           _s | stride | bbuffer;
 
@@ -133,7 +133,7 @@ namespace bvh
         } else {
           auto stride = result.stride();
           // FIXME_CUDA: replace vector with a View (?)
-          std::vector< std::byte > bbuffer = result.byte_buffer();
+          view< std::byte * > bbuffer = result.byte_buffer();
           _s | stride | bbuffer;
         }
       }

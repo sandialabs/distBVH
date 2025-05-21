@@ -80,24 +80,32 @@ namespace bvh
 
     void append_data( void *_data, std::size_t _num_elements )
     {
+      std::size_t prev_size = m_data.extent( 0 );
+      std::size_t new_elements = _num_elements * m_stride;
       m_num_elements += _num_elements;
-      m_data.insert( m_data.end(),
-                    static_cast< std::byte * >( _data ),
-                    static_cast< std::byte * >( _data ) + _num_elements * m_stride );
+
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, m_num_elements );
+
+      auto back_of_m_data = Kokkos::subview( m_data, std::make_pair( prev_size, prev_size + new_elements ) );
+      auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), new_elements );
+      Kokkos::deep_copy( back_of_m_data, new_data );
     }
 
     void set_data( void *_data, std::size_t _num_elements )
     {
       m_num_elements = _num_elements;
-      m_data.resize( m_num_elements * m_stride );
-      std::memcpy( m_data.data(), _data, m_data.size() );
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, m_num_elements * m_stride );
+      auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), m_num_elements * m_stride );
+      Kokkos::deep_copy( m_data, new_data );
     }
 
     void *allocate( std::size_t _n )
     {
+      std::size_t orig_size = m_data.extent( 0 );
+      std::size_t bytes_to_add = _n * m_stride;
       m_num_elements += _n;
-      auto iter = m_data.insert( m_data.end(), _n * m_stride, static_cast< std::byte >( 0x00 ) );
-      return &( *iter );
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, orig_size + bytes_to_add );
+      return static_cast< void * >( &m_data( orig_size ) );
     }
 
     void *at( std::size_t _i )
@@ -114,16 +122,16 @@ namespace bvh
 
     void reserve( std::size_t _n )
     {
-      m_data.reserve( _n * m_stride );
+      Kokkos::resize( Kokkos::WithoutInitializing, m_data, _n * m_stride );
     }
 
     std::size_t stride() const noexcept { return m_stride; }
-    const std::vector< std::byte > &byte_buffer() const noexcept { return m_data; }
+    const view< std::byte * > &byte_buffer() const noexcept { return m_data; }
     std::size_t size() const noexcept { return m_num_elements; }
 
   private:
 
-    std::vector< std::byte > m_data;
+    view< std::byte * > m_data;
     std::size_t m_stride;
     std::size_t m_num_elements;
   };
