@@ -33,13 +33,13 @@
 #ifndef INC_BVH_COLLISION_WORLD_HPP
 #define INC_BVH_COLLISION_WORLD_HPP
 
-#include <vector>
 #include <memory>
-#include "collision_query.hpp"
-#include "snapshot.hpp"
-#include "util/functional.hpp"
-#include "tree_build.hpp"
+
+#include <Kokkos_Core.hpp>
 #include <spdlog/spdlog.h>
+
+#include "collision_query.hpp"
+#include "tree_build.hpp"
 
 namespace bvh
 {
@@ -75,19 +75,25 @@ namespace bvh
     template< typename T >
     void set_narrowphase_functor( narrowphase_functor< T > _fun )
     {
-      set_narrowphase_functor_impl( [_fun]( collision_object &_first, const patch<> &_ma, std::size_t _first_patch_id, const void *_first_patch, std::size_t _first_patch_size,
-                                           collision_object &_second, const patch<> &_mb,  std::size_t _second_patch_id, const void *_second_patch, std::size_t _second_patch_size ) {
-        const T *first_elms = static_cast< const T * >( _first_patch );
-        const T *second_elms = static_cast< const T * >( _second_patch );
+      set_narrowphase_functor_impl( [_fun]( collision_object &_first, const patch<> &_ma, std::size_t _first_patch_id,
+                                            bvh::view< std::byte * > _first_patch, collision_object &_second,
+                                            const patch<> &_mb, std::size_t _second_patch_id,
+                                            bvh::view< std::byte * > _second_patch ) {
+        bvh::unmanaged_view< T * > u_first_elms( reinterpret_cast< T * >( _first_patch.data() ),
+                                                 _first_patch.size() / sizeof( T ) );
+        bvh::host_view< T * > first_elms( "first_elements", u_first_elms.size() );
+        Kokkos::deep_copy( first_elms, u_first_elms );
+
+        bvh::unmanaged_view< T * > u_second_elms( reinterpret_cast< T * >( _second_patch.data() ),
+                                                  _second_patch.size() / sizeof( T ) );
+        bvh::host_view< T * > second_elms( "second_elements", u_second_elms.size() );
+        Kokkos::deep_copy( second_elms, u_second_elms );
 
         assert( _first_patch_id == _ma.global_id() );
         assert( _second_patch_id == _mb.global_id() );
 
-        broadphase_collision< T > first{ _first, _ma, _first_patch_id,
-              span< const T >( first_elms, _first_patch_size / sizeof( T ) ) };
-
-        broadphase_collision< T > second{ _second, _mb, _second_patch_id,
-              span< const T >( second_elms, _second_patch_size / sizeof( T ) ) };
+        broadphase_collision< T > first{ _first, _ma, _first_patch_id, first_elms };
+        broadphase_collision< T > second{ _second, _mb, _second_patch_id, second_elms };
 
         return _fun( first, second );
       } );
@@ -106,8 +112,9 @@ namespace bvh
 
     friend impl &get_impl( collision_world &_world );
 
-    using internal_narrowphase_functor
-        = std::function< narrowphase_result_pair( collision_object &, const patch<> &, std::size_t, const void *, std::size_t, collision_object &, const patch<> &, std::size_t, const void *, std::size_t ) >;
+    using internal_narrowphase_functor = std::function< narrowphase_result_pair(
+      collision_object &, const patch<> &, std::size_t, bvh::view< std::byte * >, collision_object &,
+      const patch<> &, std::size_t, bvh::view< std::byte * > ) >;
     void set_narrowphase_functor_impl( internal_narrowphase_functor &&_fun );
 
     std::unique_ptr< impl > m_impl;
