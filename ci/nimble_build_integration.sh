@@ -5,6 +5,7 @@ mkdir -p /opt/src
 
 pushd /opt/src
 git clone https://github.com/NimbleSM/NimbleSM.git
+git checkout 382-preallocate-view-before-parallel-for
 mkdir -p /opt/builds/NimbleSM
 
 pushd /opt/builds/NimbleSM
