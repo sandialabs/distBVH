@@ -123,16 +123,14 @@ namespace bvh
         if ( _s.isUnpacking() )
         {
           std::size_t stride;
-          // FIXME_CUDA: replace vector with a View (?)
           view< std::byte * > bbuffer;
 
           _s | stride | bbuffer;
 
           result = narrowphase_result( stride );
-          result.set_data( bbuffer.data(), bbuffer.size() / stride );
+          result.set_data( bbuffer.data(), bbuffer.extent( 0 ) / stride );
         } else {
           auto stride = result.stride();
-          // FIXME_CUDA: replace vector with a View (?)
           view< std::byte * > bbuffer = result.byte_buffer();
           _s | stride | bbuffer;
         }

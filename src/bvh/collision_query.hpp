@@ -69,43 +69,48 @@ namespace bvh
   public:
 
     narrowphase_result()
-        : m_stride( 0 ), m_num_elements( 0 )
-    {}
+        : m_stride( 0 )
+    {
+    Kokkos::deep_copy(m_num_elements, std::size_t( 0 ) );
+    }
 
     explicit narrowphase_result( std::size_t _stride )
-        : m_stride( _stride ), m_num_elements( 0 )
+        : m_stride( _stride )
     {
+      Kokkos::deep_copy(m_num_elements, std::size_t( 0 ) );
+    }
 
+    explicit narrowphase_result( std::size_t _stride, std::size_t _n_possible_elements )
+        : m_stride( _stride )
+    {
+      Kokkos::deep_copy(m_num_elements, _n_possible_elements );
     }
 
     void append_data( void *_data, std::size_t _num_elements )
     {
-      std::size_t prev_size = m_data.extent( 0 );
+      std::size_t last_element_idx = get_m_num_elements() * m_stride;
       std::size_t new_elements = _num_elements * m_stride;
-      m_num_elements += _num_elements;
+      Kokkos::atomic_add(&m_num_elements(), _num_elements );
 
-      Kokkos::resize( Kokkos::WithoutInitializing, m_data, m_num_elements );
-
-      auto back_of_m_data = Kokkos::subview( m_data, std::make_pair( prev_size, prev_size + new_elements ) );
+      auto new_data_subview = Kokkos::subview( m_data, std::make_pair( last_element_idx, last_element_idx + new_elements ) );
       auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), new_elements );
-      Kokkos::deep_copy( back_of_m_data, new_data );
+
+      Kokkos::deep_copy( new_data_subview, new_data );
     }
 
     void set_data( void *_data, std::size_t _num_elements )
     {
-      m_num_elements = _num_elements;
-      Kokkos::resize( Kokkos::WithoutInitializing, m_data, m_num_elements * m_stride );
-      auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), m_num_elements * m_stride );
+      Kokkos::atomic_add(&m_num_elements(), _num_elements );
+      auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), _num_elements * m_stride );
       Kokkos::deep_copy( m_data, new_data );
     }
 
+    // CWS Note: Still necessary?
     void *allocate( std::size_t _n )
     {
-      std::size_t orig_size = m_data.extent( 0 );
-      std::size_t bytes_to_add = _n * m_stride;
-      m_num_elements += _n;
-      Kokkos::resize( Kokkos::WithoutInitializing, m_data, orig_size + bytes_to_add );
-      return static_cast< void * >( &m_data( orig_size ) );
+      std::size_t last_element_idx = get_m_num_elements();
+      Kokkos::atomic_add(&m_num_elements(), _n );
+      return static_cast< void * >( &m_data(last_element_idx) );
     }
 
     void *at( std::size_t _i )
@@ -120,20 +125,27 @@ namespace bvh
 
     void *data() { return m_data.data(); }
 
+    // CWS Note: Still necessary?
     void reserve( std::size_t _n )
     {
-      Kokkos::resize( Kokkos::WithoutInitializing, m_data, _n * m_stride );
+      std::cout << "Calling reserve with n: " << _n << std::endl;
     }
 
     std::size_t stride() const noexcept { return m_stride; }
     const view< std::byte * > &byte_buffer() const noexcept { return m_data; }
-    std::size_t size() const noexcept { return m_num_elements; }
+    std::size_t size() const noexcept { return get_m_num_elements(); }
 
   private:
 
-    view< std::byte * > m_data;
+    std::size_t get_m_num_elements() const noexcept {
+      std::size_t num_elements;
+      Kokkos::deep_copy(num_elements, m_num_elements);
+      return num_elements;
+    }
+
     std::size_t m_stride;
-    std::size_t m_num_elements;
+    view< std::byte * > m_data;
+    view< std::size_t > m_num_elements;
   };
 
   template< typename T >
