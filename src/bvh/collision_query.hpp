@@ -89,7 +89,7 @@ namespace bvh
     void set_data( void *_data, std::size_t _num_elements )
     {
       auto num_bytes = _num_elements * m_stride;
-      check_capacity( num_bytes );
+      BVH_ASSERT( num_bytes <= m_data.extent( 0 ) );
       Kokkos::atomic_add( &m_num_elements(), _num_elements );
       auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), num_bytes );
       auto dst = Kokkos::subview( m_data, std::pair< std::size_t, std::size_t >( 0, num_bytes ) );
@@ -101,7 +101,7 @@ namespace bvh
       auto prev_num_elements = Kokkos::atomic_fetch_add( &m_num_elements(), _n );
       auto last_element_idx = prev_num_elements * m_stride;
       auto num_new_bytes = _n * m_stride;
-      check_capacity( last_element_idx + num_new_bytes );
+      BVH_ASSERT( last_element_idx + num_new_bytes <= m_data.extent( 0 ) );
       return static_cast< void * >( &m_data( last_element_idx ) );
     }
 
@@ -126,10 +126,6 @@ namespace bvh
       std::size_t num_elements;
       Kokkos::deep_copy( num_elements, m_num_elements );
       return num_elements;
-    }
-
-    void check_capacity( const std::size_t& requested_size ) const noexcept {
-      BVH_ASSERT( requested_size <= m_data.extent( 0 ) );
     }
 
     std::size_t m_stride;
