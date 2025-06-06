@@ -38,6 +38,7 @@
 #include <cstring>
 #include "traits.hpp"
 #include "util/span.hpp"
+#include "util/assert.hpp"
 #include "patch.hpp"
 
 #include "debug/assert.hpp"
@@ -88,10 +89,11 @@ namespace bvh
     void set_data( void *_data, std::size_t _num_elements )
     {
       auto num_bytes = _num_elements * m_stride;
-      check_capacity( num_bytes , "set_data" );
+      check_capacity( num_bytes );
       Kokkos::atomic_add( &m_num_elements(), _num_elements );
       auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), num_bytes );
-      Kokkos::deep_copy( m_data, new_data );
+      auto dst = Kokkos::subview( m_data, std::pair< std::size_t, std::size_t >( 0, num_bytes ) );
+      Kokkos::deep_copy( dst, new_data );
     }
 
     void *allocate( std::size_t _n )
@@ -99,7 +101,7 @@ namespace bvh
       auto prev_num_elements = Kokkos::atomic_fetch_add( &m_num_elements(), _n );
       auto last_element_idx = prev_num_elements * m_stride;
       auto num_new_bytes = _n * m_stride;
-      check_capacity( last_element_idx + num_new_bytes, "allocate" );
+      check_capacity( last_element_idx + num_new_bytes );
       return static_cast< void * >( &m_data( last_element_idx ) );
     }
 
@@ -114,13 +116,6 @@ namespace bvh
     }
 
     void *data() { return m_data.data(); }
-
-    // CWS Note: Still necessary?
-    void reserve( std::size_t _n )
-    {
-      std::cout << "Calling reserve with n: " << _n << std::endl;
-    }
-
     std::size_t stride() const noexcept { return m_stride; }
     const view< std::byte * > &byte_buffer() const noexcept { return m_data; }
     std::size_t size() const noexcept { return get_m_num_elements(); }
@@ -133,11 +128,8 @@ namespace bvh
       return num_elements;
     }
 
-    void check_capacity( const std::size_t& requested_size, const std::string& label ) const noexcept {
-      debug_assert(
-        requested_size <= m_data.extent( 0 ),
-        label + ": Out of capacity"
-      );
+    void check_capacity( const std::size_t& requested_size ) const noexcept {
+      BVH_ASSERT( requested_size <= m_data.extent( 0 ) );
     }
 
     std::size_t m_stride;
@@ -281,6 +273,7 @@ namespace bvh
 
   namespace detail
   {
+    // CWS Note: Still necessary?
     template< typename TreeType, typename ResultsType >
     typename TreeType::collision_query_result_type
     unroll_results( const ResultsType &_results )

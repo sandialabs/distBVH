@@ -416,8 +416,10 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                   const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      auto numNodes = ::vt::theContext()->getNumNodes();
+      auto numPossibleCollisions = _b.elements.size() * numNodes;
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
       REQUIRE( _a.object.id() == 0 );
@@ -586,8 +588,10 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
       const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      auto numNodes = ::vt::theContext()->getNumNodes();
+      auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
       Kokkos::parallel_for( _b.elements.extent( 0 ), [=, &resa]( int i ) {
@@ -663,8 +667,10 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
       world.set_narrowphase_functor< Element >(
         []( const bvh::broadphase_collision< Element > &_a, const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
-        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
+        auto numNodes = ::vt::theContext()->getNumNodes();
+        auto numPossibleCollisions = _b.elements.size() * numNodes;
+        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
         auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
         auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
 
@@ -767,8 +773,10 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
       world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                     const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
-        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
+        auto numNodes = ::vt::theContext()->getNumNodes();
+        auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
         auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
         auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
 
