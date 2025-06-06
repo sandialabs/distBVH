@@ -123,15 +123,15 @@ namespace bvh
         if ( _s.isUnpacking() )
         {
           std::size_t stride;
-          std::vector< unsigned char > bbuffer;
+          view< std::byte * > bbuffer;
 
           _s | stride | bbuffer;
 
-          result = narrowphase_result( stride );
-          result.set_data( bbuffer.data(), bbuffer.size() / stride );
+          result = narrowphase_result( stride, bbuffer.extent( 0 ) );
+          result.set_data( bbuffer.data(), bbuffer.extent( 0 ) / stride );
         } else {
           auto stride = result.stride();
-          std::vector< unsigned char > bbuffer = result.byte_buffer();
+          view< std::byte * > bbuffer = result.byte_buffer();
           _s | stride | bbuffer;
         }
       }
@@ -193,7 +193,7 @@ namespace bvh
       {}
 
       patch<> patch_meta;
-      std::vector< unsigned char > bytes;
+      view< std::byte * > bytes;
       ::vt::NodeType origin_node = ::vt::uninitialized_destination;
       std::unordered_set< ::vt::NodeType > ghost_destinations;
       collision_object_proxy_type collision_object;
@@ -213,14 +213,22 @@ namespace bvh
       std::size_t data_size = 0;
 
       // Used with makeMessageSz, invalid otherwise!
-      unsigned char *user_data()
+      auto
+      user_data()
       {
-        return reinterpret_cast< unsigned char * >( this ) + sizeof( narrowphase_patch_msg );
+        return Kokkos::View< std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > >(
+          reinterpret_cast< std::byte * >( this ) + sizeof( narrowphase_patch_msg ),
+          data_size
+        );
       }
 
-      const unsigned char *user_data() const
+      Kokkos::View< const std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > >
+      user_data() const
       {
-        return reinterpret_cast< const unsigned char * >( this ) + sizeof( narrowphase_patch_msg );
+        return Kokkos::View< const std::byte *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > >(
+          reinterpret_cast< const std::byte * >( this ) + sizeof( narrowphase_patch_msg ),
+          data_size
+        );
       }
     };
 
@@ -281,7 +289,7 @@ namespace bvh
       vt_msg_serialize_required();
 
       patch<> meta;
-      std::vector< unsigned char > patch_data;
+      view< std::byte * > patch_data;
       ::vt::NodeType origin_node;
       vt_index idx;
 
