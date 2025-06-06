@@ -100,8 +100,7 @@ namespace bvh
     {
       auto prev_num_elements = Kokkos::atomic_fetch_add( &m_num_elements(), _n );
       auto last_element_idx = prev_num_elements * m_stride;
-      auto num_new_bytes = _n * m_stride;
-      BVH_ASSERT( last_element_idx + num_new_bytes <= m_data.extent( 0 ) );
+      BVH_ASSERT( _n * m_stride + last_element_idx <= m_data.extent( 0 ) );
       return static_cast< void * >( &m_data( last_element_idx ) );
     }
 
