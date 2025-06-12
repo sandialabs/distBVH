@@ -38,11 +38,9 @@
 #include "math/common.hpp"
 #include <algorithm>
 #include <cmath>
-#include "range.hpp"
+#include <Kokkos_Macros.hpp>
 #include "util/array.hpp"
 #include "util/attributes.hpp"
-#include "util/kokkos.hpp"
-#include "iterators/transform_iterator.hpp"
 #include <fmt/format.h>
 
 namespace bvh
@@ -56,8 +54,8 @@ namespace bvh
   template< typename T >
   struct extent
   {
-    T min = std::numeric_limits< T >::max(); ///< The lower bound of an extent.
-    T max = std::numeric_limits< T >::lowest(); ///< The upper bound of an extent.
+    T min = m::max_double;     ///< The lower bound of an extent.
+    T max = m::lowest_double;  ///< The upper bound of an extent.
 
     /**
      *  The length of an extent.
@@ -138,8 +136,8 @@ namespace bvh
     const extent< T > &_rhs ) noexcept
   {
     extent< T > ret;
-    ret.min = std::min( _lhs.min, _rhs.min );
-    ret.max = std::max( _lhs.max, _rhs.max );
+    ret.min = Kokkos::min( _lhs.min, _rhs.min );
+    ret.max = Kokkos::max( _lhs.max, _rhs.max );
 
     return ret;
   }
@@ -161,8 +159,8 @@ namespace bvh
     static constexpr int num_axis = k / 2;
     using arithmetic_type = T;
 
-    BVH_INLINE kdop_base() = default;
-    BVH_INLINE ~kdop_base() = default;
+    KOKKOS_DEFAULTED_FUNCTION kdop_base() = default;
+    KOKKOS_DEFAULTED_FUNCTION ~kdop_base() = default;
 
     /**
      *  Create a k-DOP by merging a range of k-DOPs.
@@ -171,8 +169,7 @@ namespace bvh
      *  \param _begin             the beginning k-DOP range
      *  \param _end               the end of the k-DOP range
      */
-    template< typename InputIterator >
-    kdop_base( InputIterator _begin, InputIterator _end )
+    template< typename InputIterator > kdop_base( InputIterator _begin, InputIterator _end )
     {
       if ( std::distance( _begin, _end ) == 0 )
         return;
@@ -207,8 +204,7 @@ namespace bvh
      *  \param _end               the end of the k-DOP range
      *  \return                   the constructed k-DOP.
      */
-    template< typename InputIterator >
-    static BVH_INLINE Derived from_kdops( InputIterator _begin, InputIterator _end )
+    template< typename InputIterator > static Derived from_kdops( InputIterator _begin, InputIterator _end )
     {
       return Derived( _begin, _end );
     }
@@ -255,8 +251,34 @@ namespace bvh
         for ( auto iter = beg; iter != _end; ++iter )
         {
           proj = Derived::project( *iter, normal_list[i] );
-          ret.extents[i].min = std::min( ret.extents[i].min, proj - _epsilon );
-          ret.extents[i].max = std::max( ret.extents[i].max, proj + _epsilon );
+          ret.extents[i].min = Kokkos::min( ret.extents[i].min, proj - _epsilon );
+          ret.extents[i].max = Kokkos::max( ret.extents[i].max, proj + _epsilon );
+        }
+      }
+
+      return ret;
+    }
+
+    template< size_t N >
+    static KOKKOS_INLINE_FUNCTION Derived from_vertices( const Kokkos::Array< m::vec3< T >, N > &_array, T _epsilon = T{ 0 } )
+    {
+      Derived ret;
+
+      if ( _array.empty() )
+        return ret;
+
+      const auto &normal_list = Derived::normals();
+      for ( int i = 0; i < num_axis; ++i )
+      {
+        auto proj = Derived::project( _array[0], normal_list[i] );
+        ret.extents[i].min = proj - _epsilon;
+        ret.extents[i].max = proj + _epsilon;
+
+        for ( size_t j = 1; j < N; ++j )
+        {
+          proj = Derived::project( _array[j], normal_list[i] );
+          ret.extents[i].min = Kokkos::min( ret.extents[i].min, proj - _epsilon );
+          ret.extents[i].max = Kokkos::max( ret.extents[i].max, proj + _epsilon );
         }
       }
 
@@ -270,8 +292,7 @@ namespace bvh
      *  \param _radius    the radius of the sphere.
      *  \return           the constructed k-DOP.
      */
-    template< typename Vec >
-    static Derived from_sphere( const Vec &_center, T _radius )
+    template< typename Vec > static KOKKOS_INLINE_FUNCTION Derived from_sphere( const Vec &_center, T _radius )
     {
       Derived ret;
 
@@ -294,7 +315,7 @@ namespace bvh
      *  \param _radius    the radius of the sphere.
      *  \return           the constructed \f$k\f$-DOP.
      */
-    static Derived from_sphere( T _x, T _y, T _z, T _radius )
+    static KOKKOS_INLINE_FUNCTION Derived from_sphere( T _x, T _y, T _z, T _radius )
     {
       return from_sphere( m::vec3< T >( _x, _y, _z ), _radius );
     }
@@ -305,7 +326,7 @@ namespace bvh
      *
      * \param _amount The amount to grow.
      */
-    void inflate( arithmetic_type _amount )
+    KOKKOS_INLINE_FUNCTION void inflate( arithmetic_type _amount )
     {
       for ( int i = 0; i < K / 2; ++i )
       {
@@ -353,12 +374,11 @@ namespace bvh
      */
     int longest_axis() const
     {
-      auto iter = std::max_element( extents.begin(), extents.end(),
-                                []( const extent< T > &_lhs, const extent< T > &_rhs ) {
-                                  return _lhs.length() < _rhs.length();
-                                });
+      auto iter = std::max_element(
+        extents.data(), extents.data() + K / 2,
+        []( const extent< T > &_lhs, const extent< T > &_rhs ) { return _lhs.length() < _rhs.length(); } );
 
-      return static_cast< int >( std::distance( extents.begin(), iter ) );
+      return static_cast< int >( std::distance( extents.data(), iter ) );
     }
 
     /**
@@ -374,7 +394,7 @@ namespace bvh
       // For each k/2 slab, find hyperplane equidistant to the extents of the slab.
       // For every combination of three planes, find the intersection. Take the average
       // of all intersection points to find the centroid.
-      std::array< T, num_axis > center_planes;
+      array< T, num_axis > center_planes;
       m::vec3< T > ret;
       const auto &normal_list = Derived::normals();
       for ( int i = 0; i < num_axis; ++i )
@@ -445,8 +465,8 @@ namespace bvh
       for ( int i = 0; i < K / 2; ++i )
       {
         auto projected = Derived::project( _point, normal_list[i] );
-        extents[i].min = std::min( extents[i].min, projected - _epsilon );
-        extents[i].max = std::max( extents[i].max, projected + _epsilon );
+        extents[i].min = Kokkos::min( extents[i].min, projected - _epsilon );
+        extents[i].max = Kokkos::max( extents[i].max, projected + _epsilon );
       }
     }
 
@@ -474,8 +494,8 @@ namespace bvh
     friend std::ostream &operator<<( std::ostream &os, const kdop_base &_kdop )
     {
       os << K << "-dop: ";
-      for ( auto &&e : _kdop.extents )
-        os << "[" << e.min << ", " << e.max << "] ";
+      for ( std::size_t i = 0; i < K / 2; ++i )
+        os << "[" << _kdop.extents[i].min << ", " << _kdop.extents[i].max << "] ";
 
       return os;
     }

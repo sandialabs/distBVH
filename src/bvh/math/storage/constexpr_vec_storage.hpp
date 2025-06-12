@@ -33,10 +33,9 @@
 #ifndef INC_BVH_MATH_STORAGE_CONSTEXPR_VEC_STORAGE_HPP
 #define INC_BVH_MATH_STORAGE_CONSTEXPR_VEC_STORAGE_HPP
 
-#include <type_traits>
-#include <utility>
+#include <Kokkos_Macros.hpp>
 
-#include "../compiler.hpp"
+#include "../../util/attributes.hpp"
 
 namespace bvh
 {
@@ -60,15 +59,15 @@ namespace bvh
             d[i] = _s;
         }
 
-        BVH_INLINE ~constexpr_vec_storage() = default;
+        KOKKOS_DEFAULTED_FUNCTION ~constexpr_vec_storage() = default;
 
-        constexpr BVH_INLINE constexpr_vec_storage( const constexpr_vec_storage & ) = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION constexpr_vec_storage( const constexpr_vec_storage & ) = default;
 
-        constexpr BVH_INLINE constexpr_vec_storage( constexpr_vec_storage && ) = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION constexpr_vec_storage( constexpr_vec_storage && ) = default;
 
-        constexpr BVH_INLINE constexpr_vec_storage &operator=( const constexpr_vec_storage & ) = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION constexpr_vec_storage &operator=( const constexpr_vec_storage & ) = default;
 
-        constexpr BVH_INLINE constexpr_vec_storage &operator=( constexpr_vec_storage && ) = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION constexpr_vec_storage &operator=( constexpr_vec_storage && ) = default;
 
         constexpr BVH_INLINE T &operator[]( int i )
         { return d[i]; }

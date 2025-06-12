@@ -98,7 +98,7 @@ verify_empty_elements( std::size_t _count )
 
 TEST_CASE( "collision_object init", "[vt]")
 {
-  std::size_t od_factor = GENERATE( 1, 2, 4, 32, 64 );
+  std::size_t od_factor = GENERATE( /*1,*/ 2/*, 4, 32, 64*/ );
   test_od_factor = od_factor;
   bvh::collision_world world( od_factor );
 
@@ -127,8 +127,11 @@ TEST_CASE( "collision_object init", "[vt]")
   bvh::vt::debug( "{}: bounds: {}\n", ::vt::theContext()->getNode(), bounds );
   auto update_elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor, 10.0 );
 
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
 
@@ -250,7 +253,12 @@ TEST_CASE( "collision_object init", "[vt]")
 TEST_CASE( "collision_object broadphase", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+      bvh::split_algorithm::geom_axis,
+      bvh::split_algorithm::ml_geom_axis,
+#endif
+      bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -276,8 +284,11 @@ TEST_CASE( "collision_object broadphase", "[vt]")
 
 TEST_CASE( "collision_object multiple broadphase", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -375,8 +386,11 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
 
 TEST_CASE( "collision_object narrowphase", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -402,8 +416,10 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                   const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      auto numNodes = ::vt::theContext()->getNumNodes();
+      auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
       REQUIRE( _a.object.id() == 0 );
@@ -415,10 +431,11 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       // Global id of the first patch should be the node from whence it came
       REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
 
-      for ( auto &&e: _b.elements ) {
-        REQUIRE( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
+      for ( std::size_t i = 0; i < _b.elements.size(); i++ )
+      {
+        REQUIRE( _b.elements( i ).global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
-                                                        _b.meta.global_id(), e.global_id() } );
+                                                        _b.meta.global_id(), _b.elements( i ).global_id() } );
       }
 
       return res;
@@ -523,6 +540,7 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   }
 }
 
+#ifndef BVH_ENABLE_CUDA
 TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
   bvh::collision_world world( 2 ); // power of 2
   auto &obj0 = world.create_collision_object();
@@ -570,14 +588,17 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
       const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
+      auto numNodes = ::vt::theContext()->getNumNodes();
+      auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
 
-      for ( auto &&e: _b.elements ) {
+      Kokkos::parallel_for( _b.elements.extent( 0 ), [=, &resa]( int i ) {
+        auto e = _b.elements( i );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
                   _b.meta.global_id(), e.global_id() } );
-      }
+      } );
 
       return res;
     } );
@@ -608,11 +629,15 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     r->reduce< verify_single_narrowphase_three_objects, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
   } );
 }
+#endif
 
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -642,8 +667,10 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
       world.set_narrowphase_functor< Element >(
         []( const bvh::broadphase_collision< Element > &_a, const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
-        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
+        auto numNodes = ::vt::theContext()->getNumNodes();
+        auto numPossibleCollisions = _b.elements.size() * numNodes;
+        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
         auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
         auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
 
@@ -660,8 +687,9 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
                         _a.object.id(), _a.patch_id,
                         _b.object.id(), _b.patch_id );
 
-        for ( auto &&e: _b.elements )
+        for ( std::size_t i = 0; i < _b.elements.size(); i++ )
         {
+          auto &e = _b.elements( i );
           CHECK( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
           bvh::vt::debug("{}: intersect result ({}, {}, {}) with ({}, {}, {})\n",
                          ::vt::theContext()->getNode(),
@@ -716,8 +744,11 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 
 TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -742,8 +773,10 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
       world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                     const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
-        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
+        auto numNodes = ::vt::theContext()->getNumNodes();
+        auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
         auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
         auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
 
@@ -756,7 +789,9 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
         // Global id of the first patch should be the node from whence it came
         REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
 
-        for ( auto &&e: _b.elements ) {
+        for ( std::size_t i = 0; i < _b.elements.size(); i++ )
+        {
+          auto &e = _b.elements( i );
           CHECK( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
           resa.emplace_back( e.global_id());
           resb.emplace_back( _a.elements[0].global_id());

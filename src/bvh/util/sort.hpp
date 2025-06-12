@@ -117,15 +117,14 @@ namespace bvh
     void step( view< T * > _hashes, view< IndexType * > _indices, std::uint32_t _shift )
     {
       const auto n = _hashes.extent( 0 );
-      auto range_policy = Kokkos::RangePolicy<>( 0, n );
-      Kokkos::parallel_for( range_policy, [this, _hashes, _shift] KOKKOS_FUNCTION ( int i ){
+      Kokkos::parallel_for( n, KOKKOS_CLASS_LAMBDA ( int i ){
         auto h = _hashes( i ) >> _shift;
         m_bits( i ) = ~h & 0x1;
         m_scan( i ) = m_bits( i );
       } );
 
       prefix_sum( m_scan );
-      Kokkos::parallel_for( range_policy, [this, _hashes, _indices, n] KOKKOS_FUNCTION ( int i ){
+      Kokkos::parallel_for( n, KOKKOS_CLASS_LAMBDA ( int i ){
         const auto total = m_scan( n - 1 ) + m_bits( n - 1 );
 
         auto t = i - m_scan( i ) + total;

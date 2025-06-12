@@ -78,15 +78,15 @@ namespace bvh
             : chunks{}
         {}
 
-        KOKKOS_INLINE_FUNCTION ~vec_storage() noexcept = default;
+        KOKKOS_DEFAULTED_FUNCTION ~vec_storage() noexcept = default;
 
-        constexpr KOKKOS_INLINE_FUNCTION vec_storage( const vec_storage & ) noexcept = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION vec_storage( const vec_storage & ) noexcept = default;
 
-        constexpr KOKKOS_INLINE_FUNCTION vec_storage( vec_storage && ) noexcept = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION vec_storage( vec_storage && ) noexcept = default;
 
-        constexpr KOKKOS_INLINE_FUNCTION vec_storage &operator=( const vec_storage & ) noexcept = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION vec_storage &operator=( const vec_storage & ) noexcept = default;
 
-        constexpr KOKKOS_INLINE_FUNCTION vec_storage &operator=( vec_storage && ) noexcept = default;
+        constexpr KOKKOS_DEFAULTED_FUNCTION vec_storage &operator=( vec_storage && ) noexcept = default;
 
         constexpr KOKKOS_INLINE_FUNCTION T &operator[]( int i ) noexcept
         { return reinterpret_cast< T * >( chunks )[i]; }

@@ -36,6 +36,7 @@
 #include <cstddef>
 #include <memory>
 #include <functional>
+#include <Kokkos_Core.hpp>
 #include <vt/context/context.h>
 #include <spdlog/spdlog.h>
 
@@ -45,12 +46,75 @@
 #include "split/axis.hpp"
 #include "tree_build.hpp"
 #include "types.hpp"
+#include "util/kokkos.hpp"
 #include "util/span.hpp"
 #include "split/cluster.hpp"
 
 namespace bvh
 {
   class collision_world;
+
+  namespace detail
+  {
+    class user_element_storage_base
+    {
+    public:
+
+      explicit user_element_storage_base( std::size_t _element_size ) : m_element_size( _element_size ) {}
+      virtual ~user_element_storage_base() = default;
+
+      std::size_t element_size() const noexcept { return m_element_size; }
+
+      virtual void scatter_to_byte_buffer( Kokkos::View< std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space,
+                                                         Kokkos::MemoryTraits< Kokkos::Unmanaged > >
+                                             _view,
+                                           std::size_t _begin, std::size_t _end,
+                                           Kokkos::View< std::size_t * >::host_mirror_type _split_indices )
+        = 0;
+
+    private:
+
+      std::size_t m_element_size = 0;
+    };
+  }  // namespace detail
+
+  template< typename T, typename... ViewProps >
+  class user_element_storage : public detail::user_element_storage_base
+  {
+  public:
+
+    user_element_storage( Kokkos::View< const T *, ViewProps... > _data )
+      : detail::user_element_storage_base( sizeof( T ) ), m_user_data( _data ),
+        m_host_user_data( Kokkos::create_mirror_view( Kokkos::WithoutInitializing, _data ) )
+    {}
+
+    void scatter_to_byte_buffer( Kokkos::View< std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space,
+                                                       Kokkos::MemoryTraits< Kokkos::Unmanaged > >
+                                           _view,
+                                         std::size_t _begin, std::size_t _end,
+                                         Kokkos::View< std::size_t * >::host_mirror_type _split_indices ) override
+    {
+      Kokkos::deep_copy( m_host_user_data, m_user_data );
+
+      const auto max_size_bytes = _view.span();
+      std::size_t offset = 0;
+      for ( std::size_t j = _begin; j < _end; ++j )
+      {
+        debug_assert( offset + sizeof( T ) <= max_size_bytes, "split index offset={} is out of bounds (local data size is {})",
+                      offset, max_size_bytes );
+        const std::size_t user_index = _split_indices( j );
+        debug_assert( user_index < m_host_user_data.extent( 0 ), "user index is out of bounds" );
+
+        std::memcpy( &_view[offset], &m_host_user_data[user_index], sizeof( T ) );
+        offset += sizeof( T );
+      }
+    }
+
+  private:
+
+    Kokkos::View< const T *, ViewProps... > m_user_data;
+    typename Kokkos::View< T * >::host_mirror_type m_host_user_data;
+  };
 
   class collision_object
   {
@@ -66,15 +130,25 @@ namespace bvh
 
     ~collision_object();
 
-    template< typename T, typename... ViewProp, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
+    template< typename T, typename... ViewProp,
+              typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
     void set_entity_data( Kokkos::View< T *, ViewProp... > _data_view, split_algorithm _algorithm )
     {
       set_entity_data( view< const T * >( std::move( _data_view ) ), _algorithm );
     }
 
-    template< typename T, typename... ViewProp, typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
+    template< typename T, typename... ViewProp,
+              typename = std::enable_if_t< !std::is_same< entity_snapshot, T >::value > >
     void set_entity_data( Kokkos::View< const T *, ViewProp... > _data, split_algorithm _algorithm )
     {
+#if BVH_ENABLE_CUDA
+      if ( split_algorithm::clustering != _algorithm )
+      {
+        logger().error(
+          "Only clustered splitting is supported on the GPU -- set algorithm to split_algorithm::cluster" );
+        std::abort();
+      }
+#endif
       switch ( _algorithm )
       {
         case split_algorithm::geom_axis: set_entity_data_geom_axis( _data ); break;
@@ -87,8 +161,7 @@ namespace bvh
     void init_broadphase() const;
 
     template< typename T, typename... ViewProp >
-    void
-    set_entity_data_clustering( Kokkos::View< const T *, ViewProp... > _data_view )
+    void set_entity_data_clustering( Kokkos::View< const T *, ViewProp... > _data_view )
     {
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_clustering_ );
@@ -97,25 +170,26 @@ namespace bvh
         const auto od_factor = this->overdecomposition_factor();
         const auto num_splits = od_factor - 1;
 
-        logger().debug( "obj={} clustering {} elements\n", id(), n  );
+        logger().debug( "obj={} clustering {} elements\n", id(), n );
         if ( n != m_clusterer.size() )
         {
           m_clusterer.resize( n );
         }
-        Kokkos::resize( Kokkos::WithoutInitializing, get_split_indices(), n );
-        Kokkos::resize( Kokkos::WithoutInitializing, get_split_indices_h(), n );
+        auto &ind = get_split_indices();
+        auto &ind_h = get_split_indices_h();
+        Kokkos::resize( Kokkos::WithoutInitializing, ind, n );
+        Kokkos::resize( Kokkos::WithoutInitializing, ind_h, n );
 
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits(), num_splits );
         Kokkos::resize( Kokkos::WithoutInitializing, get_splits_h(), num_splits );
 
         // Initialize our indices
-        Kokkos::parallel_for(
-          n, KOKKOS_LAMBDA( int _i ) { get_split_indices()( _i ) = _i; } );
+        Kokkos::parallel_for( n, KOKKOS_LAMBDA( int _i ) { ind( _i ) = _i; } );
 
-        m_clusterer( _data_view, get_split_indices(), get_splits() );
+        m_clusterer( _data_view, ind, get_splits() );
 
         Kokkos::deep_copy( get_splits_h(), get_splits() );
-        Kokkos::deep_copy( get_split_indices_h(), get_split_indices() );
+        Kokkos::deep_copy( ind_h, ind );
 
         // Now split_indices/_h is reordered according to the morton encoding
         // It provides a mapping from original indices to the new reordered elements that
@@ -126,7 +200,7 @@ namespace bvh
       // This assumes _data_view is on host for now... at the moment we can't do much better
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
-        set_entity_data_impl( _data_view.data(), sizeof( T ) );
+        set_entity_data_impl( std::make_unique< user_element_storage< T > >( _data_view ) );
       }
     }
 
@@ -141,12 +215,12 @@ namespace bvh
         ::vt::trace::TraceScopedEvent scope( this->bvh_splitting_ml_ );
         Kokkos::fence();  // snapshots need to finish updating
         split_permutations_ml< split::mean, axis::longest, bvh::entity_snapshot >( get_snapshots(), depth,
-                                                                                    &m_last_permutations );
+                                                                                   &m_last_permutations );
         initialize_split_indices( m_last_permutations );
       }
       {
         ::vt::trace::TraceScopedEvent scope( this->bvh_set_entity_data_impl_ );
-        set_entity_data_impl( _data.data(), sizeof( T ) );
+        set_entity_data_impl( std::make_unique< user_element_storage< T > >( _data ) );
       }
     }
 
@@ -161,8 +235,7 @@ namespace bvh
       set_entity_data_with_permutations( _data, m_last_permutations, std::move( scope ) );
     }
 
-    template< typename F >
-    void for_each_tree( F &&_fun )
+    template< typename F > void for_each_tree( F &&_fun )
     {
       for_each_tree_impl( tree_function{ std::forward< F >( _fun ) } );
     }
@@ -175,13 +248,12 @@ namespace bvh
 
     std::size_t id() const noexcept;
 
-    template< typename ResultType, typename F >
-    void for_each_result( F &&_fun )
+    template< typename ResultType, typename F > void for_each_result( const F &_fun )
     {
-      for_each_result_impl( [&_fun]( const narrowphase_result &_res ) {
+      for_each_result_impl( [_fun]( const narrowphase_result &_res ) {
         for ( std::size_t i = 0; i < _res.size(); ++i )
         {
-          std::forward< F >( _fun )( *reinterpret_cast< const ResultType * >( _res.at( i ) ) );
+          std::invoke( _fun, *reinterpret_cast< const ResultType * >( _res.at( i ) ) );
         }
       } );
     }
@@ -196,8 +268,10 @@ namespace bvh
 
     friend class collision_world;
 
-    template< typename T, typename...ViewProp >
-    void set_entity_data_with_permutations( Kokkos::View< const T *, ViewProp... > _data, const element_permutations &_splits, ::vt::trace::TraceScopedEvent &&_trace )
+    template< typename T, typename... ViewProp >
+    void set_entity_data_with_permutations( Kokkos::View< const T *, ViewProp... > _data,
+                                            const element_permutations &_splits,
+                                            ::vt::trace::TraceScopedEvent &&_trace )
     {
       always_assert( _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
 
@@ -205,7 +279,7 @@ namespace bvh
 
       update_snapshots( _data );
 
-      set_entity_data_impl( _data.data(), sizeof( T ) );
+      set_entity_data_impl( std::make_unique< user_element_storage< T > >( _data ) );
       std::move( _trace ).end();
     }
 
@@ -215,56 +289,58 @@ namespace bvh
     ///
     /// \param[in] _data
     /// \param[in] _element_size
-    void set_entity_data_impl( const void *_data, std::size_t _element_size );
+    void set_entity_data_impl( std::unique_ptr< detail::user_element_storage_base > &&_data );
 
     void set_all_narrow_patches();
     void set_active_narrow_patches();
-    void narrowphase(collision_object &_other );
+    void narrowphase( collision_object &_other );
 
     struct impl;
 
   public:
 
     impl &get_impl() noexcept { return *m_impl; }
+
     const impl &get_impl() const noexcept { return *m_impl; }
 
     template< typename T, typename... ViewProp >
-    void
-    update_snapshots( Kokkos::View< const T *, ViewProp... > _data_view )
+    void update_snapshots( Kokkos::View< const T *, ViewProp... > _data_view )
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
+      auto &snap_h = get_snapshots_h();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
-      auto &ind = get_split_indices_h();
-      Kokkos::parallel_for(
-        ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
-          snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
-        } );
+      Kokkos::resize( Kokkos::WithoutInitializing, snap_h, _data_view.extent( 0 ) );
+      auto &ind = get_split_indices();
+      Kokkos::parallel_for( ind.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
+        snap( ind( _idx ) ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
+      } );
     }
 
     template< typename T, typename... ViewProp >
-    void
-    update_snapshots_without_permuting( Kokkos::View< const T *, ViewProp... > _data_view )
+    void update_snapshots_without_permuting( Kokkos::View< const T *, ViewProp... > _data_view )
     {
       // No-op if the view is the same size, which is typically the case
       auto &snap = get_snapshots();
+      auto &snap_h = get_snapshots_h();
       Kokkos::resize( Kokkos::WithoutInitializing, snap, _data_view.extent( 0 ) );
-      Kokkos::parallel_for(
-        _data_view.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
-          snap( _idx ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
-        } );
+      Kokkos::resize( Kokkos::WithoutInitializing, snap_h, _data_view.extent( 0 ) );
+      Kokkos::parallel_for( _data_view.extent( 0 ), KOKKOS_LAMBDA( int _idx ) {
+        snap( _idx ) = make_snapshot( _data_view( _idx ), static_cast< std::size_t >( _idx ) );
+      } );
     }
 
   private:
 
     void for_each_tree_impl( tree_function &&_fun );
-    void for_each_result_impl( std::function< void(const narrowphase_result &) > &&_fun );
+    void for_each_result_impl( std::function< void( const narrowphase_result & ) > &&_fun );
 
     view< bvh::entity_snapshot * > &get_snapshots();
+    view< bvh::entity_snapshot * >::host_mirror_type &get_snapshots_h();
     view< std::size_t * > &get_split_indices();
+    view< std::size_t * >::host_mirror_type &get_split_indices_h();
     view< std::size_t * > &get_splits();
-    host_view< std::size_t * > &get_split_indices_h();
-    host_view< std::size_t * > &get_splits_h();
+    view< std::size_t * >::host_mirror_type &get_splits_h();
 
     void initialize_split_indices( const element_permutations &_splits );
 
@@ -279,8 +355,8 @@ namespace bvh
     ::vt::trace::UserEventIDType bvh_clustering_ = ::vt::trace::no_user_event_id;
     ::vt::trace::UserEventIDType bvh_build_trees_ = ::vt::trace::no_user_event_id;
 
-    morton_cluster m_clusterer; // lazily initialized
+    morton_cluster m_clusterer;  // lazily initialized
   };
-}
+}  // namespace bvh
 
 #endif  // INC_BVH_COLLISION_OBJECT_HPP

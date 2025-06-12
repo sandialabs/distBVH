@@ -55,11 +55,12 @@ namespace bvh
     {
       // Set data
       _coll->patch_meta = _msg->patch_meta;
-      _coll->bytes.resize( _msg->data_size );
+      Kokkos::resize( Kokkos::WithoutInitializing, _coll->bytes, _msg->data_size );
 
       // Guard the memcpy because it's UB even if size is zero if the pointers are invalid
-      if ( _msg->data_size > 0 )
-        std::memcpy( _coll->bytes.data(), _msg->user_data(), _msg->data_size );
+      Kokkos::deep_copy( _coll->bytes, _msg->user_data() );
+      //if ( _msg->data_size > 0 )
+      //  std::memcpy( _coll->bytes.data(), _msg->user_data(), _msg->data_size );
       _coll->origin_node = _msg->origin_node;
 
       // Reset cache destinations
@@ -105,7 +106,7 @@ namespace bvh
 
   collision_object::~collision_object() = default;
 
-  void collision_object::set_entity_data_impl( const void *_data, std::size_t _element_size )
+  void collision_object::set_entity_data_impl( std::unique_ptr< detail::user_element_storage_base > &&_data )
   {
     const int rank = static_cast< int >( ::vt::theContext()->getNode() );
     const auto od_factor = m_impl->overdecomposition;
@@ -123,21 +124,20 @@ namespace bvh
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
-    auto range_policy = Kokkos::RangePolicy< Kokkos::Serial >( 0, od_factor );
 
-    m_impl->m_entity_ptr = static_cast< const unsigned char * >( _data );
-    m_impl->m_entity_unit_size = _element_size;
+    m_impl->m_user_data = std::move( _data );
 
     // Ensure that our update of m_impl->snapshots has finished before reading it here
     Kokkos::fence();
 
     for ( std::size_t i = 0; i < od_factor; ++i ) {
       const auto sbeg = ( i == 0 ) ? 0 : m_impl->splits_h( i - 1 );
-      const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices_h.extent( 0 ) : m_impl->splits_h( i );
+      const auto send = ( i == m_impl->num_splits ) ? m_impl->split_indices.extent( 0 ) : m_impl->splits_h( i );
       const std::size_t nelements = send - sbeg;
       logger().debug( "creating broadphase patch for body {} size {} from offset {}", m_impl->collision_idx, nelements, sbeg );
+      Kokkos::deep_copy( m_impl->snapshots_h, m_impl->snapshots );
       m_impl->local_patches[i] = broadphase_patch_type(
-        i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots.data() + sbeg, nelements ) );
+        i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots_h.data() + sbeg, nelements ) );
     }
 
     BVH_ASSERT_ALWAYS( m_impl->local_patches.size() == od_factor,
@@ -420,10 +420,21 @@ namespace bvh
     return m_impl->snapshots;
   }
 
+  view< bvh::entity_snapshot * >::host_mirror_type &collision_object::get_snapshots_h()
+  {
+    return m_impl->snapshots_h;
+  }
+
   view< std::size_t * > &
   collision_object::get_split_indices()
   {
     return m_impl->split_indices;
+  }
+
+  view< std::size_t * >::host_mirror_type &
+  collision_object::get_split_indices_h()
+  {
+    return m_impl->split_indices_h;
   }
 
   view< std::size_t * > &
@@ -432,13 +443,7 @@ namespace bvh
     return m_impl->splits;
   }
 
-  host_view< std::size_t * > &
-  collision_object::get_split_indices_h()
-  {
-    return m_impl->split_indices_h;
-  }
-
-  host_view< std::size_t * > &
+  view< std::size_t * >::host_mirror_type &
   collision_object::get_splits_h()
   {
     return m_impl->splits_h;
@@ -461,8 +466,10 @@ namespace bvh
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > indices_view( _splits.indices.data(), _splits.indices.size() );
     Kokkos::View< const std::size_t *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > > splits_view( _splits.splits.data(), _splits.splits.size() );
 
-    Kokkos::deep_copy( m_impl->splits_h, splits_view );
-    Kokkos::deep_copy( m_impl->split_indices_h, indices_view );
+    Kokkos::deep_copy( m_impl->splits, splits_view );
+    Kokkos::deep_copy( m_impl->split_indices, indices_view );
+    Kokkos::deep_copy( m_impl->splits_h, m_impl->splits);
+    Kokkos::deep_copy( m_impl->split_indices_h, m_impl->split_indices);
   }
 
   spdlog::logger &

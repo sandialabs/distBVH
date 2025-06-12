@@ -40,9 +40,9 @@ namespace bvh
     : world( &_world ),
       collision_idx( _idx ),
       snapshots( fmt::format( "contact entity {} snapshot", _idx ), 0 ),
+      snapshots_h( fmt::format( "contact entity host {} snapshot", _idx ), 0 ),
       split_indices( fmt::format( "contact entity {} split indices", _idx ), 0 ),
       splits( fmt::format( "contact entity {} splits", _idx ), 0 ),
-      split_indices_h( fmt::format( "contact entity host {} split indices", _idx ), 0 ),
       splits_h( fmt::format( "contact entity host {} splits", _idx ), 0 ),
       logger( _world.collision_object_logger() ),
       broadphase_logger( _world.collision_object_broadphase_logger() ),
@@ -166,6 +166,8 @@ namespace bvh
 
     void collision_object_holder::set_result( result_msg *_msg )
     {
+      auto &logger = self->narrowphase_logger();
+      logger.info( "obj={} adding result of size {} to results vector of size {}", self->get_impl().collision_idx, _msg->result.size(), self->get_impl().local_results.size() );
       self->get_impl().local_results.emplace_back( _msg->result );
     }
 
@@ -321,16 +323,15 @@ namespace bvh
       {
         ::vt::trace::TraceScopedEvent scope( world_impl.bvh_impl_functor_ );
         auto r = world_impl.functor( this_obj, this_cache.meta, static_cast< std::size_t >( idx[0] ),
-                                     this_cache.patch_data.data(), this_cache.patch_data.size(), other_obj,
-                                     other_cache.meta, static_cast< std::size_t >( idx[2] ),
-                                     other_cache.patch_data.data(), other_cache.patch_data.size() );
+                                     this_cache.patch_data, other_obj, other_cache.meta,
+                                     static_cast< std::size_t >( idx[2] ), other_cache.patch_data );
 
         if ( r.a.size() > 0 )
         {
           auto lmsg = ::vt::makeMessage< result_msg >();
           lmsg->result = std::move( r.a );
-          logger.trace( "<send={}> result from <obj {}, patch {} | obj {}, patch {}>",
-                        left_node, this_obj.id(), idx[0], idx[1], idx[2] );
+          logger.trace( "<send={}> result from <obj {}, patch {} | obj {}, patch {} ({} hits)>",
+                        left_node, this_obj.id(), idx[0], idx[1], idx[2], lmsg->result.size() );
           this_obj.get_impl()
             .objgroup[left_node]
             .sendMsg< result_msg, &collision_object_impl::collision_object_holder::set_result >( lmsg );
