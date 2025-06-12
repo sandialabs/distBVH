@@ -127,7 +127,7 @@ namespace bvh
 
           _s | stride | bbuffer;
 
-          result = narrowphase_result( stride, bbuffer.extent( 0 ) );
+          result = narrowphase_result( stride, bbuffer.extent( 0 ) / stride );
           result.set_data( bbuffer.data(), bbuffer.extent( 0 ) / stride );
         } else {
           auto stride = result.stride();

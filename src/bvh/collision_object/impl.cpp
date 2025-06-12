@@ -166,6 +166,8 @@ namespace bvh
 
     void collision_object_holder::set_result( result_msg *_msg )
     {
+      auto &logger = self->narrowphase_logger();
+      logger.info( "obj={} adding result of size {} to results vector of size {}", self->get_impl().collision_idx, _msg->result.size(), self->get_impl().local_results.size() );
       self->get_impl().local_results.emplace_back( _msg->result );
     }
 
@@ -328,8 +330,8 @@ namespace bvh
         {
           auto lmsg = ::vt::makeMessage< result_msg >();
           lmsg->result = std::move( r.a );
-          logger.trace( "<send={}> result from <obj {}, patch {} | obj {}, patch {}>",
-                        left_node, this_obj.id(), idx[0], idx[1], idx[2] );
+          logger.trace( "<send={}> result from <obj {}, patch {} | obj {}, patch {} ({} hits)>",
+                        left_node, this_obj.id(), idx[0], idx[1], idx[2], lmsg->result.size() );
           this_obj.get_impl()
             .objgroup[left_node]
             .sendMsg< result_msg, &collision_object_impl::collision_object_holder::set_result >( lmsg );
