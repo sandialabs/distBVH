@@ -123,16 +123,18 @@ namespace bvh
         if ( _s.isUnpacking() )
         {
           std::size_t stride;
+          std::size_t num_elements;
           view< std::byte * > bbuffer;
 
-          _s | stride | bbuffer;
+          _s | stride | num_elements | bbuffer;
 
-          result = narrowphase_result( stride, bbuffer.extent( 0 ) / stride );
-          result.set_data( bbuffer.data(), bbuffer.extent( 0 ) / stride );
+          result = narrowphase_result( stride, num_elements );
+          result.set_data( bbuffer.data(), num_elements );
         } else {
           auto stride = result.stride();
+          auto num_elements = result.size();
           view< std::byte * > bbuffer = result.byte_buffer();
-          _s | stride | bbuffer;
+          _s | stride | num_elements | bbuffer;
         }
       }
     };

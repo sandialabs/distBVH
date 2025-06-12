@@ -417,7 +417,7 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
                                                   const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
       auto numNodes = ::vt::theContext()->getNumNodes();
-      auto numPossibleCollisions = _b.elements.size() * numNodes;
+      auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
       res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
       res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
       auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );

@@ -80,9 +80,8 @@ namespace bvh
     explicit narrowphase_result( std::size_t _stride, std::size_t _n_possible_elements )
         : m_stride( _stride )
     {
-      // Initialize with zero known elements, but allocate enough space for all possible collisions
       m_num_elements = view< std::size_t >("m_num_elements");
-      Kokkos::deep_copy( m_num_elements, std::size_t( 0 ) );
+      Kokkos::deep_copy( m_num_elements, 0 );
       m_data = view< std::byte *>( "m_data", _n_possible_elements * m_stride );
     }
 
@@ -90,10 +89,10 @@ namespace bvh
     {
       auto num_bytes = _num_elements * m_stride;
       BVH_ASSERT( num_bytes <= m_data.extent( 0 ) );
-      Kokkos::atomic_add( &m_num_elements(), _num_elements );
       auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), num_bytes );
       auto dst = Kokkos::subview( m_data, std::pair< std::size_t, std::size_t >( 0, num_bytes ) );
       Kokkos::deep_copy( dst, new_data );
+      Kokkos::atomic_add( &m_num_elements(), _num_elements );
     }
 
     void *allocate( std::size_t _n )
@@ -106,12 +105,12 @@ namespace bvh
 
     void *at( std::size_t _i )
     {
-      return &m_data[ _i * m_stride ];
+      return &m_data( _i * m_stride );
     }
 
     const void *at( std::size_t _i ) const
     {
-      return &m_data[ _i * m_stride ];
+      return &m_data( _i * m_stride );
     }
 
     void *data() { return m_data.data(); }
@@ -315,7 +314,7 @@ namespace bvh
         {
           for ( std::size_t i = _left->get_patch()[0]; i < _left->get_patch()[1]; ++i )
             for ( std::size_t j = _right->get_patch()[0]; j < _right->get_patch()[1]; ++j )
-              *_iter++ = std::make_pair( _right_leafs[i].global_id(), _left_leafs[j].global_id() );
+              *_iter++ = std::make_pair( _right_leafs[j].global_id(), _left_leafs[i].global_id() );
         } else {
           // Only left is leaf, recurse on right
           get_overlapping_indices< NodeType >( _left, _right->left(), _left_leafs, _right_leafs, _iter );
