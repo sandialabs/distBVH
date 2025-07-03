@@ -81,19 +81,15 @@ namespace bvh
                                             bvh::view< std::byte * > _second_patch ) {
         bvh::unmanaged_view< T * > u_first_elms( reinterpret_cast< T * >( _first_patch.data() ),
                                                  _first_patch.size() / sizeof( T ) );
-        bvh::host_view< T * > first_elms( "first_elements", u_first_elms.size() );
-        Kokkos::deep_copy( first_elms, u_first_elms );
 
         bvh::unmanaged_view< T * > u_second_elms( reinterpret_cast< T * >( _second_patch.data() ),
                                                   _second_patch.size() / sizeof( T ) );
-        bvh::host_view< T * > second_elms( "second_elements", u_second_elms.size() );
-        Kokkos::deep_copy( second_elms, u_second_elms );
 
-        assert( _first_patch_id == _ma.global_id() );
-        assert( _second_patch_id == _mb.global_id() );
+        BVH_ASSERT( _first_patch_id == _ma.global_id() );
+        BVH_ASSERT( _second_patch_id == _mb.global_id() );
 
-        broadphase_collision< T > first{ _first, _ma, _first_patch_id, first_elms };
-        broadphase_collision< T > second{ _second, _mb, _second_patch_id, second_elms };
+        broadphase_collision< T > first{ _first, _ma, _first_patch_id, u_first_elms };
+        broadphase_collision< T > second{ _second, _mb, _second_patch_id, u_second_elms };
 
         return _fun( first, second );
       } );

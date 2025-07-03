@@ -40,6 +40,7 @@
 #include <vt/context/context.h>
 #include <spdlog/spdlog.h>
 
+#include "collision_query.hpp"
 #include "snapshot.hpp"
 #include "split/split.hpp"
 #include "split/mean.hpp"
@@ -251,10 +252,19 @@ namespace bvh
     template< typename ResultType, typename F > void for_each_result( const F &_fun )
     {
       for_each_result_impl( [_fun]( const narrowphase_result &_res ) {
+        auto res = typed_narrowphase_result< ResultType >{ _res };
         for ( std::size_t i = 0; i < _res.size(); ++i )
         {
-          std::invoke( _fun, *reinterpret_cast< const ResultType * >( _res.at( i ) ) );
+          std::invoke( _fun, res[i] );
         }
+      } );
+    }
+
+    template< typename ResultType, typename F >
+    void with_narrowphase_results( const F &_fun )
+    {
+      for_each_result_impl( [_fun]( const narrowphase_result &_res ) {
+        std::invoke( _fun, typed_narrowphase_result< ResultType >{ _res } );
       } );
     }
 
@@ -334,6 +344,7 @@ namespace bvh
 
     void for_each_tree_impl( tree_function &&_fun );
     void for_each_result_impl( std::function< void( const narrowphase_result & ) > &&_fun );
+    narrowphase_result get_narrowphase_results_impl() const;
 
     view< bvh::entity_snapshot * > &get_snapshots();
     view< bvh::entity_snapshot * >::host_mirror_type &get_snapshots_h();

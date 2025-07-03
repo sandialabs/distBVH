@@ -236,13 +236,16 @@ namespace bvh
       return pending_send{ ::vt::no_epoch, [this, _fun, _idx](){
         if ( _idx == vt_index{ 0UL } )  // first index
         {
-          for ( auto &&res : m_impl->local_results )
-          {
-            _fun( res );
-          }
+          _fun( m_impl->local_results );
         }
       } };
     } );
+  }
+
+  narrowphase_result
+  collision_object::get_narrowphase_results_impl() const
+  {
+    return m_impl->local_results;
   }
 
   void

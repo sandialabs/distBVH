@@ -110,8 +110,8 @@ namespace bvh
 
       logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
                     collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
-      
-      
+
+
       m_user_data->scatter_to_byte_buffer( send_msg->user_data(), sbeg, send, split_indices_h );
 
       send_msg->origin_node = rank;
@@ -133,7 +133,7 @@ namespace bvh
     std::vector< std::size_t > local_data_indices;
 
     // Not a collection because we want this to always live on a per-node basis
-    std::vector< narrowphase_result > local_results;
+    narrowphase_result local_results;
 
     ::vt::messaging::CollectionChainSet< vt_index > chainset;
     std::size_t overdecomposition = 1;

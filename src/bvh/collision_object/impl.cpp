@@ -167,8 +167,8 @@ namespace bvh
     void collision_object_holder::set_result( result_msg *_msg )
     {
       auto &logger = self->narrowphase_logger();
-      logger.info( "obj={} adding result of size {} to results vector of size {}", self->get_impl().collision_idx, _msg->result.size(), self->get_impl().local_results.size() );
-      self->get_impl().local_results.emplace_back( _msg->result );
+      logger.info( "obj={} adding result of size {} to results of size {}", self->get_impl().collision_idx, _msg->result.size(), self->get_impl().local_results.size() );
+      self->get_impl().local_results.extend( _msg->result );
     }
 
     void activate_narrowphase( collision_object_impl::narrowphase_collection_type *_narrow, activate_narrowphase_msg *_msg )

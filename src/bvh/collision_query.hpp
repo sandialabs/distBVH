@@ -33,6 +33,7 @@
 #ifndef INC_BVH_COLLISION_QUERY_HPP
 #define INC_BVH_COLLISION_QUERY_HPP
 
+#include <decl/Kokkos_Declare_OPENMP.hpp>
 #include <vector>
 #include <functional>
 #include <cstring>
@@ -40,7 +41,6 @@
 #include "util/span.hpp"
 #include "util/assert.hpp"
 #include "patch.hpp"
-
 #include "debug/assert.hpp"
 
 namespace bvh
@@ -54,7 +54,7 @@ namespace bvh
   struct broadphase_collision
   {
     broadphase_collision( collision_object &_object, const patch<> &_meta, std::size_t _patch_id,
-                          bvh::host_view< T * > _elements )
+                          Kokkos::View< T * > _elements )
       : object( _object ),
         meta( _meta ),
         patch_id( _patch_id ),
@@ -64,7 +64,7 @@ namespace bvh
     collision_object &object;
     patch<> meta;
     std::size_t patch_id;
-    bvh::host_view< T * > elements;
+    Kokkos::View< T * > elements;
   };
 
   class narrowphase_result
@@ -78,16 +78,22 @@ namespace bvh
         : narrowphase_result( _stride, 0 ) {}
 
     explicit narrowphase_result( std::size_t _stride, std::size_t _n_possible_elements )
-        : m_stride( _stride )
+      : m_stride( "narrowphase_result.stride" ),
+        m_data( "narrowphase_result.data", _n_possible_elements * _stride ),
+        m_num_elements( "narrowphase_result.num_elements" )
     {
-      m_num_elements = view< std::size_t >("m_num_elements");
+      Kokkos::deep_copy( m_stride, _stride );
       Kokkos::deep_copy( m_num_elements, 0 );
-      m_data = view< std::byte *>( "m_data", _n_possible_elements * m_stride );
     }
+
+    KOKKOS_DEFAULTED_FUNCTION narrowphase_result( const narrowphase_result & ) = default;
+    KOKKOS_DEFAULTED_FUNCTION narrowphase_result &operator=( const narrowphase_result & ) = default;
 
     void set_data( void *_data, std::size_t _num_elements )
     {
-      auto num_bytes = _num_elements * m_stride;
+      std::size_t stride = 0;
+      Kokkos::deep_copy( stride, m_stride );
+      auto num_bytes = _num_elements * stride;
       BVH_ASSERT( num_bytes <= m_data.extent( 0 ) );
       auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), num_bytes );
       auto dst = Kokkos::subview( m_data, std::pair< std::size_t, std::size_t >( 0, num_bytes ) );
@@ -95,30 +101,43 @@ namespace bvh
       Kokkos::atomic_add( &m_num_elements(), _num_elements );
     }
 
-    void *allocate( std::size_t _n )
+    KOKKOS_INLINE_FUNCTION void *allocate( std::size_t _n )
     {
       auto prev_num_elements = Kokkos::atomic_fetch_add( &m_num_elements(), _n );
-      auto last_element_idx = prev_num_elements * m_stride;
-      BVH_ASSERT( _n * m_stride + last_element_idx <= m_data.extent( 0 ) );
+      auto last_element_idx = prev_num_elements * m_stride();
+      BVH_ASSERT( _n * m_stride() + last_element_idx <= m_data.extent( 0 ) );
       return static_cast< void * >( &m_data( last_element_idx ) );
     }
 
-    void *at( std::size_t _i )
-    {
-      return &m_data( _i * m_stride );
-    }
-
-    const void *at( std::size_t _i ) const
-    {
-      return &m_data( _i * m_stride );
-    }
-
-    void *data() { return m_data.data(); }
-    std::size_t stride() const noexcept { return m_stride; }
+    KOKKOS_INLINE_FUNCTION void *data() { return m_data.data(); }
+    std::size_t stride() const noexcept { return get_stride(); }
     const view< std::byte * > &byte_buffer() const noexcept { return m_data; }
+
     std::size_t size() const noexcept { return get_m_num_elements(); }
 
-  private:
+    void extend( const narrowphase_result &_other )
+    {
+      const auto this_stride = stride();
+      const auto other_stride = _other.stride();
+      always_assert( this_stride == 0 || this_stride == other_stride, fmt::format( "stride {} doesn't match {}", this_stride, other_stride ) );
+      const auto this_size = size();
+      const auto other_size = _other.size();
+      const auto old_size_bytes = m_data.size();
+      Kokkos::resize( m_data, _other.m_data.size() + m_data.size() );
+      Kokkos::deep_copy(
+        Kokkos::subview( m_data, Kokkos::make_pair( old_size_bytes, m_data.size() ) ),
+        _other.m_data );
+      Kokkos::deep_copy( m_num_elements, this_size + other_size );
+      if ( this_stride == 0 )
+        Kokkos::deep_copy( m_stride, other_stride );
+    }
+
+    void clear()
+    {
+      Kokkos::deep_copy( m_num_elements, 0 );
+    }
+
+  protected:
 
     std::size_t get_m_num_elements() const noexcept {
       std::size_t num_elements;
@@ -126,36 +145,61 @@ namespace bvh
       return num_elements;
     }
 
-    std::size_t m_stride;
+    std::size_t get_stride() const noexcept {
+      std::size_t stride;
+      Kokkos::deep_copy( stride, m_stride );
+      return stride;
+    }
+
+    view< std::size_t > m_stride;
     view< std::byte * > m_data;
     view< std::size_t > m_num_elements;
   };
 
   template< typename T >
-  class typed_narrowphase_result : public narrowphase_result
+  class typed_narrowphase_result : private narrowphase_result
   {
   public:
 
     explicit typed_narrowphase_result()
-        : narrowphase_result( sizeof( T ) )
+        : narrowphase_result( sizeof( T ) ), m_typed_view( reinterpret_cast< T * >( m_data.data() ), size() )
     {
     }
 
+    explicit typed_narrowphase_result( const narrowphase_result &_other )
+      : narrowphase_result( _other ), m_typed_view( reinterpret_cast< T * >( m_data.data() ), size() )
+    {}
+
+    explicit typed_narrowphase_result( std::size_t _size )
+      : narrowphase_result( sizeof( T ), _size ), m_typed_view( reinterpret_cast< T * >( m_data.data() ), size() )
+    {}
+
     template< typename... Args >
+    KOKKOS_INLINE_FUNCTION
     T &emplace_back( Args &&... _args )
     {
       return *( new ( allocate( 1 ) ) T( std::forward< Args >( _args )... ) );
     }
 
+    KOKKOS_INLINE_FUNCTION
     T &operator[]( std::size_t _i )
     {
-      return *static_cast< T * >( at( _i ) );
+      return m_typed_view[_i];
     }
 
+    KOKKOS_INLINE_FUNCTION
     const T &operator[]( std::size_t _i ) const
     {
-      return *static_cast< const T * >( at( _i ) );
+      return m_typed_view[_i];
     }
+
+    std::size_t size() const noexcept { return narrowphase_result::size(); }
+
+    Kokkos::View< T *, Kokkos::MemoryUnmanaged > elements() const noexcept { return m_typed_view; }
+
+  private:
+
+    Kokkos::View< T *, Kokkos::MemoryUnmanaged > m_typed_view;
   };
 
   struct narrowphase_result_pair
