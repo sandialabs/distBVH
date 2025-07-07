@@ -57,10 +57,7 @@ namespace bvh
       _coll->patch_meta = _msg->patch_meta;
       Kokkos::resize( Kokkos::WithoutInitializing, _coll->bytes, _msg->data_size );
 
-      // Guard the memcpy because it's UB even if size is zero if the pointers are invalid
       Kokkos::deep_copy( _coll->bytes, _msg->user_data() );
-      //if ( _msg->data_size > 0 )
-      //  std::memcpy( _coll->bytes.data(), _msg->user_data(), _msg->data_size );
       _coll->origin_node = _msg->origin_node;
 
       // Reset cache destinations

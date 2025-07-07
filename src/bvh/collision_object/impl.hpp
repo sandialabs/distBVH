@@ -61,7 +61,6 @@ namespace bvh
       _patch->patch_meta = _msg->patch_meta;
       Kokkos::resize( Kokkos::WithoutInitializing, _patch->bytes, _msg->data_size );
       Kokkos::deep_copy( _patch->bytes, _msg->user_data() );
-      //std::memcpy( _patch->bytes.data(), _msg->user_data(), _msg->data_size );
       _patch->origin_node = _msg->origin_node;
     }
   }
@@ -110,7 +109,6 @@ namespace bvh
 
       logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
                     collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
-
 
       m_user_data->scatter_to_byte_buffer( send_msg->user_data(), sbeg, send, split_indices_h );
 

@@ -224,7 +224,7 @@ namespace bvh
         );
       }
 
-      Kokkos::View< const std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > >
+      auto
       user_data() const
       {
         return Kokkos::View< const std::byte *, bvh::host_execution_space, Kokkos::MemoryTraits< Kokkos::Unmanaged > >(

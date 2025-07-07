@@ -169,7 +169,8 @@ namespace bvh
      *  \param _begin             the beginning k-DOP range
      *  \param _end               the end of the k-DOP range
      */
-    template< typename InputIterator > kdop_base( InputIterator _begin, InputIterator _end )
+    template< typename InputIterator >
+    kdop_base( InputIterator _begin, InputIterator _end )
     {
       if ( std::distance( _begin, _end ) == 0 )
         return;
@@ -204,7 +205,8 @@ namespace bvh
      *  \param _end               the end of the k-DOP range
      *  \return                   the constructed k-DOP.
      */
-    template< typename InputIterator > static Derived from_kdops( InputIterator _begin, InputIterator _end )
+    template< typename InputIterator >
+    static Derived from_kdops( InputIterator _begin, InputIterator _end )
     {
       return Derived( _begin, _end );
     }
@@ -260,7 +262,8 @@ namespace bvh
     }
 
     template< size_t N >
-    static KOKKOS_INLINE_FUNCTION Derived from_vertices( const Kokkos::Array< m::vec3< T >, N > &_array, T _epsilon = T{ 0 } )
+    static KOKKOS_INLINE_FUNCTION Derived
+    from_vertices( const Kokkos::Array< m::vec3< T >, N > &_array, T _epsilon = T{ 0 } )
     {
       Derived ret;
 
@@ -292,7 +295,8 @@ namespace bvh
      *  \param _radius    the radius of the sphere.
      *  \return           the constructed k-DOP.
      */
-    template< typename Vec > static KOKKOS_INLINE_FUNCTION Derived from_sphere( const Vec &_center, T _radius )
+    template< typename Vec >
+    static KOKKOS_INLINE_FUNCTION Derived from_sphere( const Vec &_center, T _radius )
     {
       Derived ret;
 
@@ -315,7 +319,8 @@ namespace bvh
      *  \param _radius    the radius of the sphere.
      *  \return           the constructed \f$k\f$-DOP.
      */
-    static KOKKOS_INLINE_FUNCTION Derived from_sphere( T _x, T _y, T _z, T _radius )
+    static KOKKOS_INLINE_FUNCTION
+    Derived from_sphere( T _x, T _y, T _z, T _radius )
     {
       return from_sphere( m::vec3< T >( _x, _y, _z ), _radius );
     }
@@ -326,7 +331,8 @@ namespace bvh
      *
      * \param _amount The amount to grow.
      */
-    KOKKOS_INLINE_FUNCTION void inflate( arithmetic_type _amount )
+    KOKKOS_INLINE_FUNCTION
+    void inflate( arithmetic_type _amount )
     {
       for ( int i = 0; i < K / 2; ++i )
       {
