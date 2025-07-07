@@ -98,7 +98,12 @@ namespace bvh
       auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), num_bytes );
       auto dst = Kokkos::subview( m_data, std::pair< std::size_t, std::size_t >( 0, num_bytes ) );
       Kokkos::deep_copy( dst, new_data );
-      Kokkos::atomic_add( &m_num_elements(), _num_elements );
+
+      // On host so we assume this does not need to be done atomically
+      std::size_t nelements = 0;
+      Kokkos::deep_copy( nelements, m_num_elements );
+      nelements += _num_elements;
+      Kokkos::deep_copy( m_num_elements, nelements );
     }
 
     KOKKOS_INLINE_FUNCTION void *allocate( std::size_t _n )
@@ -115,6 +120,13 @@ namespace bvh
 
     std::size_t size() const noexcept { return get_m_num_elements(); }
 
+    auto get_bounded_view() const noexcept
+    {
+      const size_t this_stride = stride();
+      const size_t this_size = size();
+      return Kokkos::subview( m_data, Kokkos::make_pair( size_t(0), this_stride * this_size ) );
+    }
+
     void extend( const narrowphase_result &_other )
     {
       const auto this_stride = stride();
@@ -122,11 +134,12 @@ namespace bvh
       always_assert( this_stride == 0 || this_stride == other_stride, fmt::format( "stride {} doesn't match {}", this_stride, other_stride ) );
       const auto this_size = size();
       const auto other_size = _other.size();
-      const auto old_size_bytes = m_data.size();
-      Kokkos::resize( m_data, _other.m_data.size() + m_data.size() );
+      const auto old_size_bytes = this_size * other_stride;
+      const auto new_size_bytes = ( this_size + other_size ) * other_stride;
+      Kokkos::resize( m_data, new_size_bytes );
       Kokkos::deep_copy(
         Kokkos::subview( m_data, Kokkos::make_pair( old_size_bytes, m_data.size() ) ),
-        _other.m_data );
+        _other.get_bounded_view() );
       Kokkos::deep_copy( m_num_elements, this_size + other_size );
       if ( this_stride == 0 )
         Kokkos::deep_copy( m_stride, other_stride );
