@@ -721,9 +721,6 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
                         _a.object.id(), _a.patch_id,
                         _b.object.id(), _b.patch_id );
 
-        const auto aid = _a.meta.global_id();
-        const auto bid = _b.meta.global_id();
-
         Kokkos::parallel_for( _b.elements.extent( 0 ), KOKKOS_LAMBDA( int _i ) {
           auto ra = resa;
           auto rb = resb;
