@@ -46,7 +46,7 @@ namespace bvh
   namespace detail
   {
     template< typename Entity >
-    auto convert_centroid( const Entity &_ent )
+    KOKKOS_INLINE_FUNCTION auto convert_centroid( const Entity &_ent )
     {
       using kdop_type = typename element_traits< Entity >::kdop_type;
       using arithmetic_type = typename kdop_type::arithmetic_type;
@@ -78,18 +78,18 @@ namespace bvh
         : m_global_id( _gid ), m_kdop( _bounds ), m_centroid( _centroid ), m_local_index( _local_index )
     {}
 
-    KOKKOS_INLINE_FUNCTION entity_snapshot() = default;
-    KOKKOS_INLINE_FUNCTION ~entity_snapshot() = default;
+    KOKKOS_DEFAULTED_FUNCTION entity_snapshot() = default;
+    KOKKOS_DEFAULTED_FUNCTION ~entity_snapshot() = default;
 
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot( const entity_snapshot & ) = default;
 
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot( entity_snapshot && ) = default;
 
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot &operator=( const entity_snapshot & ) = default;
-    KOKKOS_INLINE_FUNCTION
+    KOKKOS_DEFAULTED_FUNCTION
     entity_snapshot &operator=( entity_snapshot && ) = default;
 
     KOKKOS_INLINE_FUNCTION index_type global_id() const noexcept { return m_global_id; }

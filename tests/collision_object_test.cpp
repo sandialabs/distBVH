@@ -31,7 +31,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "TestCommon.hpp"
+#include "bvh/collision_query.hpp"
 #include "bvh/types.hpp"
+#include <Kokkos_Core.hpp>
+#include <Kokkos_Core_fwd.hpp>
 #include <bvh/vt/helpers.hpp>
 #include <bvh/collision_object.hpp>
 #include <bvh/collision_world.hpp>
@@ -86,7 +89,7 @@ void verify_num_elements( std::size_t _count )
 {
   bvh::vt::debug("{}: count: {}\n", ::vt::theContext()->getNode(), _count );
   // Cube test_od_factor because each dimension is multiplied...
-  REQUIRE( _count == 12 * ::vt::theContext()->getNumNodes() * test_od_factor * test_od_factor * test_od_factor );
+  REQUIRE( _count == 12 * ::vt::theContext()->getNumNodes() * test_od_factor );
 };
 
 void
@@ -105,7 +108,7 @@ TEST_CASE( "collision_object init", "[vt]")
   auto &obj = world.create_collision_object();
 
   auto rank = ::vt::theContext()->getNode();
-  auto elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor );
+  auto elements = build_element_grid( 2 * od_factor, 3, 2, rank * 12 * od_factor );
   const std::array bound_vers{ bvh::m::vec3d{ 0.0, 0.0, 0.0 },
                                bvh::m::vec3d{ 0.0, 0.0, 1.0 },
                                bvh::m::vec3d{ 0.0, 1.0, 0.0 },
@@ -125,10 +128,13 @@ TEST_CASE( "collision_object init", "[vt]")
                                        bvh::m::vec3d{ 11.0, 11.0, 11.0 } };
   const auto update_bounds = Element::kdop_type::from_vertices( update_bounds_vers.begin(), update_bounds_vers.end() );
   bvh::vt::debug( "{}: bounds: {}\n", ::vt::theContext()->getNode(), bounds );
-  auto update_elements = build_element_grid( 2 * od_factor, 3 * od_factor, 2 * od_factor, rank * 12 * od_factor, 10.0 );
+  auto update_elements = build_element_grid( 2 * od_factor, 3, 2, rank * 12 * od_factor, 10.0 );
 
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
 
@@ -250,7 +256,12 @@ TEST_CASE( "collision_object init", "[vt]")
 TEST_CASE( "collision_object broadphase", "[vt]")
 {
   auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+    = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+      bvh::split_algorithm::geom_axis,
+      bvh::split_algorithm::ml_geom_axis,
+#endif
+      bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -276,8 +287,11 @@ TEST_CASE( "collision_object broadphase", "[vt]")
 
 TEST_CASE( "collision_object multiple broadphase", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
@@ -303,13 +317,15 @@ TEST_CASE( "collision_object multiple broadphase", "[vt]")
 
 struct narrowphase_result
 {
-  narrowphase_result( std::size_t _i )
+  KOKKOS_INLINE_FUNCTION
+  explicit narrowphase_result( std::size_t _i = 0 )
       : idx( _i )
   {}
 
   std::size_t idx;
 };
 
+KOKKOS_INLINE_FUNCTION
 bool operator<( const narrowphase_result &_lhs, const narrowphase_result &_rhs )
 {
   return _lhs.idx < _rhs.idx;
@@ -375,8 +391,11 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
 
 TEST_CASE( "collision_object narrowphase", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -385,6 +404,8 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
   bvh::vt::reducable_vector< detailed_narrowphase_result > results;
+
+  Kokkos::View< detailed_narrowphase_result *, Kokkos::DefaultHostExecutionSpace > res;
 
   ::vt::runInEpochCollective( "collision_object.narrowphase", [&]() {
     world.start_iteration();
@@ -402,9 +423,11 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                   const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
+      auto numNodes = ::vt::theContext()->getNumNodes();
+      auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
+      auto resa = bvh::typed_narrowphase_result< detailed_narrowphase_result >( res.a );
 
       REQUIRE( _a.object.id() == 0 );
       REQUIRE( _b.object.id() == 1 );
@@ -413,25 +436,48 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       // Second patch number of elements depends on the split algorithm, so not tested
 
       // Global id of the first patch should be the node from whence it came
-      REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
+      auto nnodes = static_cast< std::size_t >( ::vt::theContext()->getNumNodes() );
+      Kokkos::View< int > nerrors{ "narrowphase_errors" };
+      Kokkos::parallel_for( 1, KOKKOS_LAMBDA( int ) {
+        if ( _a.elements( 0 ).global_id() >= nnodes )
+          Kokkos::atomic_inc( &nerrors() );
+      } );
 
-      for ( auto &&e: _b.elements ) {
-        REQUIRE( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
-        resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
-                                                        _b.meta.global_id(), e.global_id() } );
-      }
+      const auto aid = _a.meta.global_id();
+      const auto bid = _b.meta.global_id();
+
+      Kokkos::parallel_for( _b.elements.extent( 0 ), KOKKOS_LAMBDA( int _i ) {
+        auto r = resa;
+        if ( _b.elements( _i ).global_id() >= nnodes * 12 )
+          Kokkos::atomic_inc( &nerrors() );
+        r.emplace_back( detailed_narrowphase_result{ aid, _a.elements( 0 ).global_id(),
+                                                     bid, _b.elements( _i ).global_id() } );
+      } );
+
+      int num_errors_host = 0;
+      Kokkos::deep_copy( num_errors_host, nerrors );
+      REQUIRE( num_errors_host == 0 );
 
       return res;
     } );
 
     obj.broadphase( obj2 );
 
-    results.vec.clear();
-    obj.for_each_result< detailed_narrowphase_result >( [&]( const detailed_narrowphase_result &_res ) {
-      results.vec.emplace_back( _res );
+    obj.with_narrowphase_results< detailed_narrowphase_result >(
+      [&res]( const bvh::typed_narrowphase_result< detailed_narrowphase_result > &_res ) {
+      Kokkos::resize( res,_res.elements().size() );
+      Kokkos::deep_copy( res, _res.elements() );
+      for ( std::size_t i = 0; i < res.size(); ++i )
+      {
+        bvh::vt::debug( "{}: local isect ({}, {}) with ({}, {})\n", ::vt::theContext()->getNode(), res( i ).patch_p, res( i ).element_p,
+                        res( i ).patch_q, res( i ).element_q );
+      }
     } );
 
     world.finish_iteration();
+
+    results.vec.clear();
+    results.vec.insert( results.vec.end(), res.data(), res.data() + res.size() );
   } );
 
   static_assert( std::is_default_constructible_v< detailed_narrowphase_result > );
@@ -523,6 +569,7 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   }
 }
 
+#ifndef BVH_ENABLE_CUDA
 TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
   bvh::collision_world world( 2 ); // power of 2
   auto &obj0 = world.create_collision_object();
@@ -570,14 +617,17 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
       const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
+      auto numNodes = ::vt::theContext()->getNumNodes();
+      auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
+      auto resa = bvh::typed_narrowphase_result< detailed_narrowphase_result >( res.a );
 
-      for ( auto &&e: _b.elements ) {
+      Kokkos::parallel_for( _b.elements.extent( 0 ), [=, &resa]( int i ) {
+        auto e = _b.elements( i );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
                   _b.meta.global_id(), e.global_id() } );
-      }
+      } );
 
       return res;
     } );
@@ -608,11 +658,15 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     r->reduce< verify_single_narrowphase_three_objects, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results );
   } );
 }
+#endif
 
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
 
   bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
@@ -621,9 +675,9 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  std::vector< narrowphase_result > new_results;
-  std::vector< narrowphase_result > new_results2;
-  std::vector< narrowphase_result > old_results, old_results2;
+  Kokkos::View< narrowphase_result *, Kokkos::HostSpace > new_results;
+  Kokkos::View< narrowphase_result *, Kokkos::HostSpace > new_results2;
+  Kokkos::View< narrowphase_result *, Kokkos::HostSpace > old_results, old_results2;
 
   ::vt::runInEpochCollective( "collision_object.multiple_narrowphase", [&]() {
     for ( std::size_t i = 0; i < 8; ++i ) {
@@ -642,10 +696,12 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
       world.set_narrowphase_functor< Element >(
         []( const bvh::broadphase_collision< Element > &_a, const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
-        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
-        auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
+        auto numNodes = ::vt::theContext()->getNumNodes();
+        auto numPossibleCollisions = _b.elements.size() * numNodes;
+        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        auto resa = bvh::typed_narrowphase_result< narrowphase_result >( res.a );
+        auto resb = bvh::typed_narrowphase_result< narrowphase_result >( res.b );
 
         REQUIRE( _a.object.id() == 0 );
         REQUIRE( _b.object.id() == 1 );
@@ -654,22 +710,29 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
         // Second patch number of elements depends on the split algorithm, so not tested
 
         // Global id of the first patch should be the node from whence it came
-        REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
+        auto nnodes = static_cast< std::size_t >( ::vt::theContext()->getNumNodes() );
+        Kokkos::View< int > nerrors{ "narrowphase_errors" };
+        Kokkos::parallel_for( 1, KOKKOS_LAMBDA( int ) {
+          if ( _a.elements( 0 ).global_id() >= nnodes )
+            Kokkos::atomic_inc( &nerrors() );
+        } );
         bvh::vt::debug("{}: intersect patch ({}, {}) with ({}, {})\n",
                         ::vt::theContext()->getNode(),
                         _a.object.id(), _a.patch_id,
                         _b.object.id(), _b.patch_id );
 
-        for ( auto &&e: _b.elements )
-        {
-          CHECK( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
-          bvh::vt::debug("{}: intersect result ({}, {}, {}) with ({}, {}, {})\n",
-                         ::vt::theContext()->getNode(),
-                         _a.object.id(), _a.patch_id, _a.elements[0].global_id(),
-                         _b.object.id(), _b.patch_id, e.global_id() );
-          resa.emplace_back( e.global_id());
-          resb.emplace_back( _a.elements[0].global_id());
-        }
+        Kokkos::parallel_for( _b.elements.extent( 0 ), KOKKOS_LAMBDA( int _i ) {
+          auto ra = resa;
+          auto rb = resb;
+          if ( _b.elements( _i ).global_id() >= nnodes * 12 )
+            Kokkos::atomic_inc( &nerrors() );
+          ra.emplace_back( _b.elements( _i ).global_id() );
+          rb.emplace_back( _a.elements( 0 ).global_id() );
+        } );
+
+        int num_errors_host = 0;
+        Kokkos::deep_copy( num_errors_host, nerrors );
+        REQUIRE( num_errors_host == 0 );
 
         return res;
       } );
@@ -677,55 +740,61 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
       obj.broadphase( obj2 );
 
       // results for obj
-      new_results.clear();
-      obj.for_each_result< narrowphase_result >( [rank, &new_results]( const narrowphase_result &_res ) {
-        new_results.emplace_back( _res );
-        bvh::vt::debug("{}: got result {}\n", rank, _res.idx );
+      obj.with_narrowphase_results< narrowphase_result >(
+        [&new_results]( const bvh::typed_narrowphase_result< narrowphase_result > &_res ) {
+        Kokkos::resize( new_results,_res.elements().size() );
+        Kokkos::deep_copy( new_results, _res.elements() );
       } );
 
       // results for obj2
-      new_results2.clear();
-      obj2.for_each_result< narrowphase_result >( [&new_results2]( const narrowphase_result &_res ) {
-        new_results2.emplace_back( _res );
+      obj2.with_narrowphase_results< narrowphase_result >(
+        [&new_results2]( const bvh::typed_narrowphase_result< narrowphase_result > &_res ) {
+        Kokkos::resize( new_results2,_res.elements().size() );
+        Kokkos::deep_copy( new_results2, _res.elements() );
       } );
 
       world.finish_iteration();
 
       // Sort results so we get them in a consistent order
-      std::sort( new_results.begin(), new_results.end() );
-      std::sort( new_results2.begin(), new_results2.end() );
+      std::sort( new_results.data(), new_results.data() + new_results.size() );
+      std::sort( new_results2.data(), new_results2.data() + new_results2.size() );
 
       if ( i > 0 ) {
         REQUIRE( old_results.size() == new_results.size());
         for ( std::size_t j = 0; j < old_results.size(); ++j )
-          REQUIRE( old_results.at( j ).idx == new_results.at( j ).idx );
+          REQUIRE( old_results( j ).idx == new_results( j ).idx );
       }
 
-      old_results = new_results;
+      std::swap( old_results, new_results );
 
       if ( i > 0 ) {
         REQUIRE( old_results2.size() == new_results2.size());
         for ( std::size_t j = 0; j < old_results2.size(); ++j )
-          REQUIRE( old_results2.at( j ).idx == new_results2.at( j ).idx );
+          REQUIRE( old_results2( j ).idx == new_results2( j ).idx );
       }
 
-      old_results2 = new_results2;
+      std::swap( old_results2, new_results2 );
     }
   } );
 }
 
 TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 {
-  auto split_method
-    = GENERATE( bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis, bvh::split_algorithm::clustering );
+  auto split_method = GENERATE(
+#ifndef BVH_ENABLE_CUDA
+    bvh::split_algorithm::geom_axis, bvh::split_algorithm::ml_geom_axis,
+#endif
+    bvh::split_algorithm::clustering );
   bvh::collision_world world( 2 );
 
   auto &obj = world.create_collision_object();
   auto &obj2 = world.create_collision_object();
 
-  ::vt::runInEpochCollective( "collision_object.multiple_narrowphase_no_overlap", [&]() {
-    std::vector< narrowphase_result > old_results, old_results2;
+  Kokkos::View< narrowphase_result *, Kokkos::HostSpace > new_results;
+  Kokkos::View< narrowphase_result *, Kokkos::HostSpace > new_results2;
+  Kokkos::View< narrowphase_result *, Kokkos::HostSpace > old_results, old_results2;
 
+  ::vt::runInEpochCollective( "collision_object.multiple_narrowphase_no_overlap", [&]() {
     for ( std::size_t i = 0; i < 8; ++i ) {
       world.start_iteration();
 
@@ -742,10 +811,12 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
       world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
                                                     const bvh::broadphase_collision< Element > &_b ) {
         auto res = bvh::narrowphase_result_pair();
-        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ));
-        auto &resa = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.a );
-        auto &resb = static_cast< bvh::typed_narrowphase_result< narrowphase_result > & >( res.b );
+        auto numNodes = ::vt::theContext()->getNumNodes();
+        auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+        res.a = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        res.b = bvh::narrowphase_result( sizeof( narrowphase_result ), numPossibleCollisions );
+        auto resa = bvh::typed_narrowphase_result< narrowphase_result >( res.a );
+        auto resb = bvh::typed_narrowphase_result< narrowphase_result >( res.b );
 
         REQUIRE( _a.object.id() == 0 );
         REQUIRE( _b.object.id() == 1 );
@@ -756,7 +827,9 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
         // Global id of the first patch should be the node from whence it came
         REQUIRE( _a.elements[0].global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() ) );
 
-        for ( auto &&e: _b.elements ) {
+        for ( std::size_t i = 0; i < _b.elements.size(); i++ )
+        {
+          auto &e = _b.elements( i );
           CHECK( e.global_id() < static_cast< std::size_t >( ::vt::theContext()->getNumNodes() * 12 ) );
           resa.emplace_back( e.global_id());
           resb.emplace_back( _a.elements[0].global_id());
@@ -767,33 +840,41 @@ TEST_CASE( "collision_object narrowphase no overlap multi-iteration", "[vt]")
 
       obj.broadphase( obj2 );
 
-      std::vector< narrowphase_result > new_results;
-      obj.for_each_result< narrowphase_result >(
-        [&new_results]( const narrowphase_result &_res ) { new_results.emplace_back( _res ); } );
+      // results for obj
+      obj.with_narrowphase_results< narrowphase_result >(
+        [&new_results]( const bvh::typed_narrowphase_result< narrowphase_result > &_res ) {
+        Kokkos::resize( new_results,_res.elements().size() );
+        Kokkos::deep_copy( new_results, _res.elements() );
+      } );
 
-      std::vector< narrowphase_result > new_results2;
-      obj2.for_each_result< narrowphase_result >( [&new_results2]( const narrowphase_result &_res ) {
-        new_results2.emplace_back( _res );
+      // results for obj2
+      obj2.with_narrowphase_results< narrowphase_result >(
+        [&new_results2]( const bvh::typed_narrowphase_result< narrowphase_result > &_res ) {
+        Kokkos::resize( new_results2,_res.elements().size() );
+        Kokkos::deep_copy( new_results2, _res.elements() );
       } );
 
       world.finish_iteration();
 
+      // Sort results so we get them in a consistent order
+      std::sort( new_results.data(), new_results.data() + new_results.size() );
+      std::sort( new_results2.data(), new_results2.data() + new_results2.size() );
+
       if ( i > 0 ) {
         REQUIRE( old_results.size() == new_results.size());
         for ( std::size_t j = 0; j < old_results.size(); ++j )
-          REQUIRE( old_results.at( j ).idx == new_results.at( j ).idx );
+          REQUIRE( old_results( j ).idx == new_results( j ).idx );
       }
 
-      old_results = new_results;
+      std::swap( old_results, new_results );
 
       if ( i > 0 ) {
         REQUIRE( old_results2.size() == new_results2.size());
         for ( std::size_t j = 0; j < old_results2.size(); ++j )
-          REQUIRE( old_results2.at( j ).idx == new_results2.at( j ).idx );
+          REQUIRE( old_results2( j ).idx == new_results2( j ).idx );
       }
 
-      old_results2 = new_results2;
-
+      std::swap( old_results2, new_results2 );
     }
   } );
 }

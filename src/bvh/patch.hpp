@@ -84,9 +84,11 @@ namespace bvh
       m_size = _span.size();
     }
 
-    index_type global_id() const noexcept { return m_global_id; }
-    kdop_type kdop() const noexcept { return m_kdop; }
-    m::vec3< float_type > centroid() const noexcept { return m_centroid; }
+    KOKKOS_INLINE_FUNCTION index_type global_id() const noexcept { return m_global_id; }
+
+    KOKKOS_INLINE_FUNCTION kdop_type kdop() const noexcept { return m_kdop; }
+
+    KOKKOS_INLINE_FUNCTION m::vec3< float_type > centroid() const noexcept { return m_centroid; }
 
     bool empty() const noexcept { return m_size == 0; }
     size_type size() const noexcept { return m_size; }
@@ -122,23 +124,17 @@ namespace bvh
     m::vec3< float_type > m_centroid = m::vec3< float_type >::zeros();
   };
 
-  template< typename KDop >
-  decltype(auto)
-  get_entity_kdop( const patch< KDop > &_patch )
+  template< typename KDop > KOKKOS_INLINE_FUNCTION decltype( auto ) get_entity_kdop( const patch< KDop > &_patch )
   {
     return _patch.kdop();
   }
 
-  template< typename KDop >
-  decltype(auto)
-  get_entity_global_id( const patch< KDop > &_patch )
+  template< typename KDop > KOKKOS_INLINE_FUNCTION decltype( auto ) get_entity_global_id( const patch< KDop > &_patch )
   {
     return _patch.global_id();
   }
 
-  template< typename KDop >
-  decltype(auto)
-  get_entity_centroid( const patch< KDop > &_patch )
+  template< typename KDop > KOKKOS_INLINE_FUNCTION decltype( auto ) get_entity_centroid( const patch< KDop > &_patch )
   {
     return _patch.centroid();
   }

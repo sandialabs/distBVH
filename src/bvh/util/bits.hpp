@@ -55,8 +55,9 @@ namespace bvh
 #endif
     return t;
   }
+
   template< typename T, unsigned char V >
-  T fill()
+  KOKKOS_INLINE_FUNCTION T fill()
   {
 #ifdef __GNUC__
     T t;
@@ -86,9 +87,9 @@ namespace bvh
   }
 
   template < typename T >
-  inline T clz( T _val )
+  KOKKOS_INLINE_FUNCTION T clz( T _val )
   {
-    return Kokkos::countl_zero( _val );
+    return Kokkos::Experimental::countl_zero_builtin( _val );
   }
 
   inline int bsr( unsigned long _val )
