@@ -93,17 +93,16 @@ namespace bvh
     {
       std::size_t stride = 0;
       Kokkos::deep_copy( stride, m_stride );
-      auto num_bytes = _num_elements * stride;
-      BVH_ASSERT( num_bytes <= m_data.extent( 0 ) );
+      const auto num_bytes = _num_elements * stride;
       auto new_data = view< std::byte * >( static_cast< std::byte * >( _data ), num_bytes );
+
+      // Resize only if we need to grow
+      if ( m_data.extent( 0 ) < num_bytes )
+        Kokkos::resize( m_data, num_bytes );
+
       auto dst = Kokkos::subview( m_data, std::pair< std::size_t, std::size_t >( 0, num_bytes ) );
       Kokkos::deep_copy( dst, new_data );
-
-      // On host so we assume this does not need to be done atomically
-      std::size_t nelements = 0;
-      Kokkos::deep_copy( nelements, m_num_elements );
-      nelements += _num_elements;
-      Kokkos::deep_copy( m_num_elements, nelements );
+      Kokkos::deep_copy( m_num_elements, _num_elements );
     }
 
     KOKKOS_INLINE_FUNCTION void *allocate( std::size_t _n )
