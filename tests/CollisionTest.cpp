@@ -39,30 +39,50 @@
 #include <bvh/collision_query.hpp>
 #include <bvh/tree_build.hpp>
 
+namespace
+{
+  bool
+  compare_result_pair( const std::pair< std::size_t, std::size_t > &_lhs, const std::pair< std::size_t, std::size_t > &_rhs )
+  {
+    if ( _lhs.first != _rhs.first )
+      return _lhs.first < _rhs.first;
+
+    return _lhs.second < _rhs.second;
+  }
+}
+
 
 TEST_CASE("two fully overlapping element groups all collide", "[collision]")
 {
   auto elements = buildElementGrid( 4, 4, 4 );
   auto elements2 = buildElementGrid( 1, 1, 1, elements.size() );
-  
+
   auto tree = bvh::build_snapshot_tree_top_down< Element >( elements );
   auto tree2 = bvh::build_snapshot_tree_top_down< Element >( elements2 );
-  
+
   auto pc = bvh::potential_collision_set( tree, tree2 );
-  
+
   // All elements in tree 1 should collide with tree 2
   REQUIRE( pc.size() == elements.size() ); // NOLINT
+
+  std::sort( pc.begin(), pc.end(), &compare_result_pair );
+
+  // We may want to consider swapping these in the future
+  for ( const auto &p : pc )
+    CHECK( p.first == elements.size() );
+  for ( std::size_t i = 0; i < elements.size(); ++i )
+    CHECK( pc[i].second == i );
 }
 
 
 TEST_CASE("a non-overlapping element group does not self-collide", "[collision]")
 {
   auto elements = buildElementGrid( 2, 2, 1 );
-  
+
   auto tree = bvh::build_snapshot_tree_top_down< Element >( elements );
-  
+
   auto pc = bvh::self_collision_set( tree );
-  
+
   REQUIRE( pc.size() == 0ULL ); // NOLINT
 }
 
@@ -72,10 +92,10 @@ TEST_CASE("an overlapping element group self-collides", "[collision]")
   auto elements = buildElementGrid( 2, 2, 2 );
   auto elements2 = buildElementGrid( 1, 1, 1, elements.size() );
   elements.insert( elements.end(), elements2.begin(), elements2.end() );
-  
+
   auto tree = bvh::build_snapshot_tree_top_down< Element >( elements );
-  
+
   auto pc = bvh::self_collision_set( tree );
-  
+
   REQUIRE( pc.size() == 8ULL ); // NOLINT
 }

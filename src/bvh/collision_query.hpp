@@ -305,6 +305,9 @@ namespace bvh
     const_iterator end() const { return pairs.end(); }
     const_iterator cend() const { return pairs.cend(); }
 
+    auto &operator[]( std::size_t _ind ) { return pairs[_ind]; }
+    const auto &operator[]( std::size_t _ind ) const { return pairs[_ind]; }
+
     container_type pairs;
   };
 
