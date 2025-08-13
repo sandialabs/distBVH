@@ -39,7 +39,7 @@ RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "develop-2024-09-
 COPY . /opt/src/ci-images
 
 # Get the latest version of the darma-vt repo
-RUN cd /opt/src/ci-images/spack-repos && git clone --depth 1 --branch "16-external-fmt" https://github.com/DARMA-tasking/spack-package.git vt
+RUN cd /opt/src/ci-images/spack-repos && git clone --depth 1 --branch "master" https://github.com/DARMA-tasking/spack-package.git vt
 
 # Add our new repos
 RUN . /opt/spack/share/spack/setup-env.sh \
