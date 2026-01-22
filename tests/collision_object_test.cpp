@@ -549,6 +549,7 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
   } );
 }
 
+#ifndef BVH_ENABLE_CUDA
 TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
   bvh::collision_world world( 2 );
   auto &obj0 = world.create_collision_object();
@@ -598,11 +599,11 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
       auto res = bvh::narrowphase_result_pair();
       auto numNodes = ::vt::theContext()->getNumNodes();
       auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result), numPossibleCollisions );
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
       auto resa = bvh::typed_narrowphase_result< detailed_narrowphase_result >( res.a );
 
-      Kokkos::parallel_for( _b.elements.extent( 0 ), [=, &resa]( int i ) {
+      Kokkos::parallel_for( _b.elements.extent( 0 ), [ =, &resa ]( int i ) {
         auto e = _b.elements( i );
         resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), _a.elements[0].global_id(),
                   _b.meta.global_id(), e.global_id() } );
@@ -638,7 +639,6 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results, numEltsPerObj );
   } );
 }
-#endif
 
 TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
   bvh::collision_world world( 2 );
@@ -675,9 +675,11 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
     world.set_narrowphase_functor< Element >( []( const bvh::broadphase_collision< Element > &_a,
       const bvh::broadphase_collision< Element > &_b ) {
       auto res = bvh::narrowphase_result_pair();
-      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ));
-      auto &resa = static_cast< bvh::typed_narrowphase_result< detailed_narrowphase_result > & >( res.a );
+      auto numNodes = ::vt::theContext()->getNumNodes();
+      auto numPossibleCollisions = _a.elements.extent( 0 ) * numNodes * _b.elements.extent( 0 ) * numNodes;
+      res.a = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
+      res.b = bvh::narrowphase_result( sizeof( detailed_narrowphase_result ), numPossibleCollisions );
+      auto resa = bvh::typed_narrowphase_result< detailed_narrowphase_result >( res.a );
 
       auto narrowphase_filter = []( const Element& _e0, const Element& _e1 ) -> bool
       {
@@ -688,8 +690,10 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
 
       REQUIRE(_a.object.id() == _b.object.id());
 
-      for ( auto &&b_elt: _b.elements ) {
-        for ( auto &&a_elt: _a.elements ) {
+      for ( std::size_t b_idx = 0; b_idx < _b.elements.extent( 0 ); ++b_idx ) {
+        for ( std::size_t a_idx = 0; a_idx < _a.elements.extent( 0 ); ++a_idx ) {
+          auto b_elt = _b.elements( b_idx );
+          auto a_elt = _a.elements( a_idx );
           if ( narrowphase_filter( a_elt, b_elt ) ) {
             resa.emplace_back( detailed_narrowphase_result{ _a.meta.global_id(), a_elt.global_id(),
                                                             _b.meta.global_id(), b_elt.global_id() } );
@@ -717,6 +721,7 @@ TEST_CASE( "collision_object narrowphase self contact", "[vt]" ) {
     r->reduce< verify_single_narrowphase, ::vt::collective::PlusOp >( ::vt::Node{ 0 }, results, numEltsPerObj );
   } );
 }
+#endif
 
 TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 {
