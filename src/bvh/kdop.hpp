@@ -746,7 +746,7 @@ struct fmt::formatter< bvh::extent< T > > : nested_formatter< T >
 {
   auto format( bvh::extent< T > _ext, format_context &_ctx ) const
   {
-    return this->write_padded( _ctx, [=]( auto out ) {
+    return this->write_padded( _ctx, [this, &_ext]( auto out ) {
       return format_to( out, "[{}, {}]", this->nested( _ext.min ), this->nested( _ext.max ) );
     } );
   }
@@ -757,7 +757,7 @@ struct fmt::formatter< bvh::kdop_base< T, K, D > > : nested_formatter< bvh::exte
 {
   auto format( const bvh::kdop_base< T, K, D > &_kd, format_context &_ctx ) const
   {
-    return this->write_padded( _ctx, [=]( auto out ) {
+    return this->write_padded( _ctx, [this, &_kd]( auto out ) {
       if constexpr ( K <= 0 )
         return format_to( out, "{}-dop: <empty>", K );
 

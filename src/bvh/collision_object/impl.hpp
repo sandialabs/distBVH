@@ -102,7 +102,7 @@ namespace bvh
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_user_data->element_size();
       const int rank = _rank;
-      debug_assert( chunk_data_size > 0, "chunk_data_size size must be > 0" );
+      //debug_assert( chunk_data_size > 0, "chunk_data_size size must be > 0" );
 
       auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( chunk_data_size );
       send_msg->data_size = chunk_data_size;

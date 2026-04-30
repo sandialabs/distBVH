@@ -7,7 +7,6 @@
 #include "traits.hpp"
 #include <Kokkos_Core.hpp>
 #include <limits>
-#include "vt/print.hpp"
 
 namespace bvh
 {

@@ -35,7 +35,6 @@
 
 #include <cstdlib>
 #include <string>
-#include "../vt/print.hpp"
 #include <spdlog/spdlog.h>
 
 namespace bvh

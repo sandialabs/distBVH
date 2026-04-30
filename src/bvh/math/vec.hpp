@@ -348,7 +348,7 @@ struct fmt::formatter< bvh::m::vec< T, N > > : nested_formatter< T >
 {
   auto format( bvh::m::vec< T, N > _vec, format_context &_ctx ) const
   {
-    return this->write_padded( _ctx, [=]( auto out ) {
+    return this->write_padded( _ctx, [this, &_vec]( auto out ) {
       if constexpr ( N == 0 )
         return format_to( out, "<>" );
 

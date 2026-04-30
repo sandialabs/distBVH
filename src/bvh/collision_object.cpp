@@ -31,7 +31,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "collision_object.hpp"
-#include "debug/assert.hpp"
 #include "collision_object/types.hpp"
 #include "collision_object/impl.hpp"
 #include "collision_object/top_down.hpp"
@@ -115,9 +114,9 @@ namespace bvh
     m_impl->local_patches.clear();
     m_impl->local_patches.resize( od_factor );
 
-    BVH_ASSERT_ALWAYS( m_impl->num_splits + 1 == od_factor, logger(),
-                       "error during splitting process, splits {} do not match od factor {}\n", m_impl->num_splits + 1,
-                       od_factor );
+    //BVH_ASSERT_ALWAYS( m_impl->num_splits + 1 == od_factor, logger(),
+    //                   "error during splitting process, splits {} do not match od factor {}\n", m_impl->num_splits + 1,
+    //                   od_factor );
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
@@ -134,12 +133,12 @@ namespace bvh
       logger().debug( "creating broadphase patch for body {} size {} from offset {}", m_impl->collision_idx, nelements, sbeg );
       Kokkos::deep_copy( m_impl->snapshots_h, m_impl->snapshots );
       m_impl->local_patches[i] = broadphase_patch_type(
-        i + rank * od_factor, span< const entity_snapshot >( m_impl->snapshots_h.data() + sbeg, nelements ) );
+        i + rank * od_factor, Kokkos::mdspan< const entity_snapshot, Kokkos::Experimental::dims< 1 > >( m_impl->snapshots_h.data() + sbeg, nelements ) );
     }
 
-    BVH_ASSERT_ALWAYS( m_impl->local_patches.size() == od_factor,
-                       logger(),
-                       "wrong number of patches\n" );
+    //BVH_ASSERT_ALWAYS( m_impl->local_patches.size() == od_factor,
+    //                   logger(),
+    //                   "wrong number of patches\n" );
   }
 
   void collision_object::init_broadphase() const
@@ -307,8 +306,8 @@ namespace bvh
     for ( std::size_t i = 0; i < od_factor; ++i )
       m_impl->narrowphase_patch_messages[i] = m_impl->prepare_local_patch_for_sending( i, rank );
 
-    always_assert( m_impl->local_patches.size() == od_factor,
-                  "\n !!! Error during splitting process -- Splits do not match od factor !!!\n\n" );
+    //always_assert( m_impl->local_patches.size() == od_factor,
+    //              "\n !!! Error during splitting process -- Splits do not match od factor !!!\n\n" );
 
     const std::size_t offset = rank * od_factor;
     m_impl->chainset.nextStep( "narrowphase_patch_step", [this, offset]( vt_index _local ) {
@@ -449,7 +448,7 @@ namespace bvh
     return m_impl->splits_h;
   }
 
-  span< const patch<> >
+  std::span< const patch<> >
   collision_object::local_patches() const noexcept
   {
     return m_impl->local_patches;

@@ -33,10 +33,8 @@
 #ifndef INC_BVH_SPLIT_HPP
 #define INC_BVH_SPLIT_HPP
 
-#include "../debug/assert.hpp"
 #include "../range.hpp"
 #include "../traits.hpp"
-#include "../util/span.hpp"
 #include "../util/kokkos.hpp"
 
 #include "../snapshot.hpp"
@@ -49,6 +47,8 @@
 #include <numeric>
 #include <algorithm>
 #include <vector>
+#include <span>
+#include <ranges>
 
 
 namespace bvh
@@ -119,9 +119,9 @@ namespace bvh
     ///
     template< typename SplittingMethod >
     long int
-    split_permutation_ml( span< bvh::entity_snapshot > _elements,
-                           span< size_t > _perm, int _axis,
-                          span< std::pair< bvh::entity_snapshot, size_t > > combi )
+    split_permutation_ml( std::span< bvh::entity_snapshot > _elements,
+                          std::span< size_t > _perm, int _axis,
+                          std::span< std::pair< bvh::entity_snapshot, size_t > > combi )
     {
       if (_elements.size() < 2) {
         return 0;
@@ -156,8 +156,8 @@ namespace bvh
     }
 
     template< typename SplittingMethod, typename Element >
-    auto split_permutation( span< const Element > _elements,
-                           permute_range _perm, int _axis )
+    auto split_permutation( std::span< const Element > _elements,
+                            permute_range _perm, int _axis )
     {
       using traits_type = element_traits< Element >;
       using kdop_type = typename traits_type::kdop_type;
@@ -180,12 +180,12 @@ namespace bvh
       return split_iter;
     }
 
-    template< typename SplittingMethod, typename AxisSelector, typename Element = bvh::entity_snapshot >
+    template< typename SplittingMethod, typename AxisSelector, typename Element >
     void
-    split_permutations_recursive_impl_ml( span< Element > _elements, int _depth,
-                                       const std::vector< std::size_t >::iterator _start,
-                                       span< size_t > _perm, std::vector< std::size_t > &_splits,
-                                       span< std::pair< Element, size_t > > combi)
+    split_permutations_recursive_impl_ml( std::span< Element > _elements, int _depth,
+                                          std::vector< size_t >::iterator _start,
+                                          std::span< size_t > _perm, std::vector< std::size_t > &_splits,
+                                          std::span< std::pair< Element, size_t > > combi)
     {
       int axis = 0;
       if (_elements.size() > 0) {
@@ -198,7 +198,7 @@ namespace bvh
 
       auto delta = split_permutation_ml< SplittingMethod >( _elements, _perm, axis, combi );
 
-      auto sp_ptr = _perm.begin();
+      auto sp_ptr = _perm.data();
       std::advance(sp_ptr, delta);
 
       auto ep = _elements.begin();
@@ -209,25 +209,25 @@ namespace bvh
 
       if ( _depth > 0 ) {
         split_permutations_recursive_impl_ml< SplittingMethod, AxisSelector >(
-            span< Element >{_elements.begin(), ep}, _depth - 1,
-            _start, span<size_t>{_perm.begin(), sp_ptr}, _splits,
-            span< std::pair< Element, size_t > >{combi.begin(), cbp} );
+            std::span< Element >{_elements.begin(), ep}, _depth - 1,
+            _start, std::span<size_t>{_perm.data(), sp_ptr}, _splits,
+            std::span< std::pair< Element, size_t > >{combi.begin(), cbp} );
       }
 
       _splits.emplace_back( std::distance( &(*_start), sp_ptr ) );
 
       if ( _depth > 0 ) {
         split_permutations_recursive_impl_ml< SplittingMethod, AxisSelector >(
-            span< Element >{ep, _elements.end()}, _depth - 1,
-            _start, span<size_t>{sp_ptr, _perm.end()}, _splits,
-            span< std::pair< Element, size_t > >{cbp, combi.end()} );
+            std::span< Element >{ep, _elements.end()}, _depth - 1,
+            _start, std::span<size_t>{sp_ptr, _perm.size() - delta}, _splits,
+            std::span< std::pair< Element, size_t > >{cbp, combi.end()} );
       }
 
     }
 
     template< typename SplittingMethod, typename AxisSelector, typename Element >
     void
-    split_permutations_recursive_impl( span< const Element > _elements, int _depth,
+    split_permutations_recursive_impl( std::span< const Element > _elements, int _depth,
                                        const std::vector< std::size_t >::iterator _start,
                                        permute_range _perm, std::vector< std::size_t > &_splits )
     {
@@ -286,7 +286,14 @@ namespace bvh
 
   template< typename SplittingMethod, typename AxisSelector, typename Element = bvh::entity_snapshot >
   void
-  split_permutations_ml( span< Element > _elements, int _depth, element_permutations *_permutations )
+  split_permutations_ml( host_view< Element * > _elements, int _depth, element_permutations *_permutations )
+  {
+    split_permutations_ml< SplittingMethod, AxisSelector >( std::span( _elements.data(), _elements.size() ), _depth, _permutations );
+  }
+
+  template< typename SplittingMethod, typename AxisSelector, typename Element = bvh::entity_snapshot >
+  void
+  split_permutations_ml( std::span< Element > _elements, int _depth, element_permutations *_permutations )
   {
     _permutations->indices.resize( _elements.size() );
     std::iota( _permutations->indices.begin(), _permutations->indices.end(), 0 );
@@ -305,13 +312,20 @@ namespace bvh
       detail::split_permutations_recursive_impl_ml< SplittingMethod, AxisSelector >( _elements, _depth - 1,
                         _permutations->indices.begin(),
                         _permutations->indices, _permutations->splits,
-                        span< std::pair< Element, size_t > >{combi.data(), _elements.size()} );
+                        std::span< std::pair< Element, size_t > >{combi.data(), _elements.size()} );
     }
   }
 
   template< typename SplittingMethod, typename AxisSelector, typename Element >
   void
-  split_permutations( span< const Element > _elements, int _depth, element_permutations *_permutations )
+  split_permutations( host_view< const Element * > _elements, int _depth, element_permutations *_permutations )
+  {
+    split_permutations< SplittingMethod, AxisSelector >( std::span( _elements.data(), _elements.size() ), _depth, _permutations );
+  }
+
+  template< typename SplittingMethod, typename AxisSelector, typename Element >
+  void
+  split_permutations( std::span< const Element > _elements, int _depth, element_permutations *_permutations )
   {
     _permutations->indices.resize( _elements.size() );
     std::iota( _permutations->indices.begin(), _permutations->indices.end(), 0 );

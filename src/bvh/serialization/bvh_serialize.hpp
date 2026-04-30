@@ -35,7 +35,7 @@
 
 #include "../snapshot.hpp"
 #include "../iterators/offset_iterator.hpp"
-#include "../vt/print.hpp"
+#include <checkpoint/checkpoint.h>
 
 namespace bvh
 {

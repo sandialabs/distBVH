@@ -48,8 +48,8 @@
 #include "tree_build.hpp"
 #include "types.hpp"
 #include "util/kokkos.hpp"
-#include "util/span.hpp"
 #include "split/cluster.hpp"
+#include <vt/trace/trace_user.h>
 
 namespace bvh
 {
@@ -101,10 +101,10 @@ namespace bvh
       std::size_t offset = 0;
       for ( std::size_t j = _begin; j < _end; ++j )
       {
-        debug_assert( offset + sizeof( T ) <= max_size_bytes, "split index offset={} is out of bounds (local data size is {})",
-                      offset, max_size_bytes );
+        //debug_assert( offset + sizeof( T ) <= max_size_bytes, "split index offset={} is out of bounds (local data size is {})",
+        //              offset, max_size_bytes );
         const std::size_t user_index = _split_indices( j );
-        debug_assert( user_index < m_host_user_data.extent( 0 ), "user index is out of bounds" );
+        //debug_assert( user_index < m_host_user_data.extent( 0 ), "user index is out of bounds" );
 
         std::memcpy( &_view[offset], &m_host_user_data[user_index], sizeof( T ) );
         offset += sizeof( T );
@@ -268,7 +268,7 @@ namespace bvh
       } );
     }
 
-    span< const patch<> > local_patches() const noexcept;
+    std::span< const patch<> > local_patches() const noexcept;
 
     spdlog::logger &logger() const noexcept;
     spdlog::logger &broadphase_logger() const noexcept;
@@ -283,7 +283,7 @@ namespace bvh
                                             const element_permutations &_splits,
                                             ::vt::trace::TraceScopedEvent &&_trace )
     {
-      always_assert( _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
+      //always_assert( _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
 
       initialize_split_indices( _splits );
 

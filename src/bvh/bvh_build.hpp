@@ -61,7 +61,7 @@ namespace bvh
     {
     public:
 
-      builder( span< const T > _elements,
+      builder( std::span< const T > _elements,
                dynarray< bvh_node< T, KDop, NodeData > > &_nodes )
                : m_nodes( _nodes )
       {
@@ -152,7 +152,7 @@ namespace bvh
 
       using treelet_type = treelet< T, KDop, NodeData >;
 
-      builder( span< const T > _elements,
+      builder( std::span< const T > _elements,
                dynarray< bvh_node< T, KDop, NodeData > > &_nodes )
         : m_nodes( _nodes )
       {

@@ -76,9 +76,9 @@ namespace bvh
   class bvh_tree
   {
   public:
-    
+
     using node_type = bvh_node< T, KDop, NodeData >;  ///< The type of node used in the tree.
-    
+
     using size_type = std::size_t;                    ///< The size used for representing distances and depths in the tree.
     using index_type = size_type;                     ///< The type used for referencing elements in the tree.
     using kdop_type = typename node_type::kdop_type;  ///< The type of \f$k\f$-DOP used for bounding volume hierarchies.
@@ -115,7 +115,7 @@ namespace bvh
       : m_leafs( _other.m_leafs ),
         m_nodes( _other.m_nodes )
     {
-    
+
     }
 
     /**
@@ -128,7 +128,7 @@ namespace bvh
     {
       m_leafs = _other.m_leafs;
       m_nodes = _other.m_nodes;
-      
+
       return *this;
     }
 
@@ -153,10 +153,10 @@ namespace bvh
     {
       m_leafs = std::move( _other.m_leafs );
       m_nodes = std::move( _other.m_nodes );
-      
+
       return *this;
     }
-  
+
     /**
      *  The depth of the tree.
      *
@@ -179,7 +179,7 @@ namespace bvh
      */
     node_type *root() noexcept { return m_nodes.empty() ? nullptr : &m_nodes[0]; }
     const node_type *root() const noexcept { return m_nodes.empty() ? nullptr : &m_nodes[0]; }
-    
+
     /**
      *  Gets the number of entities in the tree. \f$O\left(1\right)\f$ time.
      *
@@ -267,21 +267,21 @@ namespace bvh
       for ( std::size_t i = 0; i < m_nodes.size(); ++i )
       {
         auto &node = m_nodes[i];
-        
+
         // Check child's parent is self
         // child offsets always exist, they just loop back on self
         if ( ( i + node.get_child_offset( 0 ) < m_nodes.size() )
         && ( node.left() != &node ) && ( node.left()->parent() != &node )  )
           return false;
-  
+
         if ( ( i + node.get_child_offset( 1 ) < m_nodes.size() )
         && ( node.right() != &node ) && ( node.right()->parent() != &node )  )
           return false;
       }
-      
+
       return true;
     }
-  
+
     using preorder_iterator = typename dynarray< node_type >::iterator;               ///< An iterator for preorder traversal of a tree
     using const_preorder_iterator = typename dynarray< node_type >::const_iterator;   ///< A const iterator for preorder traversal of a tree
     using leaf_iterator = leaf_iter< node_type * >;                                   ///< An iterator for iterating over the leaves of a tree
@@ -290,145 +290,145 @@ namespace bvh
     using const_level_iterator = level_iter< const node_type * >;                     ///< A const iterator for iterating over a specific level of a tree
     using max_level_iterator = max_level_iter< node_type * >;                         ///< An iterator for iterating over leafs below a specific level
     using const_max_level_iterator = max_level_iter< const node_type * >;             ///< A const iterator for iterating over leafs below a specific level
-  
+
     /**
      *  Gets the iterator at the beginning of a preorder traversal of the tree.
      *  \return iterator marking the beginning of a preorder traversal.
      */
     preorder_iterator preorder_begin() noexcept { return m_nodes.begin(); }
-  
+
     /**
      *  Gets the iterator at the end of a preorder traversal of the tree.
      *  \return iterator marking the end of a preorder traversal.
      */
     preorder_iterator preorder_end() noexcept { return m_nodes.end(); }
-  
+
     /**
      *  Gets the iterator at the beginning of a preorder traversal of the tree.
      *  \return iterator marking the beginning of a preorder traversal.
      */
     const_preorder_iterator preorder_begin() const noexcept { return m_nodes.begin(); }
-  
+
     /**
      *  Gets the iterator at the end of a preorder traversal of the tree.
      *  \return iterator marking the end of a preorder traversal.
      */
     const_preorder_iterator preorder_end() const noexcept { return m_nodes.end(); }
-  
+
     /**
      *  Gets the const iterator at the beginning of a preorder traversal of the tree.
      *  \return const iterator marking the beginning of a preorder traversal.
      */
     const_preorder_iterator preorder_cbegin() const noexcept { return m_nodes.cbegin(); }
-  
+
     /**
      *  Gets the const iterator at the end of a preorder traversal of the tree.
      *  \return const iterator marking the end of a preorder traversal.
      */
     const_preorder_iterator preorder_cend() const noexcept { return m_nodes.cend(); }
-  
+
     /**
      *  Gets the iterator at the beginning of a leaf traversal of the tree.
      *  \return iterator marking the beginning of a leaf traversal.
      */
     leaf_iterator leaf_begin() noexcept { return m_nodes.empty() ? leaf_iterator{} : leaf_iterator{ &m_nodes[0] }; }
-  
+
     /**
      *  Gets the iterator at the end of a leaf traversal of the tree.
      *  \return iterator marking the end of a leaf traversal.
      */
     leaf_iterator leaf_end() noexcept { return leaf_iterator{}; }
-  
+
     /**
      *  Gets the iterator at the beginning of a leaf traversal of the tree.
      *  \return iterator marking the beginning of a leaf traversal.
      */
     const_leaf_iterator leaf_begin() const noexcept { return m_nodes.empty() ? const_leaf_iterator{} : const_leaf_iterator{ &m_nodes[0] }; }
-  
+
     /**
      *  Gets the iterator at the end of a leaf traversal of the tree.
      *  \return iterator marking the end of a leaf traversal.
      */
     const_leaf_iterator leaf_end() const noexcept { return const_leaf_iterator{}; }
-  
+
     /**
      *  Gets the const iterator at the beginning of a leaf traversal of the tree.
      *  \return const iterator marking the beginning of a leaf traversal.
      */
     const_leaf_iterator leaf_cbegin() const noexcept { return m_nodes.empty() ? const_leaf_iterator{} : const_leaf_iterator{ &m_nodes[0] }; }
-  
+
     /**
      *  Gets the const iterator at the end of a leaf traversal of the tree.
      *  \return const iterator marking the end of a leaf traversal.
      */
     const_leaf_iterator leaf_cend() const noexcept { return const_leaf_iterator{}; }
-  
+
     /**
      *  Gets the iterator at the beginning of a level traversal of the tree.
      *  \return iterator marking the beginning of a level traversal.
      */
     level_iterator level_begin( int _level ) noexcept { return m_nodes.empty() ? level_iterator{ _level } : level_iterator{ _level, &m_nodes[0] }; }
-  
+
     /**
      *  Gets the iterator at the end of a level traversal of the tree.
      *  \return iterator marking the end of a level traversal.
      */
     level_iterator level_end( int _level ) noexcept { return level_iterator{ _level }; }
-  
+
     /**
      *  Gets the iterator at the beginning of a level traversal of the tree.
      *  \return iterator marking the beginning of a level traversal.
      */
     const_level_iterator level_begin( int _level ) const noexcept { return m_nodes.empty() ? const_level_iterator{ _level } : const_level_iterator{ _level, &m_nodes[0] }; }
-  
+
     /**
      *  Gets the iterator at the end of a level traversal of the tree.
      *  \return iterator marking the end of a level traversal.
      */
     const_level_iterator level_end( int _level ) const noexcept { return const_level_iterator{ _level }; }
-  
+
     /**
      *  Gets the const iterator at the beginning of a level traversal of the tree.
      *  \return const iterator marking the beginning of a level traversal.
      */
     const_level_iterator level_cbegin( int _level ) const noexcept { return m_nodes.empty() ? const_level_iterator{ _level } : const_level_iterator{ _level, &m_nodes[0] }; }
-  
+
     /**
      *  Gets the const iterator at the end of a level traversal of the tree.
      *  \return const iterator marking the end of a level traversal.
      */
     const_level_iterator level_cend( int _level ) const noexcept { return const_level_iterator{ _level }; }
-  
+
     /**
      *  Gets the iterator at the beginning of a max level traversal of the tree.
      *  \return iterator marking the beginning of a max level traversal.
      */
     max_level_iterator max_level_begin( int _level ) noexcept { return m_nodes.empty() ? max_level_iterator{ _level } : max_level_iterator{ _level, &m_nodes[0] }; }
-  
+
     /**
      *  Gets the iterator at the end of a max level traversal of the tree.
      *  \return iterator marking the end of a max level traversal.
      */
     max_level_iterator max_level_end( int _level ) noexcept { return max_level_iterator{ _level }; }
-  
+
     /**
      *  Gets the iterator at the beginning of a max level traversal of the tree.
      *  \return iterator marking the beginning of a max level traversal.
      */
     const_max_level_iterator max_level_begin( int _level ) const noexcept { return m_nodes.empty() ? const_max_level_iterator{ _level } : const_max_level_iterator{ _level, &m_nodes[0] }; }
-  
+
     /**
      *  Gets the iterator at the end of a max level traversal of the tree.
      *  \return iterator marking the end of a max level traversal.
      */
     const_max_level_iterator max_level_end( int _level ) const noexcept { return const_max_level_iterator{ _level }; }
-  
+
     /**
      *  Gets the const iterator at the beginning of a max level traversal of the tree.
      *  \return const iterator marking the beginning of a max level traversal.
      */
     const_max_level_iterator max_level_cbegin( int _level ) const noexcept { return m_nodes.empty() ? const_max_level_iterator{ _level } : const_max_level_iterator{ _level, &m_nodes[0] }; }
-  
+
     /**
      *  Gets the const iterator at the end of a max level traversal of the tree.
      *  \return const iterator marking the end of a max level traversal.
@@ -437,16 +437,16 @@ namespace bvh
 
 
   private:
-  
+
     template< typename TreeBuildPolicy, typename U, typename K, typename N, typename Element >
-    friend void rebuild_tree( bvh_tree< U, K, N > &, span< const Element > _elements );
-    
+    friend void rebuild_tree( bvh_tree< U, K, N > &, std::span< const Element > _elements );
+
     template< typename Serializer,
               typename U,
               typename K,
               typename N >
     friend void serialize( Serializer &_s, const bvh_tree< U, K, N > &_tree );
-    
+
     dynarray< T > m_leafs;
     dynarray< node_type >  m_nodes;
   };
@@ -474,10 +474,10 @@ namespace bvh
     _strm << "bvh_tree (" << KDop::k << "-dop):\n";
     if ( !_tree.empty() )
       dump_node( _strm, *_tree.root(), _tree.leafs() );
-    
+
     return _strm;
   }
-  
+
 }
 
 #endif  // INC_BVH_BTREE_HPP

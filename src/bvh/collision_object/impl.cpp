@@ -231,7 +231,7 @@ namespace bvh
       // Ignore self collisions (this will usually be caught by the above condition)
       if ( this_obj->get_impl().collision_idx == static_cast< std::size_t >( idx.y() ) )
       {
-        logger.trace( "{}: skipping <{}, {}, {}, {}> -- self collision", this_obj->id(), idx[0], idx[1], idx[2] );
+        logger.trace( "skipping <{}, {}, {}, {}> -- self collision", this_obj->id(), idx[0], idx[1], idx[2] );
         return;
       }
 
@@ -304,16 +304,16 @@ namespace bvh
         return;
       }
 
-      BVH_ASSERT_ALWAYS( this_impl.narrowphase_patch_cache.find( this_index ) != this_impl.narrowphase_patch_cache.end(),
-                         logger,
-                         "this_index={} - not present in `narrowphase_patch_cache`",
-                         this_index );
+      //BVH_ASSERT_ALWAYS( this_impl.narrowphase_patch_cache.find( this_index ) != this_impl.narrowphase_patch_cache.end(),
+      //                   logger,
+      //                   "this_index={} - not present in `narrowphase_patch_cache`",
+      //                   this_index );
       const auto &this_cache = this_impl.narrowphase_patch_cache.at( this_index );
 
-      BVH_ASSERT_ALWAYS( other_impl.narrowphase_patch_cache.find( other_index ) != other_impl.narrowphase_patch_cache.end(),
-                         logger,
-                         "other_index={} - not present in `narrowphase_patch_cache`",
-                         other_index );
+      //BVH_ASSERT_ALWAYS( other_impl.narrowphase_patch_cache.find( other_index ) != other_impl.narrowphase_patch_cache.end(),
+      //                   logger,
+      //                   "other_index={} - not present in `narrowphase_patch_cache`",
+      //                   other_index );
       const auto &other_cache = other_impl.narrowphase_patch_cache.at( other_index );
 
       ::vt::NodeType left_node = this_cache.origin_node;

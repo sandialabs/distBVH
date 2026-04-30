@@ -42,7 +42,6 @@
 #include <bvh/kdop.hpp>
 #include <bvh/range.hpp>
 #include <bvh/snapshot.hpp>
-#include <bvh/util/span.hpp>
 #include "TestCommon.hpp"
 
 using kd_type = bvh::dop_26< double >;
@@ -171,7 +170,7 @@ TEST_CASE("recursive mean splitting 1D elements", "[split]")
   auto range = bvh::make_range( elements.begin(), elements.end() );
   auto kdops = bvh::transform_range( range, traits_type::get_kdop );
 
-  auto span_ele = bvh::span< const element<kd_type> >{elements.data(), N};
+  auto span_ele = std::span< const element<kd_type> >{elements.data(), N};
   auto range_perm = bvh::make_range( m_permutations.indices.begin(), m_permutations.indices.end() );
 
   SECTION( "longest axis" )
@@ -261,7 +260,7 @@ TEST_CASE("recursive mean splitting 2D elements", "[split]")
   auto range = bvh::make_range( elements.begin(), elements.end() );
   auto kdops = bvh::transform_range( range, traits_type::get_kdop );
 
-  auto span_ele = bvh::span< const element<kd06_type> >{elements.data(), N};
+  auto span_ele = std::span< const element<kd06_type> >{elements.data(), N};
 
   SECTION( "longest axis" )
   {
@@ -347,13 +346,13 @@ TEST_CASE("new recursive mean splitting 2D elements", "[split]")
 
   bvh::element_permutations m_permutations;
 
-  auto span_ele = bvh::span< bvh::entity_snapshot >{elements.data(), N};
+  auto span_ele = std::span< bvh::entity_snapshot >{elements.data(), N};
 
   SECTION( "single split" )
   {
     m_permutations.indices.resize( N );
     std::iota(m_permutations.indices.begin(), m_permutations.indices.end(), 0);
-    auto span_perm = bvh::span< size_t >{ m_permutations.indices };
+    auto span_perm = std::span< size_t >{ m_permutations.indices };
     //
     std::vector< std::pair< bvh::entity_snapshot, size_t > > combi( N );
     for (size_t ii = 0; ii < N; ++ii)
