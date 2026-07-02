@@ -124,6 +124,11 @@ if (BVH_ENABLE_TRACING)
   target_link_libraries(bvh PUBLIC perf::perf)
 endif()
 
+option(BVH_SINGLE_PRECISION "Use single-precision floating point in DistBVH" OFF)
+if (BVH_SINGLE_PRECISION)
+  target_compile_definitions(bvh PUBLIC BVH_SINGLE_PRECISION)
+endif()
+
 option(BVH_BROADPHASE_6_DOP "Enable 6-dops for broadphase")
 if (BVH_BROADPHASE_6_DOP)
   target_compile_definitions(bvh PUBLIC BVH_BROADPHASE_6_DOP)
