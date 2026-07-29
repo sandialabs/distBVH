@@ -305,12 +305,30 @@ TEMPLATE_TEST_CASE( "kdop", "[kdop][template]", bvh::dop_6d, bvh::dop_26d )
     {
       auto kd1 = kd_type::from_sphere( bvh::m::vec3d( 0.0, 0.0, 0.0 ), 1.0 );
       auto kd2 = kd_type::from_sphere( bvh::m::vec3d( 3.0, 0.0, 0.0 ), 1.0 );
+      auto kd3 = kd_type();
 
       REQUIRE_FALSE( overlap( kd1, kd2 ) );
+      REQUIRE_FALSE( overlap( kd1, kd3 ) );
+      REQUIRE_FALSE( overlap( kd2, kd3 ) );
 
       kd2 = kd_type::from_sphere( bvh::m::vec3d( 2.0 - std::numeric_limits< double >::epsilon(), 0.0, 0.0 ), 1.0 );
 
       REQUIRE( overlap( kd1, kd2 ) );
+
+      REQUIRE_FALSE( overlap( kd1, kd3 ) );
+      REQUIRE_FALSE( overlap( kd2, kd3 ) );
+    }
+
+    SECTION("negative extents never overlap")
+    {
+      // A negative radius produces an invalid (min >= max) extent on every axis, which must not overlap
+      // with anything, including another invalid extent.
+      auto kd1 = kd_type::from_sphere( bvh::m::vec3d( 0.0, 0.0, 0.0 ), -0.74 );
+      auto kd2 = kd_type::from_sphere( bvh::m::vec3d( 0.0, 0.0, 0.0 ), 1.0 );
+
+      REQUIRE_FALSE( overlap( kd1, kd2 ) );
+      REQUIRE_FALSE( overlap( kd2, kd1 ) );
+      REQUIRE_FALSE( overlap( kd1, kd1 ) );
     }
 
     SECTION("random spheres")

@@ -79,6 +79,16 @@ namespace bvh
     }
 
     /**
+     * Determine whether this extent is valid, i.e. non-negative length. An extent with `min >= max` is considered
+     * empty/invalid and should not overlap with anything, including another invalid extent.
+     * \return whether the extent is valid.
+     */
+    constexpr BVH_INLINE bool valid() const noexcept
+    {
+      return min < max;
+    }
+
+    /**
      * Test equality of two extents. Returns true iff `_lhs.min == _rhs.min` and `_lhs.max == _rhs.max`.
      * \param _lhs  the left extent
      * \param _rhs  the right extent
@@ -108,7 +118,8 @@ namespace bvh
   };
 
   /**
-   *  Determine whether two extents overlap.
+   *  Determine whether two extents overlap. An invalid extent (`min >= max`, e.g. from a negative radius or
+   *  size) never overlaps with anything, including another invalid extent.
    *
    *  \tparam T     the arithmetic type of the extent.
    *  \param _lhs   the first extent.
@@ -119,7 +130,7 @@ namespace bvh
   BVH_INLINE constexpr bool overlap( const extent< T > &_lhs,
                                  const extent< T > &_rhs ) noexcept
   {
-    return _lhs.min < _rhs.max && _rhs.min < _lhs.max;
+    return _lhs.valid() && _rhs.valid() && _lhs.min < _rhs.max && _rhs.min < _lhs.max;
   }
 
   /**
