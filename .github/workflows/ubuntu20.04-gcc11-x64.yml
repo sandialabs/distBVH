@@ -19,7 +19,7 @@ jobs:
     container:
       image: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Configure
         run: cmake --preset ci-gcc11-x64
       - name: Build
@@ -35,7 +35,7 @@ jobs:
       image: nmm0/distbvh-ubuntu20.04-gcc11-x64:ci-images
     needs: build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: build-directory
@@ -53,7 +53,7 @@ jobs:
     env:
       TRACE_OUTPUT_DIR: /opt/runs/NimbleSM/trace
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: build-directory
