@@ -56,12 +56,9 @@ RUN . /opt/spack/share/spack/setup-env.sh \
   && spack repo add /opt/src/ci-images/spack-repos/p3a \
   && spack repo add /opt/src/ci-images/spack-repos/vt
 
-RUN . /opt/spack/share/spack/setup-env.sh \
-  && spack -d compiler find
-
 # Find compilers and system externals
 RUN . /opt/spack/share/spack/setup-env.sh \
-  && spack compiler find \
+  && spack -d compiler find \
   && spack external find
 
 # Setup our environment
