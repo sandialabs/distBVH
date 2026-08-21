@@ -1,4 +1,4 @@
-from spack import *
+from spack.package import *
 
 
 class Mpicpp(CMakePackage):
@@ -8,6 +8,8 @@ class Mpicpp(CMakePackage):
     git = "https://github.com/sandialabs/mpicpp.git"
 
     version("main", branch="main")
+
+    depends_on("cxx", type="build")
 
     depends_on("mpi")
 

@@ -33,18 +33,25 @@ RUN apt update \
 RUN pip install clingo
 
 # Now we install spack and find compilers/externals
-RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "develop-2024-09-22" https://github.com/spack/spack.git
+RUN mkdir -p /opt/ && cd /opt/ \
+  && git clone --depth 1 --branch "v1.2.2" https://github.com/spack/spack.git
+
+# Pin the builtin package repo (spack/spack-packages) to the commit that merged
+# darma-vt and darma-magistrate
+RUN mkdir -p /root/.spack
+COPY repos.yaml /root/.spack/repos.yaml
 
 # Add current source dir into the image
 COPY . /opt/src/ci-images
 
-# Get the latest version of the darma-vt repo
-RUN cd /opt/src/ci-images/spack-repos && git clone --depth 1 --branch "fix-for-bvh" https://github.com/DARMA-tasking/spack-package.git vt
-
-# Add our new repos
+# Add our remaining repos
 RUN . /opt/spack/share/spack/setup-env.sh \
-  && spack repo add /opt/src/ci-images/spack-repos/p3a \
-  && spack repo add /opt/src/ci-images/spack-repos/vt
+  && spack repo add /opt/src/ci-images/spack-repos/p3a
+
+# Find compilers and system externals.
+RUN . /opt/spack/share/spack/setup-env.sh \
+  && spack compiler find \
+  && spack external find
 
 # Setup our environment
 RUN mkdir -p /opt/spack-env && mv /opt/src/ci-images/spack-cuda.yaml /opt/spack-env/spack.yaml

@@ -1,4 +1,4 @@
-FROM ubuntu:20.04 as build_dependencies-stage
+FROM ubuntu:20.04 AS build_dependencies-stage
 
 RUN apt-get update \
   && DEBIAN_FRONTEND="noninteractive" apt-get install -y \
@@ -30,41 +30,43 @@ RUN add-apt-repository ppa:ubuntu-toolchain-r/test
 
 RUN apt-get update \
   && apt-get install -y \
-     gcc-11=11.4.0-2ubuntu1~20.04 \
-     g++-11=11.4.0-2ubuntu1~20.04 \
-     gfortran-11=11.4.0-2ubuntu1~20.04 \
-     cmake-data=3.26.4-0kitware1ubuntu20.04.1 \
-     cmake=3.26.4-0kitware1ubuntu20.04.1 \
-     pkg-config \
-     libncurses5-dev \
-     m4 \
-     perl \
+      gcc-11 \
+      g++-11 \
+      gfortran-11 \
+      cmake-data=3.26.4-0kitware1ubuntu20.04.1 \
+      cmake=3.26.4-0kitware1ubuntu20.04.1 \
+      pkg-config \
+      libncurses5-dev \
+      m4 \
+      perl \
   && rm -rf /var/lib/apt/lists/*
 RUN pip install clingo
 
 # Now we install spack and find compilers/externals
-RUN mkdir -p /opt/ && cd /opt/ && git clone --depth 1 --branch "develop-2024-09-22" https://github.com/spack/spack.git
+RUN mkdir -p /opt/ && cd /opt/ \
+  && git clone --depth 1 --branch "v1.2.2" https://github.com/spack/spack.git
+
+# Pin the builtin package repo (spack/spack-packages) to the commit that merged
+# darma-vt and darma-magistrate
+RUN mkdir -p /root/.spack
+COPY repos.yaml /root/.spack/repos.yaml
 
 # Add current source dir into the image
 COPY . /opt/src/ci-images
 
-# Get the latest version of the darma-vt repo
-RUN cd /opt/src/ci-images/spack-repos && git clone --depth 1 --branch "fix-for-bvh" https://github.com/DARMA-tasking/spack-package.git vt
-
-# Add our new repos
+# Add our remaining repos
 RUN . /opt/spack/share/spack/setup-env.sh \
-  && spack repo add /opt/src/ci-images/spack-repos/p3a \
-  && spack repo add /opt/src/ci-images/spack-repos/vt
+  && spack repo add /opt/src/ci-images/spack-repos/p3a
 
-# Find compilers and system externals
+# Find compilers and system externals.
 RUN . /opt/spack/share/spack/setup-env.sh \
-  && spack -d compiler find \
+  && spack compiler find \
   && spack external find
 
 # Setup our environment
 RUN mkdir -p /opt/spack-env && mv /opt/src/ci-images/spack.yaml /opt/spack-env
 RUN . /opt/spack/share/spack/setup-env.sh \
-  && spack --env-dir /opt/spack-env -d concretize
+  && spack --env-dir /opt/spack-env concretize
 RUN . /opt/spack/share/spack/setup-env.sh \
   && spack --env-dir /opt/spack-env install --fail-fast \
   && spack --env-dir /opt/spack-env gc -y
