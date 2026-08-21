@@ -56,10 +56,15 @@ RUN . /opt/spack/share/spack/setup-env.sh \
   && spack repo add /opt/src/ci-images/spack-repos/p3a \
   && spack repo add /opt/src/ci-images/spack-repos/vt
 
+# Find compilers and system externals
+RUN . /opt/spack/share/spack/setup-env.sh \
+  && spack compiler find \
+  && spack external find
+
 # Setup our environment
 RUN mkdir -p /opt/spack-env && mv /opt/src/ci-images/spack.yaml /opt/spack-env
 RUN . /opt/spack/share/spack/setup-env.sh \
-  && spack --env-dir /opt/spack-env concretize
+  && spack --env-dir /opt/spack-env -d concretize
 RUN . /opt/spack/share/spack/setup-env.sh \
   && spack --env-dir /opt/spack-env install --fail-fast \
   && spack --env-dir /opt/spack-env gc -y
