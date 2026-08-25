@@ -1,4 +1,4 @@
-from spack import *
+from spack.package import *
 
 
 class P3a(CMakePackage):
@@ -8,6 +8,8 @@ class P3a(CMakePackage):
     git = "https://github.com/sandialabs/p3a.git"
 
     version("main", branch="main")
+
+    depends_on("cxx", type="build")
 
     depends_on("mpicpp")
     depends_on("kokkos")
@@ -20,5 +22,5 @@ class P3a(CMakePackage):
             args.append("-DCMAKE_CXX_COMPILER={}".format(self.spec["hip"].hipcc))
         else:
             # Compiler weirdness due to nvcc_wrapper
-            args.append("-DCMAKE_CXX_COMPILER={}" .format(self.spec["kokkos"].kokkos_cxx))
+            args.append("-DCMAKE_CXX_COMPILER={}" .format(self.spec["kokkos"].package.kokkos_cxx))
         return args

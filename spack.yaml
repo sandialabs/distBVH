@@ -1,6 +1,5 @@
 spack:
   definitions:
-    - compilers: [gcc@11.4.0]
     - mpis:
       - mpich@3.4.2
     - core-packages:
@@ -11,23 +10,21 @@ spack:
       - p3a@main
       - seacas@2024-04-03 -x11 ^hdf5@1.14.1 ^fmt@10.2.1
       - arborx@1.7 +openmp +mpi
-      - darma-vt +kokkos +trace_enabled@develop
+      - darma-vt +kokkos +trace_enabled@1.7.0
   specs:
     - matrix:
       - [$mpis]
-      - [$%compilers]
       - [arch=linux-ubuntu20.04-x86_64_v3]
     - matrix:
       - [$core-packages]
-      - [$%compilers]
       - [arch=linux-ubuntu20.04-x86_64_v3]
     - matrix:
       - [$packages]
       - [$^mpis]
-      - [$%compilers]
       - [arch=linux-ubuntu20.04-x86_64_v3]
   concretizer:
     unify: true
   config:
-    install_tree: /opt/software
+    install_tree:
+      root: /opt/software
   view: /opt/view

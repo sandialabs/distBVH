@@ -1,0 +1,4 @@
+repos:
+  builtin:
+    git: https://github.com/spack/spack-packages.git
+    commit: 17d54bfc3f1b7da58ff17df535087c79f6466f04
