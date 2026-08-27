@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.0-devel-ubuntu20.04
+FROM docker.io/nvidia/cuda:12.4.0-devel-ubuntu22.04
 
 RUN apt update \
     && DEBIAN_FRONTEND="noninteractive" apt install -y \
