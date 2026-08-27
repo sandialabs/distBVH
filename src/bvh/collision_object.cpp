@@ -114,9 +114,9 @@ namespace bvh
     m_impl->local_patches.clear();
     m_impl->local_patches.resize( od_factor );
 
-    //BVH_ASSERT_ALWAYS( m_impl->num_splits + 1 == od_factor, logger(),
-    //                   "error during splitting process, splits {} do not match od factor {}\n", m_impl->num_splits + 1,
-    //                   od_factor );
+    always_assert( logger(), m_impl->num_splits + 1 == od_factor,
+                   "error during splitting process, splits {} do not match od factor {}", m_impl->num_splits + 1,
+                   od_factor );
 
     // Preallocate local data buffers. Do this lazily
     m_impl->narrowphase_patch_messages.resize( od_factor, nullptr );
@@ -136,9 +136,7 @@ namespace bvh
         i + rank * od_factor, Kokkos::mdspan< const entity_snapshot, Kokkos::Experimental::dims< 1 > >( m_impl->snapshots_h.data() + sbeg, nelements ) );
     }
 
-    //BVH_ASSERT_ALWAYS( m_impl->local_patches.size() == od_factor,
-    //                   logger(),
-    //                   "wrong number of patches\n" );
+    always_assert( logger(), m_impl->local_patches.size() == od_factor, "num patches {} != od_factor {}", m_impl->local_patches.size(), od_factor );
   }
 
   void collision_object::init_broadphase() const
