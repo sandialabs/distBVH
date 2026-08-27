@@ -68,7 +68,11 @@ namespace bvh
         tree_reduction &operator+=( const tree_reduction &_other )
         {
           // The collision object proxies should be the same so no need to reduce those
-          //debug_assert( m_collision_object_proxy.getProxy() == _other.m_collision_object_proxy.getProxy(), "collision objects must match" );
+          if constexpr ( assert_debug_is_enabled )
+          {
+            auto &this_obj = *m_collision_object_proxy.get()->self;
+            debug_assert( this_obj.logger(), m_collision_object_proxy.getProxy() == _other.m_collision_object_proxy.getProxy(), "collision objects must match" );
+          }
           m_snapshots += _other.m_snapshots;
           return *this;
         }

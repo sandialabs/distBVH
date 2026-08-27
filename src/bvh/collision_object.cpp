@@ -304,8 +304,8 @@ namespace bvh
     for ( std::size_t i = 0; i < od_factor; ++i )
       m_impl->narrowphase_patch_messages[i] = m_impl->prepare_local_patch_for_sending( i, rank );
 
-    //always_assert( m_impl->local_patches.size() == od_factor,
-    //              "\n !!! Error during splitting process -- Splits do not match od factor !!!\n\n" );
+    always_assert( logger(), m_impl->local_patches.size() == od_factor,
+                  "\n !!! Error during splitting process -- Splits do not match od factor !!!\n\n" );
 
     const std::size_t offset = rank * od_factor;
     m_impl->chainset.nextStep( "narrowphase_patch_step", [this, offset]( vt_index _local ) {

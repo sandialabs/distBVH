@@ -123,11 +123,11 @@ namespace bvh
       return Kokkos::subview( m_data, Kokkos::make_pair( size_t(0), this_stride * this_size ) );
     }
 
-    void extend( const narrowphase_result &_other )
+    void extend( spdlog::logger &_logger, const narrowphase_result &_other )
     {
       const auto this_stride = stride();
       const auto other_stride = _other.stride();
-      //always_assert( this_stride == 0 || this_stride == other_stride, fmt::format( "stride {} doesn't match {}", this_stride, other_stride ) );
+      always_assert( _logger, this_stride == 0 || this_stride == other_stride, "stride {} doesn't match {}", this_stride, other_stride );
       const auto this_size = size();
       const auto other_size = _other.size();
       const auto old_size_bytes = this_size * other_stride;

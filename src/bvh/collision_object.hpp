@@ -285,7 +285,7 @@ namespace bvh
                                             const element_permutations &_splits,
                                             ::vt::trace::TraceScopedEvent &&_trace )
     {
-      //always_assert( _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
+      always_assert( logger(), _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
 
       initialize_split_indices( _splits );
 
