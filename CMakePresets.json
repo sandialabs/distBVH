@@ -17,7 +17,8 @@
         "CMAKE_CXX_STANDARD": "20",
         "CMAKE_PREFIX_PATH": "/opt/view",
         "CMAKE_BUILD_TYPE": "Release",
-        "BVH_DISABLE_TESTS": "OFF"
+        "BVH_DISABLE_TESTS": "OFF",
+        "CMAKE_VERBOSE_MAKEFILE": "ON"
       }
     },
     {
