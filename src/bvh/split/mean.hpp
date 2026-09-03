@@ -65,7 +65,7 @@ namespace bvh
       }
 
       template< typename Input >
-      static typename element_traits< Input >::kdop_type::arithmetic_type split_point( span < Input > _elements, int _axis )
+      static typename element_traits< Input >::kdop_type::arithmetic_type split_point( std::span < Input > _elements, int _axis )
       {
         using traits_type = element_traits< Input >;
         using kdop_type = typename traits_type::kdop_type;

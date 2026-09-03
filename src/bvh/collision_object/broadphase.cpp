@@ -34,7 +34,6 @@
 #include "../collision_object.hpp"
 #include "impl.hpp"
 #include "../collision_query.hpp"
-#include "../vt/print.hpp"
 #include "../collision_world/impl.hpp"
 
 namespace bvh
@@ -69,11 +68,12 @@ namespace bvh
       {
         auto &patch = _patch->patch;
         auto &patch_obj = _msg->patch_obj.get()->self;
+        auto &logger = patch_obj->broadphase_logger();
         auto &tok = *patch_obj->get_impl().narrowphase_modification_token;
         collision_object_impl::narrowphase_index tmp_idx( 0, static_cast< int >( patch_obj->get_impl().collision_idx ), 0 );
         patch_obj->get_impl().narrowphase_collection_proxy[tmp_idx].insert( tok );
 
-        debug_assert( patch.global_id() != static_cast< broadphase_patch_type::index_type >( -1 ), "patch wasn't initialized" );
+        debug_assert( logger, patch.global_id() != static_cast< broadphase_patch_type::index_type >( -1 ), "patch wasn't initialized" );
 
         //--- Quick exit for empty patch
         if (patch.size() == 0)
@@ -87,7 +87,6 @@ namespace bvh
         tmp_idx[1] = static_cast<int>( tree_obj->get_impl().collision_idx );
         //
 
-        auto &logger = patch_obj->broadphase_logger();
         logger.debug( "(objp={}, size={}) (objq={}, count={}) starting broadphase", patch_obj->id(), patch.size(), tree_obj->id(), tree.count() );
 
         query_tree( tree, patch, [&_msg, &logger, local_idx, origin_node, &patch_obj, &tree_obj, &tok]( std::size_t _p, std::size_t _q ){

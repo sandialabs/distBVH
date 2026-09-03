@@ -35,7 +35,6 @@
 
 #include <vector>
 #include "tree.hpp"
-#include "util/span.hpp"
 #include "patch.hpp"
 #include "split/mean.hpp"
 #include "bvh_build.hpp"
@@ -52,7 +51,7 @@ namespace bvh
    * \param _elements           the span of elements to rebuild from
    */
   template< typename TreeBuildPolicy, typename T, typename KDop, typename NodeData, typename Element >
-  void rebuild_tree( bvh_tree< T, KDop, NodeData > &_tree, span< const Element > _elements )
+  void rebuild_tree( bvh_tree< T, KDop, NodeData > &_tree, std::span< const Element > _elements )
   {
     auto &leafs = _tree.m_leafs;
     auto &nodes = _tree.m_nodes;
@@ -65,7 +64,7 @@ namespace bvh
       // Store indices to collision objects
       leafs.assign( _elements.begin(), _elements.end() );
 
-      auto b = typename TreeBuildPolicy::template builder< T, KDop, NodeData >( span< const T >( leafs.data(), leafs.size() ), nodes );
+      auto b = typename TreeBuildPolicy::template builder< T, KDop, NodeData >( std::span< const T >( leafs.data(), leafs.size() ), nodes );
       b.build( 0, leafs.data(), 0, leafs.size(), 1 );
     }
   }
@@ -80,7 +79,7 @@ namespace bvh
    * \return                    a new tree where each element is constructed from an element in the span
    */
   template< typename TreeBuildPolicy, typename Tree, typename Element >
-  auto build_tree( span< const Element > _elements )
+  auto build_tree( std::span< const Element > _elements )
   {
     Tree ret;
     rebuild_tree< TreeBuildPolicy >( ret, _elements );
@@ -101,7 +100,7 @@ namespace bvh
    * \return                    a new tree constructed with the top-down building algorithm
    */
   template< typename Tree, typename SplittingMethod = split::mean, typename Element >
-  auto build_tree_top_down( span< const Element > _elements )
+  auto build_tree_top_down( std::span< const Element > _elements )
   {
     return build_tree< top_down_builder< SplittingMethod >, Tree >( _elements );
   }
@@ -116,7 +115,7 @@ namespace bvh
    * \return                a new tree constructed with the bottom-up building algorithm
    */
   template< typename Tree, typename Element >
-  auto build_tree_bottom_up_serial( span< const Element > _elements )
+  auto build_tree_bottom_up_serial( std::span< const Element > _elements )
   {
     return build_tree< bottom_up_serial_builder, Tree >( _elements );
   }
@@ -130,7 +129,7 @@ namespace bvh
   template< typename Tree, typename SplittingMethod = split::mean, typename Container >
   auto build_tree_top_down( const Container &_elements )
   {
-    return build_tree_top_down< Tree, SplittingMethod >( span< const typename Container::value_type >( _elements ) );
+    return build_tree_top_down< Tree, SplittingMethod >( std::span< const typename Container::value_type >( _elements ) );
   }
 
   /**
@@ -142,7 +141,7 @@ namespace bvh
   template< typename Tree, typename Container >
   auto build_tree_bottom_up_serial( const Container &_elements )
   {
-    return build_tree_bottom_up_serial< Tree >( span< const typename Container::value_type >( _elements ) );
+    return build_tree_bottom_up_serial< Tree >( std::span< const typename Container::value_type >( _elements ) );
   }
 
   using snapshot_tree = bvh_tree< entity_snapshot, bphase_kdop, void >;
@@ -157,7 +156,7 @@ namespace bvh
    * \return            a snapshot tree constructed in a top-down manner
    */
   template< typename Element >
-  auto build_snapshot_tree_top_down( span< Element > _elements )
+  auto build_snapshot_tree_top_down( std::span< Element > _elements )
   {
     std::vector< entity_snapshot > snaps;
     snaps.reserve( _elements.size() );

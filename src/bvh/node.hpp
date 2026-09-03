@@ -37,7 +37,6 @@
 #include "kdop.hpp"
 #include "range.hpp"
 #include "util/container.hpp"
-#include "util/span.hpp"
 
 namespace bvh
 {

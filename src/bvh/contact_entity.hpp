@@ -7,16 +7,21 @@
 #include "traits.hpp"
 #include <Kokkos_Core.hpp>
 #include <limits>
-#include "vt/print.hpp"
 
 namespace bvh
 {
   struct min_inv_diag_bounds
   {
-    m::vec3d min = m::vec3d{ std::numeric_limits< double >::max(), std::numeric_limits< double >::max(),
-                             std::numeric_limits< double >::max() };
-    m::vec3d inv_diag = m::vec3d{ std::numeric_limits< double >::lowest(), std::numeric_limits< double >::lowest(),
-                              std::numeric_limits< double >::lowest() };
+    using value_type = float_type;
+    using vec_type = m::vec3< value_type >;
+
+    vec_type min = vec_type{ std::numeric_limits< value_type >::max(),
+                             std::numeric_limits< value_type >::max(),
+                             std::numeric_limits< value_type >::max() };
+
+    vec_type inv_diag = vec_type{ std::numeric_limits< value_type >::lowest(),
+                                  std::numeric_limits< value_type >::lowest(),
+                                  std::numeric_limits< value_type >::lowest() };
   };
 
   namespace detail

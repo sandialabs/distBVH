@@ -40,6 +40,7 @@
 #include <vt/context/context.h>
 #include <spdlog/spdlog.h>
 
+#include "debug/assert.hpp"
 #include "collision_query.hpp"
 #include "snapshot.hpp"
 #include "split/split.hpp"
@@ -48,8 +49,8 @@
 #include "tree_build.hpp"
 #include "types.hpp"
 #include "util/kokkos.hpp"
-#include "util/span.hpp"
 #include "split/cluster.hpp"
+#include <vt/trace/trace_user.h>
 
 namespace bvh
 {
@@ -66,12 +67,12 @@ namespace bvh
 
       std::size_t element_size() const noexcept { return m_element_size; }
 
-      virtual void scatter_to_byte_buffer( Kokkos::View< std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space,
+      virtual void scatter_to_byte_buffer( spdlog::logger &_logger,
+                                           Kokkos::View< std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space,
                                                          Kokkos::MemoryTraits< Kokkos::Unmanaged > >
                                              _view,
                                            std::size_t _begin, std::size_t _end,
-                                           Kokkos::View< std::size_t * >::host_mirror_type _split_indices )
-        = 0;
+                                           Kokkos::View< std::size_t * >::host_mirror_type _split_indices ) = 0;
 
     private:
 
@@ -79,21 +80,22 @@ namespace bvh
     };
   }  // namespace detail
 
-  template< typename T, typename... ViewProps >
-  class user_element_storage : public detail::user_element_storage_base
+  template< typename T, typename... ViewProps > class user_element_storage : public detail::user_element_storage_base
   {
   public:
 
     user_element_storage( Kokkos::View< const T *, ViewProps... > _data )
-      : detail::user_element_storage_base( sizeof( T ) ), m_user_data( _data ),
+      : detail::user_element_storage_base( sizeof( T ) ),
+        m_user_data( _data ),
         m_host_user_data( Kokkos::create_mirror_view( Kokkos::WithoutInitializing, _data ) )
     {}
 
-    void scatter_to_byte_buffer( Kokkos::View< std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space,
-                                                       Kokkos::MemoryTraits< Kokkos::Unmanaged > >
-                                           _view,
-                                         std::size_t _begin, std::size_t _end,
-                                         Kokkos::View< std::size_t * >::host_mirror_type _split_indices ) override
+    void scatter_to_byte_buffer( spdlog::logger &_logger,
+                                 Kokkos::View< std::byte *, Kokkos::LayoutLeft, bvh::host_execution_space,
+                                               Kokkos::MemoryTraits< Kokkos::Unmanaged > >
+                                   _view,
+                                 std::size_t _begin, std::size_t _end,
+                                 Kokkos::View< std::size_t * >::host_mirror_type _split_indices ) override
     {
       Kokkos::deep_copy( m_host_user_data, m_user_data );
 
@@ -101,10 +103,10 @@ namespace bvh
       std::size_t offset = 0;
       for ( std::size_t j = _begin; j < _end; ++j )
       {
-        debug_assert( offset + sizeof( T ) <= max_size_bytes, "split index offset={} is out of bounds (local data size is {})",
+        debug_assert( _logger, offset + sizeof( T ) <= max_size_bytes, "split index offset={} is out of bounds (local data size is {})",
                       offset, max_size_bytes );
         const std::size_t user_index = _split_indices( j );
-        debug_assert( user_index < m_host_user_data.extent( 0 ), "user index is out of bounds" );
+        debug_assert( _logger, user_index < m_host_user_data.extent( 0 ), "user index {} is out of bounds of {}", user_index, m_host_user_data.extent( 0 ) );
 
         std::memcpy( &_view[offset], &m_host_user_data[user_index], sizeof( T ) );
         offset += sizeof( T );
@@ -268,7 +270,7 @@ namespace bvh
       } );
     }
 
-    span< const patch<> > local_patches() const noexcept;
+    std::span< const patch<> > local_patches() const noexcept;
 
     spdlog::logger &logger() const noexcept;
     spdlog::logger &broadphase_logger() const noexcept;
@@ -283,7 +285,7 @@ namespace bvh
                                             const element_permutations &_splits,
                                             ::vt::trace::TraceScopedEvent &&_trace )
     {
-      always_assert( _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
+      always_assert( logger(), _splits.indices.size() == _data.extent( 0 ), "must have a split index per data element!" );
 
       initialize_split_indices( _splits );
 

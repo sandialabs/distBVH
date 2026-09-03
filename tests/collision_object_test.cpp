@@ -39,7 +39,6 @@
 #include <bvh/collision_object.hpp>
 #include <bvh/collision_world.hpp>
 #include <bvh/util/epoch.hpp>
-#include <bvh/vt/print.hpp>
 #include <numeric>
 #include <type_traits>
 #include <vt/collective/collective_alg.h>
@@ -87,7 +86,7 @@ std::size_t test_od_factor = 0;
 
 void verify_num_elements( std::size_t _count )
 {
-  bvh::vt::debug("{}: count: {}\n", ::vt::theContext()->getNode(), _count );
+  //bvh::vt::debug("{}: count: {}\n", ::vt::theContext()->getNode(), _count );
   // Cube test_od_factor because each dimension is multiplied...
   REQUIRE( _count == 12 * ::vt::theContext()->getNumNodes() * test_od_factor );
 };
@@ -95,7 +94,7 @@ void verify_num_elements( std::size_t _count )
 void
 verify_empty_elements( std::size_t _count )
 {
-  bvh::vt::debug( "{}: count: {}\n", ::vt::theContext()->getNode(), _count );
+  //bvh::vt::debug( "{}: count: {}\n", ::vt::theContext()->getNode(), _count );
   REQUIRE( _count == 0 );
 };
 
@@ -127,7 +126,7 @@ TEST_CASE( "collision_object init", "[vt]")
                                        bvh::m::vec3d{ 11.0, 11.0, 10.0 },
                                        bvh::m::vec3d{ 11.0, 11.0, 11.0 } };
   const auto update_bounds = Element::kdop_type::from_vertices( update_bounds_vers.begin(), update_bounds_vers.end() );
-  bvh::vt::debug( "{}: bounds: {}\n", ::vt::theContext()->getNode(), bounds );
+  //bvh::vt::debug( "{}: bounds: {}\n", ::vt::theContext()->getNode(), bounds );
   auto update_elements = build_element_grid( 2 * od_factor, 3, 2, rank * 12 * od_factor, 10.0 );
 
   auto split_method = GENERATE(
@@ -136,7 +135,7 @@ TEST_CASE( "collision_object init", "[vt]")
 #endif
     bvh::split_algorithm::clustering );
 
-  bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
+  //bvh::vt::debug("{}: od_factor: {} split method: {}\n", ::vt::theContext()->getNode(), od_factor, static_cast< int >( split_method ) );
 
   // We should be able to set the data correctly
   SECTION( "set_data" )
@@ -159,8 +158,8 @@ TEST_CASE( "collision_object init", "[vt]")
           bvh::patch<>::kdop_type k;
           for ( auto &&p : local_patches )
           {
-            bvh::vt::debug( "{}: patch {}: {} (centroid={})\n", ::vt::theContext()->getNode(), p.global_id(), p.kdop(),
-                            p.centroid() );
+            //bvh::vt::debug( "{}: patch {}: {} (centroid={})\n", ::vt::theContext()->getNode(), p.global_id(), p.kdop(),
+            //                p.centroid() );
             CHECK( !std::isnan( p.centroid().x() ) );
             CHECK( !std::isnan( p.centroid().y() ) );
             CHECK( !std::isnan( p.centroid().z() ) );
@@ -189,8 +188,8 @@ TEST_CASE( "collision_object init", "[vt]")
           bvh::patch<>::kdop_type k;
           for ( auto &&p : local_patches )
           {
-            bvh::vt::debug( "{}: patch {}: {} (centroid={})\n", ::vt::theContext()->getNode(), p.global_id(), p.kdop(),
-                            p.centroid() );
+            //bvh::vt::debug( "{}: patch {}: {} (centroid={})\n", ::vt::theContext()->getNode(), p.global_id(), p.kdop(),
+            //                p.centroid() );
             CHECK( !std::isnan( p.centroid().x() ) );
             CHECK( !std::isnan( p.centroid().y() ) );
             CHECK( !std::isnan( p.centroid().z() ) );
@@ -374,11 +373,11 @@ void verify_single_narrowphase( const bvh::vt::reducable_vector< detailed_narrow
     return _lhs.element_q < _rhs.element_q;
   } );
 
-  for ( auto &&res : results )
-  {
-    bvh::vt::debug("{}: isect ({}, {}) with ({}, {})\n", ::vt::theContext()->getNode(),
-      res.patch_p, res.element_p, res.patch_q, res.element_q );
-  }
+  //for ( auto &&res : results )
+  //{
+  //  bvh::vt::debug("{}: isect ({}, {}) with ({}, {})\n", ::vt::theContext()->getNode(),
+  //    res.patch_p, res.element_p, res.patch_q, res.element_q );
+  //}
 
   const std::size_t expectedNumCollisions = 1 * numNodes * 12 * numNodes;
   CHECK( results.size() == expectedNumCollisions );
@@ -397,7 +396,7 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
 #endif
     bvh::split_algorithm::clustering );
 
-  bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
+  //bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
   bvh::collision_world world( 2 );
 
@@ -467,11 +466,11 @@ TEST_CASE( "collision_object narrowphase", "[vt]")
       [&res]( const bvh::typed_narrowphase_result< detailed_narrowphase_result > &_res ) {
       Kokkos::resize( res,_res.elements().size() );
       Kokkos::deep_copy( res, _res.elements() );
-      for ( std::size_t i = 0; i < res.size(); ++i )
-      {
-        bvh::vt::debug( "{}: local isect ({}, {}) with ({}, {})\n", ::vt::theContext()->getNode(), res( i ).patch_p, res( i ).element_p,
-                        res( i ).patch_q, res( i ).element_q );
-      }
+      //for ( std::size_t i = 0; i < res.size(); ++i )
+      //{
+      //  bvh::vt::debug( "{}: local isect ({}, {}) with ({}, {})\n", ::vt::theContext()->getNode(), res( i ).patch_p, res( i ).element_p,
+      //                  res( i ).patch_q, res( i ).element_q );
+      //}
     } );
 
     world.finish_iteration();
@@ -500,7 +499,7 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   const std::size_t numEltsOnObj1 = 2;
   const std::size_t numEltsOnObj2 = 2;
 
-  bvh::vt::debug( "verify_single_narrowphase_new: found {} collision result(s).\n", results.size() );
+  //bvh::vt::debug( "verify_single_narrowphase_new: found {} collision result(s).\n", results.size() );
 
   const std::size_t expectedNumCollisions = (
     numEltsOnObj0 * numNodes * numEltsOnObj1 * numNodes + // obj 0 and obj 1
@@ -519,8 +518,8 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
     if ( id1 > id2 ) std::swap( id1, id2 );
       collisionPairs.push_back( { id1, id2 } );
 
-    bvh::vt::debug( "Collision {}: patch_p = {}, element_p = {}, patch_q = {}, element_q = {} -> unordered pair = {{ {}, {} }}\n",
-                    i, res.patch_p, res.element_p, res.patch_q, res.element_q, id1, id2 );
+    //bvh::vt::debug( "Collision {}: patch_p = {}, element_p = {}, patch_q = {}, element_q = {} -> unordered pair = {{ {}, {} }}\n",
+    //                i, res.patch_p, res.element_p, res.patch_q, res.element_q, id1, id2 );
   }
 
   std::vector< collision_pair_t > expectedPairs;
@@ -553,14 +552,14 @@ void verify_single_narrowphase_three_objects( const bvh::vt::reducable_vector< d
   std::sort( collisionPairs.begin(), collisionPairs.end(), pairComparator );
   std::sort( expectedPairs.begin(), expectedPairs.end(), pairComparator );
 
-  bvh::vt::debug( "Sorted collision pairs:\n" );
-  for ( const auto& p : collisionPairs ) {
-    bvh::vt::debug( "  {{ {}, {} }}\n", p.first, p.second );
-  }
-  bvh::vt::debug( "Expected collision pairs:\n" );
-  for ( const auto& p : expectedPairs ) {
-    bvh::vt::debug( "  {{ {}, {} }}\n", p.first, p.second );
-  }
+  //bvh::vt::debug( "Sorted collision pairs:\n" );
+  //for ( const auto& p : collisionPairs ) {
+  //  bvh::vt::debug( "  {{ {}, {} }}\n", p.first, p.second );
+  //}
+  //bvh::vt::debug( "Expected collision pairs:\n" );
+  //for ( const auto& p : expectedPairs ) {
+  //  bvh::vt::debug( "  {{ {}, {} }}\n", p.first, p.second );
+  //}
 
   REQUIRE( collisionPairs.size() == expectedPairs.size() );
   for ( std::size_t i = 0; i < expectedPairs.size(); ++i ) {
@@ -596,20 +595,20 @@ TEST_CASE( "collision_object narrowphase three objects", "[vt]" ) {
     obj2.set_entity_data( elements2, split_method );
     obj2.init_broadphase();
 
-    bvh::vt::debug( "Object 0 initialized with {} element(s):\n", elements0.extent( 0 ) );
-    for ( std::size_t i = 0; i < elements0.extent( 0 ); i++ ) {
-      bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements0( i ).global_id() );
-    }
+    //bvh::vt::debug( "Object 0 initialized with {} element(s):\n", elements0.extent( 0 ) );
+    //for ( std::size_t i = 0; i < elements0.extent( 0 ); i++ ) {
+    //  bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements0( i ).global_id() );
+    //}
 
-    bvh::vt::debug( "Object 1 initialized with {} element(s):\n", elements1.extent( 0 ) );
-    for ( std::size_t i = 0; i < elements1.extent( 0 ); i++ ) {
-      bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements1( i ).global_id() );
-    }
+    //bvh::vt::debug( "Object 1 initialized with {} element(s):\n", elements1.extent( 0 ) );
+    //for ( std::size_t i = 0; i < elements1.extent( 0 ); i++ ) {
+    //  bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements1( i ).global_id() );
+    //}
 
-    bvh::vt::debug( "Object 2 initialized with {} element(s):\n", elements2.extent( 0 ) );
-    for ( std::size_t i = 0; i < elements2.extent( 0 ); i++ ) {
-      bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements2( i ).global_id() );
-    }
+    //bvh::vt::debug( "Object 2 initialized with {} element(s):\n", elements2.extent( 0 ) );
+    //for ( std::size_t i = 0; i < elements2.extent( 0 ); i++ ) {
+    //  bvh::vt::debug( "  Element {}: global_id = {}\n", i, elements2( i ).global_id() );
+    //}
     CHECK( elements0.extent( 0 ) == 1 );
     CHECK( elements1.extent( 0 ) == 2 );
     CHECK( elements2.extent( 0 ) == 2 );
@@ -668,7 +667,7 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
 #endif
     bvh::split_algorithm::clustering );
 
-  bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
+  //bvh::vt::debug("{}: split method: {}\n", ::vt::theContext()->getNode(), static_cast< int >( split_method ) );
 
   bvh::collision_world world( 2 );
 
@@ -716,10 +715,10 @@ TEST_CASE( "collision_object narrowphase multi-iteration", "[vt]")
           if ( _a.elements( 0 ).global_id() >= nnodes )
             Kokkos::atomic_inc( &nerrors() );
         } );
-        bvh::vt::debug("{}: intersect patch ({}, {}) with ({}, {})\n",
-                        ::vt::theContext()->getNode(),
-                        _a.object.id(), _a.patch_id,
-                        _b.object.id(), _b.patch_id );
+        //bvh::vt::debug("{}: intersect patch ({}, {}) with ({}, {})\n",
+        //                ::vt::theContext()->getNode(),
+        //                _a.object.id(), _a.patch_id,
+        //                _b.object.id(), _b.patch_id );
 
         Kokkos::parallel_for( _b.elements.extent( 0 ), KOKKOS_LAMBDA( int _i ) {
           auto ra = resa;

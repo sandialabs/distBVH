@@ -35,7 +35,6 @@
 
 #include <cstdlib>
 #include <string>
-#include "../vt/print.hpp"
 #include <spdlog/spdlog.h>
 
 namespace bvh
@@ -46,13 +45,15 @@ namespace bvh
   constexpr int assert_debug_level = 0;
 #endif
 
+  constexpr bool assert_debug_is_enabled = assert_debug_level >= 3;
+
   namespace detail
   {
     template< bool Enable >
     struct debug_assert_impl
     {
       template< typename... Args >
-      static void debug_assert( bool, const std::string &, [[maybe_unused]] Args &&..._args )
+      static void debug_assert( spdlog::logger &, bool, fmt::format_string< Args... >, [[maybe_unused]] Args &&..._args )
       {
         // Do nothing
       }
@@ -62,60 +63,41 @@ namespace bvh
     struct debug_assert_impl< true >
     {
       template< typename... Args >
-      static void debug_assert( bool _val, const std::string &_assert_str, Args &&..._args )
+      static void debug_assert( spdlog::logger &_logger, bool _val, fmt::format_string< Args... > _fmt, Args &&..._args )
       {
         if ( !_val )
         {
-          vt::error( _assert_str, std::forward< Args >( _args )... );
-          std::terminate();
+          _logger.critical( _fmt, std::forward< Args >( _args )... );
+          std::abort();
         }
       }
     };
   }
 
   template< int DebugLevel, typename... Args >
-  void debug_assert_level( bool _val, const std::string &_msg, Args &&... _args )
+  void debug_assert_level( spdlog::logger &_logger, bool _val, fmt::format_string< Args... > _fmt, Args &&... _args )
   {
     static constexpr bool enable_assert = assert_debug_level >= DebugLevel;
-    detail::debug_assert_impl< enable_assert >::debug_assert( _val, _msg, std::forward< Args >( _args )... );
+    detail::debug_assert_impl< enable_assert >::debug_assert( _logger, _val, _fmt, std::forward< Args >( _args )... );
   }
 
   template< typename... Args >
-  inline void debug_assert( bool _val, const std::string &_msg, Args &&... _args )
+  inline void debug_assert( spdlog::logger &_logger, bool _val, fmt::format_string< Args... > _fmt, Args &&... _args )
   {
-    debug_assert_level< 3 >( _val, _msg, std::forward< Args >( _args )... );
+    debug_assert_level< 3 >( _logger, _val, _fmt, std::forward< Args >( _args )... );
   }
 
   template< typename... Args >
-  inline void always_assert( bool _val, const std::string &_msg, Args &&... _args )
+  inline void always_assert( spdlog::logger &_logger, bool _val, fmt::format_string< Args... > _fmt, Args &&... _args )
   {
-    debug_assert_level< 0 >( _val, _msg, std::forward< Args >( _args )... );
+    detail::debug_assert_impl< true >::debug_assert( _logger, _val, _fmt, std::forward< Args >( _args )... );
   }
 
   template< typename... Args >
-  inline void abort( const std::string &_msg, Args &&... _args )
+  inline void abort( spdlog::logger &_logger, fmt::format_string< Args... > _fmt, Args &&... _args )
   {
-    always_assert( false, _msg, std::forward< Args >( _args )... );
+    always_assert( _logger, false, _fmt, std::forward< Args >( _args )... );
   }
-
-  namespace detail
-  {
-    inline void assert_die( spdlog::logger &_logger, const char *_file, unsigned int _line, const char *_assertion,
-                            const std::string &_msg )
-    {
-      _logger.critical( "assertion failed at {}:{}: {} ({})", _file, _line, _assertion, _msg );
-      std::terminate();
-    }
-
-    inline void assert_die( std::shared_ptr< spdlog::logger > _logger, const char *_file, unsigned int _line,
-                            const char *_assertion, const std::string &_msg )
-    {
-      assert_die( *_logger, _file, _line, _assertion, _msg );
-    }
-  }  // namespace detail
 }
-
-#define BVH_ASSERT_ALWAYS( expr, logger, ... )                                                                         \
-  ( static_cast< bool >( expr ) ? void( 0 ) : ::bvh::detail::assert_die( logger, __FILE__, __LINE__, #expr, fmt::format( __VA_ARGS__ ) ) )
 
 #endif  // INC_BVH_DEBUG_ASSERT_HPP

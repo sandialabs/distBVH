@@ -38,7 +38,6 @@
 #include "../context.hpp"
 #include "../objgroup.hpp"
 #include <vector>
-#include "../../debug/assert.hpp"
 #include "../../util/bits.hpp"
 #include "../collection.hpp"
 #include "../../bvh_build.hpp"
@@ -60,7 +59,7 @@ namespace bvh
         const std::size_t index = _m64 / denom;
         return ::vt::Index1D( static_cast< int >( index ) );
       }
-      
+
       template< typename Patch >
       struct dist_tree_builder
       {
@@ -81,7 +80,7 @@ namespace bvh
           _s | _tree_builder.bounds | _tree_builder.treelets;
         }
       };
-      
+
       template< typename Patch >
       void add_treelet( collection_element< dist_tree_builder< Patch >, ::vt::Index1D > _builder,
         const typename dist_tree_builder< Patch >::treelet_type &_treelet )
@@ -89,7 +88,7 @@ namespace bvh
         debug( "adding treelet hash {} to index {}\n", _treelet.m64, _builder.index() );
         _builder->treelets.emplace_back( _treelet );
       }
-      
+
       template< typename Patch >
       void bin_patch( collection_element< Patch, ::vt::Index1D > _patch,
           collection< dist_tree_builder< Patch >, ::vt::Index1D > _builders,
@@ -109,13 +108,13 @@ namespace bvh
         auto coord = discretize_coord( centroid );
         auto m64 = morton( coord.x(), coord.y(), coord.z() );
         debug( "converting coord {} -> {} -> morton {}\n", centroid, coord, m64 );
-        
+
         using builder_type = bottom_up_serial_builder::builder< snapshot_type, kdop_type, void >;
         using treelet_type = typename builder_type::treelet_type;
-        
+
         auto snapshot = make_snapshot( *_patch );
         auto treelet = treelet_type{ m64, element_traits< snapshot_type >::get_kdop( snapshot ), 0, snapshot };
-        
+
         _builders.send( index_mapping( m64, _builders.range().x() ), BVH_FH( add_treelet< Patch > ), treelet );
       }
 
@@ -192,7 +191,7 @@ namespace bvh
 
         _builder.get_collection().send( dest_index, BVH_FH( merge_up< Patch > ), _builder->treelets[0], _height );
       }
-      
+
       template< typename Patch >
       void step( collection_element< dist_tree_builder< Patch >, ::vt::Index1D > _builder, std::size_t _height )
       {
@@ -237,7 +236,7 @@ namespace bvh
         start_merge< Patch >( _builder, 0 );
       }
     }
-    
+
     namespace detail
     {
       template< typename KDop >
@@ -250,17 +249,17 @@ namespace bvh
         bounds_merge( const KDop &_bounds, const vec_type &_centroid )
           : bounds( _bounds ), centroid( _centroid )
         {
-        
+
         }
-        
+
         bounds_merge &operator+=( const bounds_merge &_other )
         {
           //bounds = merge( bounds, _other.bounds );
           bounds.expand( _other.centroid );
-          
+
           return *this;
         }
-        
+
         friend bounds_merge operator+( bounds_merge _lhs, const bounds_merge &_rhs )
         {
           return _lhs += _rhs;
@@ -271,7 +270,7 @@ namespace bvh
         {
           _s | bounds | centroid;
         }
-        
+
         KDop bounds;
         m::vec3< typename KDop::arithmetic_type > centroid;
       };
@@ -303,14 +302,14 @@ namespace bvh
         _trees.broadcast( BVH_FH( set_trees< TreeType > ), tree );
       }
     }
-    
+
     template< typename Patch >
     void start_bounds_reduce( const collection_element< Patch, ::vt::Index1D > &_patch,
                               collection< detail::dist_tree_builder< Patch >, ::vt::Index1D > _builders )
     {
       auto centroid = element_traits< Patch >::get_centroid( *_patch );
       auto reducer = detail::bounds_merge< typename Patch::kdop_type >( Patch::kdop_type::from_sphere( centroid, 0 ), centroid );
-  
+
       _patch.get_collection().reduce( std::move( reducer ), BVH_FH( detail::bounds_reduce< Patch > ), _builders );
     }
 

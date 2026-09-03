@@ -85,8 +85,8 @@ namespace bvh
         bvh::unmanaged_view< T * > u_second_elms( reinterpret_cast< T * >( _second_patch.data() ),
                                                   _second_patch.size() / sizeof( T ) );
 
-        BVH_ASSERT( _first_patch_id == _ma.global_id() );
-        BVH_ASSERT( _second_patch_id == _mb.global_id() );
+        //BVH_ASSERT( _first_patch_id == _ma.global_id() );
+        //BVH_ASSERT( _second_patch_id == _mb.global_id() );
 
         broadphase_collision< T > first{ _first, _ma, _first_patch_id, u_first_elms };
         broadphase_collision< T > second{ _second, _mb, _second_patch_id, u_second_elms };

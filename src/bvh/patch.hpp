@@ -34,7 +34,6 @@
 #define INC_BVH_PATCH_HPP
 
 #include <numeric>
-#include "util/span.hpp"
 #include "range.hpp"
 #include "iterators/transform_iterator.hpp"
 #include "math/vec.hpp"
@@ -64,7 +63,14 @@ namespace bvh
     patch() = default;
 
     template< typename E >
-    patch( index_type _patch_id, span< const E > _span )
+    patch( index_type _patch_id, Kokkos::mdspan< const E, Kokkos::Experimental::dims< 1 > > _span )
+      : m_global_id( _patch_id )
+    {
+      set_elements( _span );
+    }
+
+    template< typename E >
+    patch( index_type _patch_id, std::span< const E > _span )
       : m_global_id( _patch_id )
     {
       set_elements( _span );
@@ -77,7 +83,15 @@ namespace bvh
     {}
 
     template< typename Element >
-    void set_elements( span< const Element > _span ) noexcept
+    void set_elements( Kokkos::mdspan< const Element, Kokkos::Experimental::dims< 1 > > _span ) noexcept
+    {
+      if ( _span.size() > 0 )
+        compute_kdops_and_centroid( _span );
+      m_size = _span.size();
+    }
+
+    template< typename Element >
+    void set_elements( std::span< const Element > _span ) noexcept
     {
       if ( _span.size() > 0 )
         compute_kdops_and_centroid( _span );
@@ -102,7 +116,13 @@ namespace bvh
   private:
 
     template< typename Element >
-    void compute_kdops_and_centroid( span< const Element > _span )
+    void compute_kdops_and_centroid( Kokkos::mdspan< const Element, Kokkos::Experimental::dims< 1 > > _span )
+    {
+      compute_kdops_and_centroid( std::span< const Element >( &_span[0], _span.extent( 0 ) ) );
+    }
+
+    template< typename Element >
+    void compute_kdops_and_centroid( std::span< const Element > _span )
     {
       static auto get_kdop = []( const auto &_a ) { return element_traits< Element >::get_kdop( _a ); };
       auto kdop_range = make_range( make_transform_iterator( _span.begin(), get_kdop ),

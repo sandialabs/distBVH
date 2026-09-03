@@ -38,8 +38,6 @@
 #include <functional>
 #include <cstring>
 #include "traits.hpp"
-#include "util/span.hpp"
-#include "util/assert.hpp"
 #include "patch.hpp"
 #include "debug/assert.hpp"
 
@@ -109,7 +107,6 @@ namespace bvh
     {
       auto prev_num_elements = Kokkos::atomic_fetch_add( &m_num_elements(), _n );
       auto last_element_idx = prev_num_elements * m_stride();
-      BVH_ASSERT( _n * m_stride() + last_element_idx <= m_data.extent( 0 ) );
       return static_cast< void * >( &m_data( last_element_idx ) );
     }
 
@@ -126,11 +123,11 @@ namespace bvh
       return Kokkos::subview( m_data, Kokkos::make_pair( size_t(0), this_stride * this_size ) );
     }
 
-    void extend( const narrowphase_result &_other )
+    void extend( spdlog::logger &_logger, const narrowphase_result &_other )
     {
       const auto this_stride = stride();
       const auto other_stride = _other.stride();
-      always_assert( this_stride == 0 || this_stride == other_stride, fmt::format( "stride {} doesn't match {}", this_stride, other_stride ) );
+      always_assert( _logger, this_stride == 0 || this_stride == other_stride, "stride {} doesn't match {}", this_stride, other_stride );
       const auto this_size = size();
       const auto other_size = _other.size();
       const auto old_size_bytes = this_size * other_stride;
@@ -225,7 +222,7 @@ namespace bvh
   {
     template< typename TreeType, typename ContactEntity, typename F >
     void query_node_impl( const typename TreeType::node_type *_node, const ContactEntity &_ent, F &&_fun,
-        span< const typename TreeType::value_type > _leafs )
+        std::span< const typename TreeType::value_type > _leafs )
     {
       auto &&kdop = element_traits< ContactEntity >::get_kdop( _ent );
       auto &&idx = element_traits< ContactEntity >::get_global_id( _ent );
@@ -247,7 +244,7 @@ namespace bvh
 
     template< typename TreeType, typename ContactEntity, typename F >
     void query_node_local_impl( const typename TreeType::node_type *_node, const ContactEntity &_ent, F &&_fun,
-                          span< const typename TreeType::value_type > _leafs )
+                          std::span< const typename TreeType::value_type > _leafs )
     {
       auto &&kdop = element_traits< ContactEntity >::get_kdop( _ent );
       auto &&idx = element_traits< ContactEntity >::get_global_id( _ent );

@@ -84,7 +84,7 @@ public:
 
   KOKKOS_INLINE_FUNCTION void setIndex( std::size_t _index ) { m_index = _index; }
 
-  KOKKOS_INLINE_FUNCTION bvh::span< const bvh::m::vec3d > vertices() const { return m_vertices; }
+  KOKKOS_INLINE_FUNCTION std::span< const bvh::m::vec3d > vertices() const { return m_vertices; }
 
   KOKKOS_INLINE_FUNCTION const kdop_type &kdop() const { return m_bounds; }
 
@@ -242,15 +242,13 @@ inline bvh::dynarray< bvh::patch<> > buildElementPatchGrid( int _x, int _y, int 
                         bvh::m::vec3d{ x + dx, y, z + dz },
                         bvh::m::vec3d{ x + dx, y + dy, z + dz },
                         bvh::m::vec3d{ x, y + dy, z + dz } );
-        ret.emplace_back( el.global_id(), bvh::span< const Element >( &el, &el + 1 ) );
+        ret.emplace_back( el.global_id(), std::span< const Element >( &el, &el + 1 ) );
       }
     }
   }
 
   return ret;
 }
-
-#include <bvh/vt/print.hpp>
 
 inline bvh::dynarray< Element >
 buildElementGridParallel( std::size_t _rank, std::size_t _nranks,
@@ -263,9 +261,9 @@ buildElementGridParallel( std::size_t _rank, std::size_t _nranks,
   auto fac = ( _x * _y * _z ) / _nranks;
   auto base_index = _rank * fac;
   auto end_index = ( _rank == _nranks - 1 ) ? ( _x * _y * _z ) : ( ( _rank + 1 ) * fac );
-  bvh::vt::debug( "{}: fac: {}\n", _rank, fac );
-  bvh::vt::debug( "{}: base_index: {}\n", _rank, base_index );
-  bvh::vt::debug( "{}: end_index: {}\n", _rank, end_index );
+  //bvh::vt::debug( "{}: fac: {}\n", _rank, fac );
+  //bvh::vt::debug( "{}: base_index: {}\n", _rank, base_index );
+  //bvh::vt::debug( "{}: end_index: {}\n", _rank, end_index );
 
   bvh::dynarray< Element > ret;
   for ( auto idx = base_index; idx < end_index; ++idx )
@@ -302,9 +300,9 @@ buildElementPatchGridParallel( std::size_t _rank, std::size_t _nranks,
   auto fac = ( _x * _y * _z ) / _nranks;
   auto base_index = _rank * fac;
   auto end_index = ( _rank == _nranks - 1 ) ? ( _x * _y * _z ) : ( ( _rank + 1 ) * fac );
-  bvh::vt::debug( "{}: fac: {}\n", _rank, fac );
-  bvh::vt::debug( "{}: base_index: {}\n", _rank, base_index );
-  bvh::vt::debug( "{}: end_index: {}\n", _rank, end_index );
+  //bvh::vt::debug( "{}: fac: {}\n", _rank, fac );
+  //bvh::vt::debug( "{}: base_index: {}\n", _rank, base_index );
+  //bvh::vt::debug( "{}: end_index: {}\n", _rank, end_index );
 
   bvh::dynarray< bvh::patch<> > ret;
   for ( auto idx = base_index; idx < end_index; ++idx )
@@ -327,7 +325,7 @@ buildElementPatchGridParallel( std::size_t _rank, std::size_t _nranks,
                    bvh::m::vec3d{ x + dx, y + dy, z + dz },
                    bvh::m::vec3d{ x, y + dy, z + dz } );
 
-    ret.emplace_back( idx, bvh::span< const Element >( &e, &e + 1 ) );
+    ret.emplace_back( idx, std::span< const Element >( &e, &e + 1 ) );
   }
 
   return ret;

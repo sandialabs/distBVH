@@ -102,7 +102,7 @@ namespace bvh
       const std::size_t nelements = send - sbeg;
       const std::size_t chunk_data_size = nelements * m_user_data->element_size();
       const int rank = _rank;
-      debug_assert( chunk_data_size > 0, "chunk_data_size size must be > 0" );
+      debug_assert( logger, chunk_data_size > 0, "chunk_data_size size must be > 0" );
 
       auto send_msg = ::vt::makeMessageSz< narrowphase_patch_msg >( chunk_data_size );
       send_msg->data_size = chunk_data_size;
@@ -110,7 +110,7 @@ namespace bvh
       logger.debug( "obj={} sending narrowphase patch {} with {} num elements",
                     collision_idx, vt_index{ _local_idx + rank * overdecomposition }, nelements );
 
-      m_user_data->scatter_to_byte_buffer( send_msg->user_data(), sbeg, send, split_indices_h );
+      m_user_data->scatter_to_byte_buffer( logger, send_msg->user_data(), sbeg, send, split_indices_h );
 
       send_msg->origin_node = rank;
       send_msg->patch_meta = local_patches[idx];
