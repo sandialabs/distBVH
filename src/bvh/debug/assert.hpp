@@ -53,7 +53,7 @@ namespace bvh
     struct debug_assert_impl
     {
       template< typename... Args >
-      static void debug_assert( spdlog::logger &, bool, const std::string &, [[maybe_unused]] Args &&..._args )
+      static void debug_assert( spdlog::logger &, bool, fmt::format_string< Args... >, [[maybe_unused]] Args &&..._args )
       {
         // Do nothing
       }
